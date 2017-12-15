@@ -3062,9 +3062,9 @@ for session = 1 : num_session
             end
             
             if (goGNSS.isPP(mode)) %remove unused epochs from time_GPS_diff (for LS modes)
-                time_GPS_diff(unused_epochs) = [];
-                time_GPS(unused_epochs) = [];
-                week_R(unused_epochs) = [];
+                time_GPS_diff(logical(unused_epochs)) = [];
+                time_GPS(logical(unused_epochs)) = [];
+                week_R(logical(unused_epochs)) = [];
             end
         end
         
