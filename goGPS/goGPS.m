@@ -286,7 +286,7 @@ for session = 1 : num_session
         end
         if state.isModeDD()
             for r = 1 : num_mst_rec
-                filename_M_obs{r} = mst_rec{r}{1}; %#ok<SAGROW>
+                filename_M_obs{r} = mst_rec{r}{session}; %#ok<SAGROW>
             end
             fr = File_Rinex([filename_R_obs(:) filename_M_obs(:)],100);
         else
@@ -3405,21 +3405,21 @@ for session = 1 : num_session
                     logger.addWarning('It was not possible to estimate integer ambiguities: a float solution will be output.');
                     sigma_pos = cov_X;
                 end
-            end
-
-            if (isempty(sigma02_hat) || sigma02_hat > 10)
-                logger.addWarning('It was not possible to compute a solution by the block adjustment procedure.');
-
-                pos_KAL = NaN(3*npos,1);
-                sigma_pos = NaN(3*npos);
-                estim_amb = NaN(length(x) - 3*npos,1);
-                sigma_amb = NaN(length(x) - 3*npos);
-                fixed_amb = 0;
-                epochs_avail = unique(sat_track(:,1));
-                RES_PHASE1_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
-                RES_CODE1_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
-                RES_PHASE2_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
-                RES_CODE2_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
+                
+                if (isempty(sigma02_hat) || sigma02_hat > 10)
+                    logger.addWarning('It was not possible to compute a solution by the block adjustment procedure.');
+                    
+                    pos_KAL = NaN(3*npos,1);
+                    sigma_pos = NaN(3*npos);
+                    estim_amb = NaN(length(x) - 3*npos,1);
+                    sigma_amb = NaN(length(x) - 3*npos);
+                    fixed_amb = 0;
+                    epochs_avail = unique(sat_track(:,1));
+                    RES_PHASE1_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
+                    RES_CODE1_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
+                    RES_PHASE2_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
+                    RES_CODE2_FLOAT_MELSA = zeros(nSatTot,max(epochs_avail));
+                end
             end
         end
 
@@ -4698,13 +4698,15 @@ for session = 1 : num_session
             if exist('X_KAL','var') && exist('estim_tropo','var')
 
                 fprintf(fid_extract,'%s  %02d/%02d/%02d    %02d:%02d:%06.3f %16.6f %16.6f %16.6f %16.6f %16.6f %16.6f\n', fnp.dateKeyRep('${YYYY}-${DOY}',cur_date_start), date_R(id_time,1), date_R(id_time,2), date_R(id_time,3), date_R(id_time,4), date_R(id_time,5), date_R(id_time,6), X_KAL(id_data), Y_KAL(id_data), Z_KAL(id_data), EAST_UTM(id_data), NORTH_UTM(id_data), h_KAL(id_data));
-                tropo_vec_ZTD(1,1:length(estim_tropo)) = estim_tropo;
-                fprintf(fid_extract_ZTD,'%.6f ', tropo_vec_ZTD);
-                fprintf(fid_extract_ZTD,'\n');
-                if (~isempty(ZHD))
-                    tropo_vec_ZWD(1,1:length(estim_tropo)) = estim_tropo-ZHD';
-                    fprintf(fid_extract_ZWD,'%.6f ', tropo_vec_ZWD);
-                    fprintf(fid_extract_ZWD,'\n');
+                if (any(estim_tropo))
+                    tropo_vec_ZTD(1,1:length(estim_tropo)) = estim_tropo;
+                    fprintf(fid_extract_ZTD,'%.6f ', tropo_vec_ZTD);
+                    fprintf(fid_extract_ZTD,'\n');
+                    if (~isempty(ZHD))
+                        tropo_vec_ZWD(1,1:length(estim_tropo)) = estim_tropo-ZHD';
+                        fprintf(fid_extract_ZWD,'%.6f ', tropo_vec_ZWD);
+                        fprintf(fid_extract_ZWD,'\n');
+                    end
                 end
                 nSol = size(Xhat_t_t_OUT,2);
                 for e = 1 : nSol / (1 + state.isForwardBackwardKF())
