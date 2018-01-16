@@ -85,7 +85,7 @@ elseif (strcmp(filename(1:4),'brdm'))
 elseif (strcmp(filename(1:4),'CGIM'))
     url = aiub_url;
     name = 'AIUB';
-    path = '/aiub/CODE/';
+    path = '/CODE/';
     subdir = '';
 else
     error('Only "brdc", "brdm" (IGS) and "CGIM" (AIUB) files are supported.');
