@@ -95,6 +95,9 @@ alpha2 = lambda(:,5);
 %number of epochs
 nEpochs = length(time);
 
+%estimated position
+XR = zeros(3,nEpochs);
+
 %receiver clock error
 dtR = zeros(nEpochs,1);
 
