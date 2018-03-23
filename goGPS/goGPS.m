@@ -830,7 +830,7 @@ for session = 1 : num_session
                     end
 
                     % set MASTER initial coordinates
-                    if (flag_ms_pos) % master position read from RINEX header
+                    if (flag_ms_pos && ~(exist('pos_M_crd','var') && ~isempty(pos_M_crd) && any(pos_M_crd))) % master position read from RINEX header
                         logger.newLine();
                         logger.addMessage('Master position fixed from RINEX:');
                         logger.addMessage(sprintf('     X = %12.4f m\n     Y = %12.4f m\n     Z = %12.4f m', pos_M(1,1), pos_M(2,1), pos_M(3,1)));
