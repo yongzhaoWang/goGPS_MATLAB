@@ -84,6 +84,13 @@ classdef Core_SEID < handle
             %%
             trg = trg(~trg.isEmpty_mr);
             if ~isempty(trg)
+                rem_list = [];
+                for r = 1 : numel(ref)
+                    if ref(r).isEmpty()
+                        rem_list = [rem_list, r];
+                    end
+                end
+                ref(rem_list) = [];
                 rec(1:numel(ref)) = ref;
                 rec(numel(ref) + (1 : numel(trg))) = trg;
                 obs_type(1:numel(ref)) = 2;
