@@ -746,7 +746,7 @@ classdef Network < handle
             end
         end
                         
-        function pushBackInReceiver(this,ls)
+        function pushBackInReceiver(this, ls)
             % Save in work the results computed by the network object
             %
             % INPUT
@@ -792,7 +792,7 @@ classdef Network < handle
                 this.rec_list(i).work.quality_info.n_obs = sum(idx_obs);
                 this.rec_list(i).work.quality_info.n_sat = length(unique(ls.satellite_obs(idx_obs)));
                 this.rec_list(i).work.quality_info.n_sat_max = max(hist(unique(ls.time_obs.getEpoch(idx_obs).getNominalTime(ls.obs_rate).getRefTime(ls.time_obs.minimum.getMatlabTime) * 1000 + double(ls.satellite_obs(idx_obs))), this.rec_list(i).work.quality_info.n_epochs ));
-                this.rec_list(i).work.quality_info.fixing_ratio = (sum(l_fixed(:,1)) / size(l_fixed, 1)) * 100; %TBD
+                this.rec_list(i).work.quality_info.fixing_ratio = ls.fix_ratio; %TBD
                 
                 % residual
                 idx_rec = find( ls.receiver_obs == i);

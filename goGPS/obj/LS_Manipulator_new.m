@@ -157,6 +157,8 @@ classdef LS_Manipulator_new < handle
         
         coo_vcv; % variance covariance matrix of the coordinates
         
+        fix_ratio = 0; 
+        
         log
     end
     
@@ -1941,7 +1943,7 @@ classdef LS_Manipulator_new < handle
                     sat_amb = sat_par(class_par == this.PAR_AMB);
                     rec_amb = rec_par(class_par == this.PAR_AMB);
                     oid_amb = oid_par(class_par == this.PAR_AMB);
-                    [ambs] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
+                    [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
                    
                     
                     B_ap_ap(~idx_amb) = B_ap_ap(~idx_amb) - N_ap_ap(~idx_amb,idx_amb)*ambs;
@@ -1965,10 +1967,10 @@ classdef LS_Manipulator_new < handle
                     N_amb_amb = N(~idx_bias, ~idx_bias) - N(~idx_bias, idx_bias)*red_par(:,1:sum(~idx_bias));
                     B_amb_amb = B(~idx_bias)  - N(~idx_bias, idx_bias)*red_par(:,end);
                     
-                     sat_amb = sat_par(class_par == this.PAR_AMB);
+                    sat_amb = sat_par(class_par == this.PAR_AMB);
                     rec_amb = rec_par(class_par == this.PAR_AMB);
                     oid_amb = oid_par(class_par == this.PAR_AMB);
-                    [ambs] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
+                    [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
                     x_reduced = zeros(size(N,1),1);
                     x_reduced(~idx_bias) = ambs;
                     B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*ambs;
@@ -3036,47 +3038,47 @@ classdef LS_Manipulator_new < handle
         end
         
         
-        function [ambs] = fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb)
+        function [ambs, fix_ratio] = fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb)
             % fix ambiguity
-                    cc = Core.getConstellationCollector();
-                    glonass_id = cc.getGoIds('R');
-                    if ~isempty(glonass_id)
-                       idx_glonass = sat_amb >= glonass_id(1) & sat_amb <= glonass_id(end);
-                    else
-                       idx_glonass = [];
-                    end
-                    if sum(idx_glonass) >0 % GLONASS
-                        [C_amb_amb, amb_float,idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
-                        
-                        
-                        [C_zz_all, z_all, idx_amb_estable, idx_amb_est, Z] = LS_Manipulator_new.GLONASS_Transform(C_amb_amb, amb_float, idx_amb_est, rec_amb, sat_amb, oid_amb);
-                        ambs = zeros(length(idx_amb_est),1);
-                        ambs(idx_amb_est) = z_all(idx_amb_est);
-                        idx_cond = ~idx_amb_estable & idx_amb_est;
-
-                       
-                        [amb_fixed, is_fixed, l_fixed] = Fixer.fix(z_all(idx_amb_estable), C_zz_all(idx_amb_estable,idx_amb_estable), 'lambda_partial');
-                        ambs(idx_cond) = ambs(idx_cond) - C_zz_all(idx_cond,idx_amb_estable)*(C_zz_all(idx_amb_estable,idx_amb_estable)\(z_all(idx_amb_estable) - amb_fixed));
-                        ambs(idx_amb_estable) = amb_fixed(:,1);
-                        
-                        ambs = Z *ambs;
-                    else
-                        [C_amb_amb, amb_float,idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
-
-                        ambs = zeros(length(idx_amb_est),1);
-                        ambs(idx_amb_est) = amb_float;
-                        clearvars N_amb_amb B_amb_amb
-                        if size(C_amb_amb,1) > 2000 % fix by recievr matrix tto large
-                            rec_idx = this.rec_par(this.class_par == this.PAR_AMB);
-                            rec_idx = rec_idx(idx_amb_est);
-                            [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, 'lambda_partial',rec_idx);
-                        else
-                            [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, 'lambda_partial');
-                        end
-                        idx_amb_est = find(idx_amb_est);
-                        ambs(idx_amb_est(:)) = amb_fixed(:,1);
-                    end
-                    
+            cc = Core.getConstellationCollector();
+            glonass_id = cc.getGoIds('R');
+            if ~isempty(glonass_id)
+                idx_glonass = sat_amb >= glonass_id(1) & sat_amb <= glonass_id(end);
+            else
+                idx_glonass = [];
+            end
+            if sum(idx_glonass) > 0 % GLONASS
+                [C_amb_amb, amb_float,idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
+                
+                
+                [C_zz_all, z_all, idx_amb_estable, idx_amb_est, Z] = LS_Manipulator_new.GLONASS_Transform(C_amb_amb, amb_float, idx_amb_est, rec_amb, sat_amb, oid_amb);
+                ambs = zeros(length(idx_amb_est),1);
+                ambs(idx_amb_est) = z_all(idx_amb_est);
+                idx_cond = ~idx_amb_estable & idx_amb_est;
+                
+                
+                [amb_fixed, is_fixed, l_fixed] = Fixer.fix(z_all(idx_amb_estable), C_zz_all(idx_amb_estable,idx_amb_estable), 'lambda_partial');
+                ambs(idx_cond) = ambs(idx_cond) - C_zz_all(idx_cond,idx_amb_estable)*(C_zz_all(idx_amb_estable,idx_amb_estable)\(z_all(idx_amb_estable) - amb_fixed));
+                ambs(idx_amb_estable) = amb_fixed(:,1);
+                
+                ambs = Z *ambs;
+            else
+                [C_amb_amb, amb_float,idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
+                
+                ambs = zeros(length(idx_amb_est),1);
+                ambs(idx_amb_est) = amb_float;
+                clearvars N_amb_amb B_amb_amb
+                if size(C_amb_amb,1) > 2000 % fix by receiver matrix tto large
+                    rec_idx = this.rec_par(this.class_par == this.PAR_AMB);
+                    rec_idx = rec_idx(idx_amb_est);
+                    [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, 'lambda_partial',rec_idx);
+                else
+                    [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, 'lambda_partial');
+                end
+                idx_amb_est = find(idx_amb_est);
+                ambs(idx_amb_est(:)) = amb_fixed(:,1);
+            end
+            fix_ratio = (sum(l_fixed(:,1)) / size(l_fixed, 1)) * 100;
         end
         
         function removemanually()
