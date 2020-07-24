@@ -2978,6 +2978,9 @@ classdef Command_Interpreter < handle
                                     elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_E_REC_MAT.par ')*$'], 'once'))
                                         rec(r).work.exportMat();
                                         not_exported = false;
+                                    elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_E_TROPO_HN.par ')*$'], 'once'))
+                                        rec(r).exportHydroNET();
+                                        not_exported = false;
                                     end
                                 end
                             end

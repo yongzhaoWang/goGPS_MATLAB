@@ -3166,6 +3166,25 @@ classdef Core_Utils < handle
             x = L'\y;
         end
         
+        function sys_list = getPrefSys(sys_list)
+            % get prefered system (HARDCODED)
+            if sum(sys_list == 'G')>0
+                sys_list = 'G';
+            elseif sum(sys_list == 'R')>0
+                sys_list = 'R';
+            elseif sum(sys_list == 'E') >0
+                sys_list = 'E';
+            elseif sum(sys_list == 'C') >0
+                sys_list = 'C';
+            elseif sum(sys_list == 'J') >0
+                sys_list = 'J';
+            elseif sum(sys_list == 'I') >0
+                sys_list = 'I';
+            else
+                sys_list = [];
+            end
+        end
+        
         function [dtm, lat, lon, georef, info] = getDTM(nwse, res)
             % Get the dtm of an area delimited by geographical coordinates nwse
             %

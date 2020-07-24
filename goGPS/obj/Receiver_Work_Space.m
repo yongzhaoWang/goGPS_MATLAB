@@ -3718,6 +3718,11 @@ classdef Receiver_Work_Space < Receiver_Commons
             is_fixed = rf.isFixed(this.parent.getMarkerName4Ch);
         end
         
+         function is_fixed = isFixedPrepro(this)
+            rf = Core.getReferenceFrame;
+            is_fixed = rf.isFixedPrepro(this.parent.getMarkerName4Ch);
+        end
+        
         function is_fixed = hasGoodApriori(this)
             % this is meant to skip any positionin based on code and estimate the postionon only in PPP or network phase adjutsment
             rf = Core.getReferenceFrame;
@@ -9378,6 +9383,118 @@ classdef Receiver_Work_Space < Receiver_Commons
                     log.addMessage(log.indent(sprintf('A good a-rpiori is set, skipping pre estimation of the coordinates') ))
                 end
             end
+        end
+        
+        
+        function s0 = initStaticPositioningNew(this, sys_list)
+            % SYNTAX
+            %   this.StaticPositioning(sys_c)
+            %
+            % INPUT
+            % sys_c : sys charachet list of constellations to be used
+            %
+            % OUTPUT:
+            %   s0
+            %
+            %   Get positioning using code observables
+                        
+            if nargin < 2 || isempty(sys_list)
+                sys_list = this.getActiveSys();
+            end
+            log = Core.getLogger;
+            if this.isEmpty()
+                log.addError('Static positioning failed: the receiver object is empty');
+            else
+                if isempty(this.id_sync)
+                    this.id_sync = 1 : this.time.length;
+                end
+                all_go_id = unique(this.go_id(ismember(this.system, sys_list)));
+                
+                % check if the epochs are present
+                % getting the observation set that is going to be used in
+                % setUPSA
+                
+                % 
+                
+                % if positioni is not fixed
+                if ~(this.isFixed || this.isFixedPrepro)
+                    if sum(this.hasAPriori) ~= 0 %%% if there is an apriori information on the position
+                        s0 = iif(this.hasGoodApriori, 0.1, 5);
+                        this.xyz = Core.getReferenceFrame.getCoo(this.parent.getMarkerName4Ch,this.time.getCentralTime);
+                    end
+                    if sum(this.hasAPriori) == 0 || isempty(this.xyz) %%% if no apriori information on the position
+                        sys_list_c = Core_Utils.getPrefSys(sys_list);
+                        
+                        obs_set = Observation_Set();
+                        if this.isMultiFreq() %% case multi frequency
+                            for sys_c = sys_list_c
+                                obs_set.merge(this.getPrefIonoFree('C', sys_c));
+                            end
+                        else
+                            for sys_c = sys_list_c
+                                f = this.getFreqs(sys_c);
+                                if ~isempty(f)
+                                    obs_set.merge(this.getPrefObsSetCh(['C' num2str(f(1))], sys_c));
+                                end
+                            end
+                        end
+                        s0 = this.coarsePositioning(obs_set);
+                    end
+                    if s0 > 0
+                        this.updateAllAvailIndex();
+                        % estimates dt coarse
+                        this.coarseDtEstimation();
+                        this.updateAllTOT();
+                        this.updateAzimuthElevation(all_go_id)
+                        if ~this.isMultiFreq()
+                            this.updateErrIono(all_go_id);
+                        end
+                        this.updateErrTropo(all_go_id);
+                        log.addMessage(log.indent('Improving estimation'))
+                        this.updateAllTOT();
+                        [dpos, s0] = this.codeStaticPositioning([],[],[],0);
+                        this.updateAllTOT();
+                        this.updateErrTropo(all_go_id);
+                        [dpos, s0] = this.codeStaticPositioning([],[],[],3);
+                    end
+                else
+                    this.updateAllAvailIndex();
+                    this.updateAllTOT();
+                    this.updateAzimuthElevation(all_go_id)
+                    if ~this.isMultiFreq()
+                        this.updateErrIono(all_go_id);
+                    end
+                    this.updateErrTropo(all_go_id);
+                    [dpos, s0] = this.codeStaticPositioning([],[],[],0);
+                    this.updateAllTOT();
+                    this.updateErrTropo(all_go_id);
+                    [dpos, s0] = this.codeStaticPositioning([],[],[],3);
+                end
+
+            end
+        end
+        
+        function coarseDtEstimation(this)
+            sys_list = unique(this.system);
+            %only use one system  -> preferred order is GRECJI
+            sys_list = Core_Utils.getPrefSys(sys_list); 
+
+            % get obscode
+            obs_set = Observation_Set();
+            if this.isMultiFreq() %% case multi frequency
+                for sys_c = sys_list
+                    obs_set.merge(this.getPrefIonoFree('C', sys_c));
+                end
+            else
+                for sys_c = sys_list
+                    f = this.getFreqs(sys_c);
+                    obs_set.merge(this.getPrefObsSetCh(['C' num2str(f(1))], sys_c));
+                end
+            end
+              [synt_obs] = this.getSyntTwin(obs_set);
+            diff_obs = zero2nan(obs_set.obs) - zero2nan(synt_obs);
+            dt = median(diff_obs ,2,'omitnan');
+            this.dt = dt/Core_Utils.V_LIGHT;
         end
         
         function s0 = coarsePositioning(this, obs_set)

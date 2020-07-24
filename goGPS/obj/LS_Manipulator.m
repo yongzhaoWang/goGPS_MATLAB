@@ -1125,7 +1125,11 @@ classdef LS_Manipulator < Exportable
         
         %------------------------------------------------------------------------
         
-        function [x, res, s0, Cxx, l_fixed, av_res] = solve(this)
+        function [x, res, s0, Cxx, l_fixed, av_res] = solve(this, direct_solve)
+            if nargin < 2
+                direct_solve = false;
+            end
+            if ~direct_solve % for small system does not make sense to go trough all this pain
             av_res = [];
             l_fixed = 0;
             Cxx = [];
@@ -1853,6 +1857,39 @@ classdef LS_Manipulator < Exportable
                 this.A_idx_mix = this.A_idx;
                 this.A_idx = A_idx_not_mix;
                 x = [x, x_rec];
+            end
+            else
+                n_obs = size(this.A_ep, 1);
+                n_par = max(max(this.A_idx));
+
+                rows = repmat((1:n_obs)',1,size(this.A_ep,2));
+                if isempty(this.rw)
+                    this.rw = ones(size(this.variance));
+                end
+                sw =  sqrt(1 ./ this.variance .* this.rw);
+                Aw = sparse(rows,this.A_idx,this.A_ep.*repmat(sw,1,size(this.A_ep,2)),n_obs,n_par);
+                A = sparse(rows,this.A_idx,this.A_ep,n_obs,n_par);
+                yw = this.y.*sw;
+                N = Aw'*Aw;
+                B = Aw'*yw;
+                x = N \ B;
+                x_class = zeros(size(x));
+                for c = 1:length(this.param_class)
+                    idx_pars = this.A_idx(:, c);
+                    idx_p = idx_pars(idx_pars~=0);
+                    x_class(idx_p) = this.param_class(c);
+                end
+                this.res = this.y - A*x;
+                x = [x x_class];
+                if nargout > 1
+                    if sum(isnan(x)) ==0
+                        [res, av_res] = this.getResiduals(x);
+                        s0 = mean(abs(res(res~=0)));
+                    else
+                        res = [];
+                        s0 = Inf;
+                    end
+                end
             end
         end
         

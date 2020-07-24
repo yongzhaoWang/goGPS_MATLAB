@@ -323,6 +323,21 @@ classdef Core_Reference_Frame < handle
             end
         end
         
+        function [status] = isFixedPrepro(this, sta_code)
+            % tell if station coordiantes are meant to be fixed
+            % in case sation not sound return false
+            %
+            % SYNTAX:
+            %  [status] = this.isFixed(sta_code)
+            status = false;
+            if size(this.station_code) > 0
+                sta_idx = find(strcmpi(this.station_code, sta_code), 1, 'first');
+                if sum(sta_idx) > 0
+                    status  = this.flag(sta_idx(1)) == 3;
+                end
+            end
+        end
+        
         function [status] = hasAPriori(this, sta_code)
             % tell if station coordiantes are meant to be fixed
             % in case sation not sound return false

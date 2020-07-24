@@ -944,8 +944,12 @@ classdef Atmosphere < handle
             
             thin_shell_height = this.getThinShellHeight();
             
-            % get piercing point and mapping function            
-            [latpp, lonpp, mfpp, k] = this.getPiercePoint( lat/180*pi, lon/180*pi, h, az(:)/180*pi, el(:)/180*pi, thin_shell_height, 6371000);
+            % get piercing point and mapping function
+            if nargout > 3
+               [latpp, lonpp, mfpp, k] = this.getPiercePoint( lat/180*pi, lon/180*pi, h, az(:)/180*pi, el(:)/180*pi, thin_shell_height, 6371000);
+            else
+               [latpp, lonpp, mfpp] = this.getPiercePoint( lat/180*pi, lon/180*pi, h, az(:)/180*pi, el(:)/180*pi, thin_shell_height, 6371000);
+            end
             % interpolate TEC at piercing point
             tec = this.interpolateTEC( time, latpp * 180/pi, lonpp * 180/pi);
             
@@ -964,7 +968,7 @@ classdef Atmosphere < handle
                 idx_sat = find(el(t,:) > 0);
                 if length(idx_sat) > 0
                     t_time = gps_time(t);
-                    [stec, ~, ~, ~] = this.getSTEC(lat, lon, az(t,idx_sat), el(t,idx_sat), h, t_time);
+                    [stec, ~, ~] = this.getSTEC(lat, lon, az(t,idx_sat), el(t,idx_sat), h, t_time);
                     foi_delay(t,idx_sat) = 40.3 * 1e16 .* stec ./ this.V_LIGHT^2; % to be multipleid by wavelength^2
                 end
             end
