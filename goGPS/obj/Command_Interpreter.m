@@ -1201,7 +1201,7 @@ classdef Command_Interpreter < handle
                     tok = regexp(cmd_list{cur_line_id},'[^ ]*', 'match'); % get command tokens
                     
                     log.newLine();
-                    log.addMarkedMessage(sprintf('Executing: %s', cmd_list{cur_line_id}));
+                    log.addMarkedMessage(sprintf('%s Executing: %s', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), cmd_list{cur_line_id}));
                     t1 = tic;
                     log.simpleSeparator([], [0.4 0.4 0.4]);
                     
