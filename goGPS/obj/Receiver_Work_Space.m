@@ -9380,11 +9380,10 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                     log.addMessage(log.indent(sprintf('Final estimation sigma0 %.3f m', s0) ))
                 else
-                    log.addMessage(log.indent(sprintf('A good a-rpiori is set, skipping pre estimation of the coordinates') ))
+                    log.addMessage(log.indent(sprintf('A good a-priori is set, skipping pre estimation of the coordinates') ))
                 end
             end
         end
-        
         
         function s0 = initStaticPositioningNew(this, sys_list)
             % SYNTAX
