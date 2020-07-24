@@ -1441,16 +1441,19 @@ classdef Coordinates < Exportable & handle
                 % Plot the baseline (filtered by spline) of the solution with no MP ---
                 subplot(3,1,2);
                 tmp = enu_diff0(idx0,:) - median(enu_diff0(idx0,:), 'omitnan');
-                
+                tmp0 = enu_diff0 - median(enu_diff0(idx0,:), 'omitnan');
                 splined = zeros(size(tmp));
+                splined0 = zeros(size(tmp0));
                 if spline_base > 0
                     for c = 1 : 3
                         ttmp = t_comm(id_ok(:,c));
                         [filtered, ~, ~, splined(:,c)] = splinerMat(ttmp, tmp(id_ok(:,c),c), spline_base, 1e-8, t_comm);
+                        [~, ~, ~, splined0(:,c)] = splinerMat(ttmp, tmp(id_ok(:,c),c), spline_base, 1e-8, t0);
                     end
                 end
                 tmp = tmp - splined; % remove splines
-                plotSep(t_comm, tmp, '.-', 'MarkerSize', 15, 'LineWidth', 2);
+                tmp0 = tmp0 - splined0; % remove splines
+                plotSep(t0, tmp0, '.-', 'MarkerSize', 15, 'LineWidth', 2);
                 
                 for c = 1 : 3
                     std_enu0(:,c) = std(tmp(id_ok(:,c), c), 'omitnan');
@@ -1469,17 +1472,19 @@ classdef Coordinates < Exportable & handle
                 % Plot the baseline (filtered by spline) of the solution with MP ------
                 subplot(3,1,3);
                 tmp = enu_diff1(idx1,:) - median(enu_diff1(idx1,:), 'omitnan');
-                
+                tmp1 = enu_diff1 - median(enu_diff1, 'omitnan');
                 splined = zeros(size(tmp));
+                splined1 = zeros(size(tmp1));
                 if spline_base > 0
                     for c = 1 : 3
                         ttmp = t_comm(id_ok(:,c));
                         [filtered, ~, ~, splined(:,c)] = splinerMat(ttmp, tmp(id_ok(:,c),c), spline_base, 1e-8, t_comm);
+                        [~, ~, ~, splined1(:,c)] = splinerMat(ttmp, tmp(id_ok(:,c),c), spline_base, 1e-8, t1);
                     end
                 end
-                
                 tmp = tmp - splined; % remove splines
-                plotSep(t_comm, tmp, '.-', 'MarkerSize', 15, 'LineWidth', 2);
+                tmp1 = tmp1 - splined1; % remove splines
+                plotSep(t1, tmp1, '.-', 'MarkerSize', 15, 'LineWidth', 2);
                 
                 for c = 1 : 3
                     std_enu1(:,c) = std(tmp(id_ok(:,c), c), 'omitnan');
