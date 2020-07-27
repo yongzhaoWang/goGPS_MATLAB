@@ -2501,10 +2501,11 @@ classdef Command_Interpreter < handle
                                 end
                                 id_ref = intersect(id_ref, id_trg);
                                 any_ok = false;
+                                [coo_type, found] = this.getNumericPar(tok, this.PAR_CTYPE.par);
                                 for i = 1 : numel(id_ref)
                                     id_bsl = [id_ref(i) .* ones(numel(id_trg) - 1, 1) serialize(id_trg(id_trg ~= id_ref(i)))];
                                     if ~isempty(id_bsl)
-                                        fh_list = [fh_list; rec.showBaselineENU(id_bsl)]; %#ok<AGROW>
+                                        fh_list = [fh_list; rec.showBaselineENU(id_bsl, coo_type)]; %#ok<AGROW>
                                         any_ok = true;
                                     end
                                 end

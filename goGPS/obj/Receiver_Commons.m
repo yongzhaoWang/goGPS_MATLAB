@@ -1660,9 +1660,9 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     end
                     flag_ready = true;
                 else
-                    if ~isempty(recsbaseline_ids(1).add_coo) &&  ~isempty(recsbaseline_ids(2).add_coo)
-                        coo_ref = recs(baseline_ids(b, 1)).add_coo(min(numel(rec.add_coo), flag_add_coo)).coo;
-                        coo_trg = recs(baseline_ids(b, 2)).add_coo(min(numel(rec.add_coo), flag_add_coo)).coo;
+                    if ~isempty(recs(baseline_ids(b, 1)).add_coo) &&  ~isempty(recs(baseline_ids(b, 2)).add_coo)
+                        coo_ref = recs(baseline_ids(b, 1)).add_coo(min(numel(recs(baseline_ids(b, 1)).add_coo), flag_add_coo)).coo;
+                        coo_trg = recs(baseline_ids(b, 2)).add_coo(min(numel(recs(baseline_ids(b, 2)).add_coo), flag_add_coo)).coo;
                         flag_ready = true;
                     else
                         log.addWarning(sprintf('No additional coordinates are present into %s', recs.parent.getMarkerName4Ch));
