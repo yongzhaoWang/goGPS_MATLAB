@@ -862,9 +862,9 @@ classdef Meteo_Data < handle
             % 
             % SYNTAX
             %   this.correctK2C()
-            id_k = (this.data(:, this.type == Meteo_Data.TD) > 100);
-            this.data(id_k, this.type == Meteo_Data.TD) = this.data(id_k, this.type == Meteo_Data.TD) - 273.15;
-            if ~isempty(id_k)
+            id_k_ko = (this.data(:, this.type == Meteo_Data.TD) > 100);
+            this.data(id_k_ko, this.type == Meteo_Data.TD) = this.data(id_k_ko, this.type == Meteo_Data.TD) - 273.15;
+            if any(id_k_ko)
                 this.log.addWarning(sprintf('Temperature are in K instead of Celsius in "%s"', this.getMarkerName));
             end
 
@@ -876,9 +876,9 @@ classdef Meteo_Data < handle
             % 
             % SYNTAX
             %   this.correctInvalidPressure()
-            id_p = (this.data(:, this.type == Meteo_Data.PR) < 750) | (this.data(:, this.type == Meteo_Data.PR) > 1200);
-            this.data(id_p, this.type == Meteo_Data.PR) = 1013.25;
-            if ~isempty(id_p)
+            id_p_ko = (this.data(:, this.type == Meteo_Data.PR) < 750) | (this.data(:, this.type == Meteo_Data.PR) > 1200);
+            this.data(id_p_ko, this.type == Meteo_Data.PR) = 1013.25;
+            if any(id_p_ko)
                 this.log.addWarning(sprintf('Pressure is out of the valid range 750~1200 mbar in "%s"', this.getMarkerName));
             end
         end
@@ -1266,7 +1266,7 @@ classdef Meteo_Data < handle
         
         function md = importCanadianCSV(file_name, altitude)
             %IMPORTFILE Import numeric data from a text file as a matrix.
-            %   meteo_data = importCanadianCSV(file_name) Reads data from text file FILENAME for the default selection.
+            %   meteo_data = importCanadianCSV(file_name, altitude) Reads data from text file FILENAME for the default selection.
             %
             % Example:
             %   md = Meteo_Data.importCanadianCSV('en_climate_hourly_NU_2401203_01-2019_P1H.csv', 0);
