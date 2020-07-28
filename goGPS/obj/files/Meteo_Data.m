@@ -113,7 +113,7 @@ classdef Meteo_Data < handle
         data = [];          % Meteorological file [n_epoch x n_type]
 
         xyz = [0 0 0];      % geocentric coordinate of the sensor
-        amsl = 0;           % hortometric height of the sensor
+        amsl = 0;           % orthometric height of the sensor
         is_valid = false;   % Status of valitity of the file;
         
         max_bound = 90;     % Max bound to extrapolate
@@ -196,8 +196,8 @@ classdef Meteo_Data < handle
                     tmp = sscanf(txt(lim(fln, 1) + (0:41)),'%f')';                                               % read value
                     this.xyz = iif(isempty(tmp) || ~isnumeric(tmp) || (numel(tmp) ~= 3), [0 0 0], tmp);          % check value integrity
                     if sum(abs(this.xyz)) > 0
-                        [~, lam, h, phiC] = cart2geod(this.xyz(1), this.xyz(2), this.xyz(3));
-                        this.amsl = h - getOrthometricCorr(phiC, lam);
+                        [phi, lam, h] = cart2geod(this.xyz(1), this.xyz(2), this.xyz(3));
+                        this.amsl = h - getOrthometricCorr(phi, lam);
                     else
                         this.amsl = 0;
                     end
@@ -1026,10 +1026,10 @@ classdef Meteo_Data < handle
             %   md1 = Meteo_Data.getVMS('test', [x y z], station(1).getObsTime, md)
 
             md = Meteo_Data();
-            [~, lam, h, phiC] = cart2geod(xyz(1), xyz(2), xyz(3));
+            [phi, lam, h] = cart2geod(xyz(1), xyz(2), xyz(3));
             [e, n] = cart2plan(xyz(1), xyz(2), xyz(3));
 
-            amsl = h - getOrthometricCorr(phiC, lam);
+            amsl = h - getOrthometricCorr(phi, lam);
 
             n_station = numel(station);
 

@@ -293,6 +293,9 @@ classdef Coordinates < Exportable & handle
                 end
             else
                 [lat, lon] = Coordinates.cart2geod(this.xyz);
+                if nargout <= 1
+                    lat = [lat, lon];
+                end
             end
         end
         
@@ -1016,25 +1019,92 @@ classdef Coordinates < Exportable & handle
         
     
     methods (Access = 'public', Static)
-        function ondu = getOrthometricCorrFromLatLon(lat, lon)
-            % Get Orthometric correction from the geoid loaded in Core
-            %
-            % INPUT
-            %   lat, lon    [radians]
+        function N = getOrthometricCorrFromLatLon(phi, lam, geoid, method)
             % SYNTAX:
-            %   ondu = getOrthometricCorrFromLatLon(lat, lon);
+            %   N = getOrthometricCorr(phi, lam, geoid);
+            %
+            % EXAMPLE:
+            %   core = Core.getInstance;
+            %   core.initGeoid();
+            %   Coordinates.getOrthometricCorrFromLatLon(45.69 ./ 180*pi, 9.03 ./ 180*pi)
+            %   % answer should be 46.1767008
+            %
+            % INPUT:
+            %   phi     = geodetic latitude                [deg (rad only for legacy method)]
+            %   lam     = geodetic longitude               [deg (rad only for legacy method)]
+            %   geoid   = regular map in geocentric coordinates <default = EGM08 0.5x0.5 deg>
+            %   method  = interpolation approach:
+            %              - legacy
+            %              - grid
+            %              - grid_cubic  ( phi, lam are array of grid coordinates )
+            %              - grid_akima  ( phi, lam are array of grid coordinates )
+            %              - linear
+            %              - natural
+            %
+            % OUTPUT:
+            %   N       = geoid ondulation [m]
+            %
+            % DESCRIPTION:
+            %   Get the geoid ondulation (orthometric correction)
+
+            if (nargin < 3) || isempty(geoid)
+                geoid = Core.getRefGeoid();
+            end
             
-            geoid = Core.getRefGeoid();
             if (geoid.grid == 0)
                 core = Core.getInstance(false);
                 core.initGeoid();
                 geoid = core.getRefGeoid();
             end
             
-            ondu = zeros(numel(lon), 1);
-            for i = 1 : numel(lon)
-                ondu(i) = grid_bilin_interp(lon(i) * Coordinates.RAD2DEG, lat(i) * Coordinates.RAD2DEG, geoid.grid, geoid.ncols, geoid.nrows, geoid.cellsize, geoid.Xll, geoid.Yll, -9999);
-            end            
+            if (nargin < 4) || isempty(method)
+                method = 'legacy';
+            end
+
+            if  (geoid.ncols == 0 || geoid.nrows == 0)
+                Core.initGeoid();
+                geoid = Core.getRefGeoid();
+            end
+            N = zeros(numel(lam), 1);
+
+            switch method
+                case 'legacy'
+                    for i = 1 : numel(lam)
+                        N(i) = grid_bilin_interp(lam(i) / pi * 180, phi(i) / pi * 180, geoid.grid, geoid.ncols, geoid.nrows, geoid.cellsize, geoid.Xll, geoid.Yll, -9999);
+                    end
+                case 'grid'
+                    x_grid = geoid.Xll + geoid.cellsize * (0 : geoid.ncols - 1);
+                    y_grid = fliplr(geoid.Yll + geoid.cellsize * (0 : geoid.nrows - 1));
+
+                    [xmg, ymg] = meshgrid(x_grid, y_grid);
+                    N = interp2(xmg, ymg, geoid.grid, lam, phi, 'linear');
+                case 'grid_cubic'
+                    x_grid = geoid.Xll + geoid.cellsize * (0 : geoid.ncols - 1);
+                    y_grid = fliplr(geoid.Yll + geoid.cellsize * (0 : geoid.nrows - 1));
+
+                    [xmg, ymg] = meshgrid(x_grid, y_grid);
+                    N = interp2(xmg, ymg, geoid.grid, lam, phi, 'cubic');
+                case 'grid_akima'
+                    x_grid = geoid.Xll + geoid.cellsize * (0 : geoid.ncols - 1);
+                    y_grid = fliplr(geoid.Yll + geoid.cellsize * (0 : geoid.nrows - 1));
+
+                    [xmg, ymg] = meshgrid(x_grid, y_grid);
+                    N = interp2(xmg, ymg, geoid.grid, lam, phi, 'makima');
+                case 'linear'
+                    x_grid = geoid.Xll + geoid.cellsize * (0 : geoid.ncols - 1);
+                    y_grid = fliplr(geoid.Yll + geoid.cellsize * (0 : geoid.nrows - 1));
+                    [xmg, ymg] = meshgrid(x_grid, y_grid);
+                    finterp = scatteredInterpolant(xmg(:), ymg(:), geoid.grid(:), 'linear');
+
+                    N = finterp(lam, phi);
+                case 'natural'
+                    x_grid = geoid.Xll + geoid.cellsize * (0 : geoid.ncols - 1);
+                    y_grid = fliplr(geoid.Yll + geoid.cellsize * (0 : geoid.nrows - 1));
+
+                    [xmg, ymg] = meshgrid(x_grid, y_grid);
+                    finterp = scatteredInterpolant(xmg(:), ymg(:), geoid.grid(:), 'natural');
+                    N = finterp(lam, phi);
+            end
         end
         
         function [lat, lon, h, lat_geoc] = cart2geod(xyz, y, z)

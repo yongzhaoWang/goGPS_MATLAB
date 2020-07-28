@@ -6199,7 +6199,7 @@ classdef GNSS_Station < handle
         end
         
         function fh_list = showZtdVsHeight(sta_list, degree)
-            % Show Median ZTD of n_receivers vs Hortometric height
+            % Show Median ZTD of n_receivers vs Orthometric height
             %
             % SYNTAX
             %   sta_list.showZtdVsHeight();
@@ -6255,7 +6255,7 @@ classdef GNSS_Station < handle
         end
 
         function fh_list = showZwdVsHeight(sta_list, degree)
-            % Show Median ZTD of n_receivers vs Hortometric height
+            % Show Median ZTD of n_receivers vs Orthometric height
             %
             % SYNTAX
             %   sta_list.showZwdVsHeight();

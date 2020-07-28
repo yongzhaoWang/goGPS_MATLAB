@@ -115,11 +115,11 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         % REFERENCE
         ERP_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'ERP' filesep '${YYYY}' filesep]; % Earth Rotation Parameters
         ERP_NAME = ''; % Name of ERP files
-        IGRF_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'IGRF' filesep]; % Path to Geoid folder containing the geoid to be used for the computation of hortometric heighs
+        IGRF_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'IGRF' filesep]; % Path to Geoid folder containing the geoid to be used for the computation of orthometric heighs
         IGRF_NAME = 'igrf12coeff.txt';
 
-        GEOID_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'geoid' filesep]; % Path to Geoid folder containing the geoid to be used for the computation of hortometric heighs
-        GEOID_NAME = 'geoid_EGM2008_05.mat'; % File name of the Geoid containing the geoid to be used for the computation of hortometric heighs
+        GEOID_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'geoid' filesep]; % Path to Geoid folder containing the geoid to be used for the computation of orthometric heighs
+        GEOID_NAME = 'geoid_EGM2008_05.mat'; % File name of the Geoid containing the geoid to be used for the computation of orthometric heighs
         IONO_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'IONO' filesep '${YYYY}' filesep];
         IONO_NAME = '';
         ATM_LOAD_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'ATM_LOAD' filesep '${YYYY}' filesep];
@@ -791,8 +791,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         igrf_dir = Prj_Settings.IGRF_DIR;   % Path to IGRF files folder
         igrf_name = Prj_Settings.IGRF_NAME;
 
-        geoid_dir = Prj_Settings.GEOID_DIR;   % Path to Geoid folder containing the geoid to be used for the computation of hortometric heighs
-        geoid_name = Prj_Settings.GEOID_NAME; % Name of the Geoid file containing the geoid to be used for the computation of hortometric heighs
+        geoid_dir = Prj_Settings.GEOID_DIR;   % Path to Geoid folder containing the geoid to be used for the computation of orthometric heighs
+        geoid_name = Prj_Settings.GEOID_NAME; % Name of the Geoid file containing the geoid to be used for the computation of orthometric heighs
 
         ocean_name =  Prj_Settings.OCEAN_NAME; % Location of the ocean loading file
 

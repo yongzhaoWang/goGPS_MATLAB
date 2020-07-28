@@ -228,9 +228,15 @@ classdef Core < handle
                         % geoid grid and parameters
                         core.geoid.file = geoid_file;
                         core.geoid.grid = g.(fn{1});
-                        core.geoid.cellsize = 360 / size(core.geoid.grid, 2);
-                        core.geoid.Xll = -180 + core.geoid.cellsize / 2;
-                        core.geoid.Yll = -90 + core.geoid.cellsize / 2;
+                        if mod(size(core.geoid.grid, 1), 2) == 1 % isodd
+                            core.geoid.cellsize = 360 / (size(core.geoid.grid, 2) - 1);
+                            core.geoid.Xll = -180;
+                            core.geoid.Yll = -90;
+                        else % iseven
+                            core.geoid.cellsize = 360 / size(core.geoid.grid, 2);
+                            core.geoid.Xll = -180 + core.geoid.cellsize / 2;
+                            core.geoid.Yll = -90 + core.geoid.cellsize / 2;
+                        end
                         core.geoid.ncols = size(core.geoid.grid, 2);
                         core.geoid.nrows = size(core.geoid.grid, 1);
                         clear g
@@ -261,7 +267,10 @@ classdef Core < handle
             
             if isempty(core.geoid)
                 core.initGeoid();
+            elseif(core.geoid.grid == 0)
+                core.initGeoid();
             end
+            
             geoid = core.geoid;
         end
         
