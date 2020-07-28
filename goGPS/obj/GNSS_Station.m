@@ -1206,21 +1206,22 @@ classdef GNSS_Station < handle
                     fprintf(fid,'GN,North Gradient,m\n');
                     fprintf(fid,'\n');
                     fprintf(fid,'[Locations]\n');
-                    fprintf(fid,'Code,Name,X,Y,Z,EPSG\n');
+                    fprintf(fid,'Code,Name,X,Y,Z,EPSG\n'); % XYZ geocentric
+                    %fprintf(fid,'Code, Name, latitude, longitude, h_ortho, EPSG\n');
                     for r = 1 : numel(sta_list)
-                        coo = sta_list(r).out.xyz(1,:);%Coordinates.fromXYZ(, sta_list(r).out.time_pos);
+                        coo = Coordinates.fromXYZ(sta_list(r).out.xyz(1,:));%Coordinates.fromXYZ(, sta_list(r).out.time_pos);
                         %[x,y,h_ellipse,zone] = coo.getENU();
                         %                     ondu = coo.getOrthometricCorrection();
                         %                     h_ortho = h_ellipse - ondu;
-%                         if zone(4) < 'N'
-%                             hemi = '7';
-%                         else
-%                             hemi = '6';
-%                         end
-                        x = coo(:,1);
-                        y = coo(:,2);
-                        z = coo(:,3);
-                        fprintf(fid,'%s,%s,%0.4f,%0.4f,%0.4f,%s\n',sta_list(r).getMarkerName4Ch, sta_list(r).getMarkerName,x,y,z,'4326');
+                        % if zone(4) < 'N'
+                        %     hemi = '7';
+                        % else
+                        %     hemi = '6';
+                        % end
+                        
+                        [lat, lon, ~, h_o] = coo.getGeodetic();
+                        %fprintf(fid,'%s,%s,%0.4f,%0.4f,%0.4f,%s\n',sta_list(r).getMarkerName4Ch, sta_list(r).getMarkerName,x,y,z,'4326');  % XYZ geocentric
+                        fprintf(fid,'%s,%s,%.8f,%.8f,%0.3f,%s\n', sta_list(r).getMarkerName4Ch, sta_list(r).getMarkerName, lon / pi * 180, lat / pi * 180, h_o, '4326');
                     end
                     fprintf(fid,'\n');
                     
