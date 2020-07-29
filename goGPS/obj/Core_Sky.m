@@ -172,29 +172,32 @@ classdef Core_Sky < handle
                     for i = 1:length(eph_f_name)
                         gps_time = getFileStTime(eph_f_name{i});
                         end_time = this.getLastEpochCoord();
-                        if true; %isempty(end_time) || isempty(gps_time) || (end_time - gps_time) > -1e-3
+                        % if true %isempty(end_time) || isempty(gps_time) || (end_time - gps_time) > -1e-3
                             this.addSp3(eph_f_name{i}, clock_in_eph);
                             this.coord = this.coord(1 : find(any(this.coord(:,:,1),2), 1, 'last'),:,:);
                             this.clock = this.clock(1 : find(any(this.clock(:,:),2), 1, 'last'),:,:);
-                        end
+                        % end
                         this.coord_type = 0; % center of mass
                         this.poly_type = 0; % center of mass
                     end
                     
                     % Very simple fill of missing orbits, but if they are bad, data are rejected
                     % in normal conditions orbits have no gaps, but sometimes BNC are not logged
-                    for s = 1 : size(this.coord, 2)
-                        if any(isnan(serialize(this.coord(:,s,:))))
-                            for c = 1 : 3
-                                data = this.coord(:,s,c);                                
-                                id_ok = find(~isnan(data));
-                                if numel(id_ok) > 3
-                                    id_ko = find(isnan(data));
-                                    this.coord(id_ko,s,c) = interp1(id_ok, this.coord(id_ok,s,c), id_ko, 'spline', nan);
-                                end
-                            end
-                        end
-                    end
+                    % this part of code is commented because this "simple" fill will generate
+                    % bad lagrange coefficients, a good interpolation have to pass probably for
+                    % Keplerian parameters to be smoother
+                    % for s = 1 : size(this.coord, 2)
+                    %     if any(isnan(serialize(this.coord(:,s,:))))
+                    %         for c = 1 : 3
+                    %             data = this.coord(:,s,c);                                
+                    %             id_ok = find(~isnan(data));
+                    %             if numel(id_ok) > 3
+                    %                 id_ko = find(isnan(data) & flagExpand(~isnan(data), 10)); % fill for a maximum of 10 epochs
+                    %                 this.coord(id_ko,s,c) = interp1(id_ok, this.coord(id_ok,s,c), id_ko, 'spline', nan);
+                    %             end
+                    %         end
+                    %     end
+                    % end
                 else %% if not sp3 assume is a rinex navigational file
                     this.toAPC(); % be sure to be in APC before adding new coordinates
                     this.clearPolyCoeff();
@@ -229,22 +232,21 @@ classdef Core_Sky < handle
                     % Very simple fill of missing clocks, but if they are bad, data are rejected
                     % in normal conditions clocks have no gaps, but sometimes BNC are not logged
                     % NOTE CLOCK MUST NOT BE CHANGED -> very dangerous problems may arise
-                    % dclk = Core_Utils.diffAndPred(this.clock);
-                    % dclk = dclk - repmat(nan2zero(median(zero2nan(dclk), 'omitnan')), size(dclk,1), 1);
-                    % this.clock(sum(abs(dclk)*1e10,2) > 10, :) = nan;
-                    % %dclk = dclk - repmat(median(zero2nan(dclk), 2, 'omitnan'), 1, size(dclk,2));
-                    % this.clock = nan2zero(zero2nan(this.clock) - median(zero2nan(this.clock), 2, 'omitnan'));
-                    %for s = 1 : size(this.clock, 2)
-                    %this.clock(:,s) = this.clock(:,s) - cumsum(Core_Utils.diffAndPred(this.clock(:,s)) - movmedian(Core_Utils.diffAndPred(this.clock(:,s)), 3));
-                    % if any(isnan(zero2nan(serialize(this.clock(:,s)))))
-                    %     data = zero2nan(this.clock(:,s));
-                    %     id_ok = find(~isnan(data));
-                    %     if numel(id_ok) > 3
-                    %         id_ko = find(isnan(data));
-                    %         this.clock(id_ko,s) = nan2zero(interp1(id_ok, data(id_ok), id_ko, 'linear', nan));
+                    % This part of code have been commented because it is very difficult to
+                    % fill the clocks in a good way. If no clocks are present => the
+                    % satellite should not be used, but if the clocks are corrected then there
+                    % is the risk to introduce an unhealty satellite causing bad estimations
+                    % 
+                    % for s = 1 : size(this.clock, 2)
+                    %     if any(isnan(zero2nan(serialize(this.clock(:,s)))))
+                    %         data = zero2nan(this.clock(:,s));
+                    %         id_ok = find(~isnan(data));
+                    %         if numel(id_ok) > 3
+                    %             id_ko = find(isnan(data));
+                    %             this.clock(id_ko,s) = nan2zero(interp1(id_ok, data(id_ok), id_ko, 'linear', nan));
+                    %         end
                     %     end
                     % end
-                    %end
                 end
                 
                 % Interp clock
