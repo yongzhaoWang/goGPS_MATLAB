@@ -9237,6 +9237,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 
                 if sum(this.hasAPriori) == 0 || isempty(this.xyz) %%% if no apriori information on the position
+                    Core.getReferenceFrame.setFlag(this.parent.getMarkerName4Ch, 0);
                     obs_set = Observation_Set();
                     if this.isMultiFreq() %% case multi frequency
                         for sys_c = sys_list
