@@ -417,7 +417,9 @@ classdef LS_Manipulator < Exportable
                 end
                 this.param_flag = p_flag;
                 this.param_class = p_class;
-                this.amb_idx = obs_set.getAmbIdx();
+                if not(obs_set.isEmpty)
+                    this.amb_idx = obs_set.getAmbIdx();
+                end
                 this.go_id_amb = obs_set.go_id;
                 this.sat_go_id = obs_set.go_id;
                 n_epochs = size(obs_set.obs, 1);
