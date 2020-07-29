@@ -2182,6 +2182,7 @@ classdef Core_Sky < handle
                     end
                 end
             end
+            W_poly(W_poly < 1) = nan; % If the polynomial is not stable, do not compute the orbit
             X_sat = X_sat ./ repmat(W_poly, 1, n_sat, 3);
             V_sat = V_sat ./ repmat(W_poly, 1, n_sat, 3);
             
