@@ -1587,6 +1587,14 @@ classdef Receiver_Work_Space < Receiver_Commons
                     log.addWarning(sprintf('Satellites with missing clocks: %s\nRemember to process them only in network mode\n', sat_nan_clock(3:end)));
                 end
             end
+            pm_clock = sum(all(nan_clock,2)) / size(nan_clock, 1) * 100;
+            pm_coord = sum(all(nan_coord,2)) / size(nan_coord, 1) * 100;
+            if pm_clock > 0
+                log.addWarning(sprintf('%.2f %% of the epochs of these orbits have missing coordinates', pm_coord));
+            end
+            if pm_clock > 0
+                log.addWarning(sprintf('%.2f %% of the epochs of these orbits have missing clocks', pm_clock));
+            end
             
             % remove moon midnight or shadow crossing epoch
             eclipsed = cs.checkEclipseManouver(this.time);
