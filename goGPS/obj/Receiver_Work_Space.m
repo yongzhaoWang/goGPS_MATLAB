@@ -4310,11 +4310,11 @@ classdef Receiver_Work_Space < Receiver_Commons
                     h_ortho = median(h_ortho);
                     if ~isempty(this)
                         if this.state.mapping_function == 3
-                            [mfh, mfw] = atmo.niell(this.time, lat./180*pi, (this.sat.el)./180*pi,h_ellipse);
+                            [mfh, mfw] = atmo.niell(this.time, lat./180*pi, zero2nan(this.sat.el)./180*pi,h_ellipse);
                         elseif this.state.mapping_function == 2
-                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse);
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, zero2nan(this.sat.el)./180*pi, h_ellipse);
                         elseif this.state.mapping_function == 1
-                            [mfh, mfw] = atmo.gmf(this.time, lat./180*pi, lon./180*pi, h_ortho, (this.sat.el)./180*pi);
+                            [mfh, mfw] = atmo.gmf(this.time, lat./180*pi, lon./180*pi, h_ortho, zero2nan(this.sat.el)./180*pi);
                         end
                        
                         if ~isempty(id_sync)
@@ -4324,9 +4324,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         
                         if nargout > 2
                             if this.state.mapping_function_gradient == 1
-                                cotan_term = Atmosphere.chenHerringGrad((this.sat.el)./180*pi);
+                                cotan_term = Atmosphere.chenHerringGrad(zero2nan(this.sat.el)./180*pi);
                             elseif this.state.mapping_function_gradient == 2
-                                [cotan_term] = Atmosphere.macmillanGrad((this.sat.el)./180*pi);
+                                [cotan_term] = Atmosphere.macmillanGrad(zero2nan(this.sat.el)./180*pi);
                             end
                             if ~isempty(id_sync)
                                 cotan_term = cotan_term(id_sync, :);
