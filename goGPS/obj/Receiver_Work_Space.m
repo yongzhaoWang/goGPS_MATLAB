@@ -6274,12 +6274,14 @@ classdef Receiver_Work_Space < Receiver_Commons
                 s = all_go_id == obs_set.go_id(i);
                 %[range, xs_loc_t] = this.getSyntObs(go_id);
                 idx_obs = any(obs_set.obs(:, i),2);
-                idx_obs_r = idx_ep_obs(idx_obs); % <- to which epoch in the receiver the observation of the satellites in obesrvation set corresponds?
+                idx_obs_r = idx_ep_obs(idx_obs); % <- to which epoch in the receiver the observation of the satellites in obeservation set corresponds?
                 idx_obs_r_l = false(1, size(range, 2)); % get the logical equivalent
                 idx_obs_r_l(idx_obs_r) = true;
-                range_idx = range(s,:) ~= 0;
+                range_idx = (range(s,:) ~= 0);
+                idx_obs_r_l = idx_obs_r_l &  range_idx;
                 xs_idx = idx_obs_r_l(range_idx);
                 synt_obs(idx_obs, i) = range(s, idx_obs_r);
+                idx_obs = idx_obs & idx_obs_r_l(idx_ep_obs)';
                 if ~isempty(xs_idx)
                     xs_loc(idx_obs, i, :) = permute(xs_loc_t{s}(xs_idx, :),[1 3 2]);
                 end
