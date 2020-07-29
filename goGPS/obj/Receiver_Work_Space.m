@@ -1438,6 +1438,70 @@ classdef Receiver_Work_Space < Receiver_Commons
             log.addMessage(log.indent(sprintf(' - %d code observations marked as outlier',n_out)));
         end
         
+        function remInitialBadPr(this, max_thr)
+            % Check the difference between pseudo-ranges (pr) and synthetised ranges
+            % Remove pr too far from expected
+            % (there are probably problems with orbits or a-priori coordinates)
+            %
+            % The cut-off threshold is automatically computed as 5*median(sigma)
+            %
+            % INPUT
+            %   max_thr     maximum accepted threshold to discard data
+            %
+            %
+            % SYNTAX
+            %   this.remInitialBadPr(max_thr)
+            if nargin == 1
+                max_thr = 50;
+            end
+            min_thr = 20;
+            
+            try
+                % get synthetic
+                prs = this.getSyntPrObs();
+                % get pseudo-ranges
+                [pr, id_pr] = this.getPseudoRanges();
+                
+                % get difference
+                pr_diff = zero2nan(pr)-zero2nan(prs);
+                
+                % reduce with the median value
+                pr_diff = bsxfun(@minus, pr_diff, median(pr_diff, 2, 'omitnan'));
+                %
+                pr_diff = movmedian(pr_diff, 11, 'omitnan');
+                
+                % DEBUG
+                % figure; plot(pr_diff)
+                
+                % auto find thr (5 sigma or 50 meters)
+                sigma = median(std(pr_diff', 'omitnan'), 'omitnan'); %#ok<UDIM>
+                thr = max(min_thr, min(max_thr, 5 * sigma));
+                id_ko = abs(pr_diff) > thr;
+                id_ko = flagExpand(id_ko, 5) & not(isnan(pr_diff)); % add some margin to the bad epochs
+                
+                % DEBUG
+                % pr_diff(id_ko) = nan;
+                % hold on; plotSep(pr_diff, '.-k', 'LineWidth', 2);
+            catch
+                id_ko = [];
+            end
+            
+            if sum(id_ko(:)) > 0
+                log = Core.getLogger();
+                msg = sprintf('Using a-priori coordinates %d observations in %d epochs have been found invalid\n', sum(id_ko(:)), sum(any(id_ko')));
+                msg = sprintf('%sRemoving %.2f %% of observations and %.2f %% of total epochs (pseudo-ranges)', msg, ...
+                    sum(id_ko(:)) / sum(not(isnan(pr_diff(:)))) * 100, ...
+                    sum(all((id_ko | isnan(pr_diff))')) / size(id_ko, 1) * 100);
+                
+                log.addWarning(msg);
+                
+                pr(id_ko) = nan;
+                this.setPseudoRanges(pr, id_pr);
+            end
+        end
+        
+        
+        
         function [obs, sys, prn, flag] = remUndCutOff(this, obs, sys, prn, flag, cut_off)
             %  remove obs under cut off
             for i = 1 : length(prn)
@@ -2448,7 +2512,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             if any(id_ko)
                 n_out = sum(serialize(this.sat.outliers_ph_by_ph(id_ko, :)));
                 n_ko = sum(serialize(~isnan(ph(id_ko, :))));
-                log.addMessage(log.indent(sprintf('Adding other %d phase outliears due to missing valid pseudo-ranges', n_ko - n_out)));
+                log.addMessage(log.indent(sprintf('Adding other %d phase outliers due to missing valid pseudo-ranges', n_ko - n_out)));
                 this.sat.outliers_ph_by_ph(id_ko, :) = ~isnan(ph(id_ko, :));
             end
             
@@ -6722,7 +6786,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             this.initAvailIndex();
             % for each satellite
             go_id = unique(this.go_id);
-            full_dts_range = nan2zero(zero2nan(this.getDtS(go_id)) + zero2nan(this.getRelClkCorr(go_id))) * Core_Utils.V_LIGHT;
+            full_dts_range = (zero2nan(this.getDtS(go_id)) + zero2nan(this.getRelClkCorr(go_id))) * Core_Utils.V_LIGHT;
             for s = 1: numel(go_id)
                 sat_idx = (this.go_id == go_id(s)) & (this.obs_code(:,1) == 'C' | this.obs_code(:,1) == 'L');
                 for o = find(sat_idx)'
@@ -7392,13 +7456,13 @@ classdef Receiver_Work_Space < Receiver_Commons
             if isempty(this.sat.err_tropo)
                 this.sat.err_tropo = zeros(size(this.sat.avail_index));
             end
-           
+            
             if nargin < 2 || isempty(go_id) || strcmp(go_id, 'all')
                 this.log.addMessage(this.log.indent('Updating tropospheric errors'))
                 
                 go_id = unique(this.go_id)';
             else
-                 go_id = serialize(go_id)';
+                go_id = serialize(go_id)';
             end
             this.sat.err_tropo(:, go_id) = 0;
             
@@ -9254,6 +9318,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                     s0 = this.coarsePositioning(obs_set);
                 end
                 
+                if s0 > 1e3
+                    s0 = 0; % Solution failed
+                end
                 if s0 > 0
                     this.updateAllAvailIndex();
                     this.updateAllTOT();
@@ -9267,52 +9334,57 @@ classdef Receiver_Work_Space < Receiver_Commons
                     corr = 2000;
                     rf_changed = false;
                    
-
+                    % If the a-priori coordinates are valid, perform a
+                    % rough filtering of bad pseudo-ranges based on the
+                    % difference with the synthetic one
+                    this.remInitialBadPr(50);
+                
                     if ~this.hasGoodApriori()
                         [corr, s0tmp] = this.codeStaticPositioning(sys_list, this.id_sync, this.state.cut_off);
                         %                 %----- NEXUS DEBUG
                         %                 this.adjustPrAmbiguity();
                         %                 this.codeStaticPositioning(this.id_sync, 15);
                         %------
-                        
-                        % This sensor works using the first LS adjustment
-                        thr_multiplier = 2;
-                        [pr , id_pr] = this.getPseudoRanges;
-                        sensor = pr - this.getSyntPrObs;
-                        
-                        % Perform LS on all the data
-                        this.remBadTracking(sys_list);
-                        this.updateAllTOT();
-                        log.addMessage(log.indent('Final estimation'))
-                        i = 1;
-                        while max(abs(corr)) > 0.2 && i < 3
-                            rw_loops = 0; % number of re-weight loops
-                            this.getSatCache(all_go_id, true); % force cache update of satellite orbits here I'm computing it for all the id_sync
-                            [corr, s0] = this.codeStaticPositioning(sys_list, this.id_sync, this.state.cut_off, rw_loops); % no reweight
-                            % final estimation of time of flight
-                            this.updateAllAvailIndex()
-                            this.updateAllTOT(true);
-                            i = i+1;
-                        end
-                        
-                        % If the final estimation is worse than then the
-                        % previous one perform outlier rejection using the old sensor
-                        if s0tmp < (s0 -2) && s0 > 6
-                            sensor = bsxfun(@minus, sensor, median(sensor, 2, 'omitnan'));
-                            id_ko = Core_Utils.snoopGatt(sensor, 20*thr_multiplier, 10*thr_multiplier); % flag above 20 meters
-                            if any(id_ko(:))
-                                n_out = sum(id_ko(:)) ;
-                            end
-                            pr(id_ko) = nan;
-                            if (sum(id_ko(:)) / sum(~isnan(pr(:)))) < 0.5 % I've flagged less than 50% of data
-                                this.setPseudoRanges(pr, id_pr);
-                                log.addWarning(sprintf('%d pseudo-ranges have been removed to stabilize the solution', sum(id_ko(:))));
-                                % Redo the estimation
-                                rw_loops = 0;
+                        if s0tmp > 0
+                            % This sensor works using the first LS adjustment
+                            thr_multiplier = 2;
+                            [pr , id_pr] = this.getPseudoRanges;
+                            sensor = pr - this.getSyntPrObs;
+                            
+                            % Perform LS on all the data
+                            this.remBadTracking(sys_list);
+                            this.updateAllTOT();
+                            log.addMessage(log.indent('Final estimation'))
+                            i = 1;
+                            while max(abs(corr)) > 0.2 && i < 3
+                                rw_loops = 0; % number of re-weight loops
+                                this.getSatCache(all_go_id, true); % force cache update of satellite orbits here I'm computing it for all the id_sync
                                 [corr, s0] = this.codeStaticPositioning(sys_list, this.id_sync, this.state.cut_off, rw_loops); % no reweight
                                 % final estimation of time of flight
                                 this.updateAllAvailIndex()
                                 this.updateAllTOT(true);
+                                i = i+1;
+                            end
+                            
+                            % If the final estimation is worse than then the
+                            % previous one perform outlier rejection using the old sensor
+                            if s0tmp < (s0 -2) && s0 > 6
+                                sensor = bsxfun(@minus, sensor, median(sensor, 2, 'omitnan'));
+                                id_ko = Core_Utils.snoopGatt(sensor, 20*thr_multiplier, 10*thr_multiplier); % flag above 20 meters
+                                if any(id_ko(:))
+                                    n_out = sum(id_ko(:)) ;
+                                end
+                                pr(id_ko) = nan;
+                                if (sum(id_ko(:)) / sum(~isnan(pr(:)))) < 0.5 % I've flagged less than 50% of data
+                                    this.setPseudoRanges(pr, id_pr);
+                                    log.addWarning(sprintf('%d pseudo-ranges have been removed to stabilize the solution', sum(id_ko(:))));
+                                    % Redo the estimation
+                                    rw_loops = 0;
+                                    [corr, s0] = this.codeStaticPositioning(sys_list, this.id_sync, this.state.cut_off, rw_loops); % no reweight
+                                    % final estimation of time of flight
+                                    this.updateAllAvailIndex()
+                                    this.updateAllTOT(true);
+                                end
                             end
                         end
                     else
