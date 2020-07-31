@@ -6627,10 +6627,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                     c_l_obs = colFirstNonZero(c_obs); % all best obs one each line %% CONSIDER USING ONLY 1 FREQUENCY FOR mm CONSISTENCY
                     this.updateTOT(c_l_obs, i); % update time of travel
                     
-                elseif synt_based % use the synteetc observation to get Time of flight
+                elseif synt_based % use the syntetic observation to get Time of flight
                     c_l_obs = this.getSyntObs(i);
                     this.updateTOT(c_l_obs, i, false); % update time of travel
-                    
                 end
                 %update time of flight times
             end
@@ -9278,6 +9277,10 @@ classdef Receiver_Work_Space < Receiver_Commons
             %   s0
             %
             %   Get positioning using code observables
+            
+            % USEFUL TESTING RINEX:
+            %  - EURC0010.18o
+            
                         
             if nargin < 2 || isempty(sys_list)
                 sys_list = this.getActiveSys();
@@ -9316,19 +9319,20 @@ classdef Receiver_Work_Space < Receiver_Commons
                         end
                     end
                     s0 = this.coarsePositioning(obs_set);
+                    this.dt = this.dt * 0; % don't use the clock estimated by coarse positioning
                 end
                 
-                if s0 > 1e3
+                if s0 > 1e3 % If the coarse positioning is too bad, there is nothing to do. Positioning is not possible.
                     s0 = 0; % Solution failed
                 end
                 if s0 > 0
                     this.updateAllAvailIndex();
-                    this.updateAllTOT();
                     this.updateAzimuthElevation(all_go_id)
                     if ~this.isMultiFreq()
                         this.updateErrIono(all_go_id);
                     end
                     this.updateErrTropo(all_go_id);
+                    this.updateAllTOT();
                     log.addMessage(log.indent('Improving estimation'))
 
                     corr = 2000;
@@ -9341,19 +9345,38 @@ classdef Receiver_Work_Space < Receiver_Commons
                 
                     if ~this.hasGoodApriori()
                         [corr, s0tmp] = this.codeStaticPositioning(sys_list, this.id_sync, this.state.cut_off);
-                        %                 %----- NEXUS DEBUG
-                        %                 this.adjustPrAmbiguity();
-                        %                 this.codeStaticPositioning(this.id_sync, 15);
+                        log.addMessage(log.indent(sprintf('New solution s0 = %.4f using %d epochs\nCorrecting coarse solution by %.3f meters', s0, numel(this.id_sync), sqrt(sum(corr.^2)))));
+                        
+                        % Apply the clock to realign data
+                        % this clock apply have been added processing the permanent station 
+                        % with file EURC0010.18o that have almost 0.1s of clock error
+                        
+                        % Save init_positioning clock
+                        this.dt_ip = this.dt_ip + simpleFill1D(this.dt, this.dt == 0, 'linear') + this.dt_pr; 
+                        % smooth clock estimation
+                        if perc(abs(this.dt), 0.97) > 1e-7 % 30 meters : is it only useful to reallining receivers that have a large drifts from the nominal value
+                            this.smoothAndApplyDt(0, false, false);
+                        end
+                            
+                        % %----- NEXUS DEBUG
+                        % this.adjustPrAmbiguity();
+                        % this.codeStaticPositioning(this.id_sync, 15);
                         %------
                         if s0tmp > 0
                             % This sensor works using the first LS adjustment
                             thr_multiplier = 2;
                             [pr , id_pr] = this.getPseudoRanges;
-                            sensor = pr - this.getSyntPrObs;
+                            sensor = pr - this.getSyntPrObs - this.dt * Core_Utils.V_LIGHT;
                             
                             % Perform LS on all the data
-                            this.remBadTracking(sys_list);
+                            this.updateAllAvailIndex();
+                            this.updateAzimuthElevation;
+                            this.updateErrTropo();
                             this.updateAllTOT();
+                            
+                            this.remBadTracking(sys_list);
+                            this.updateAllAvailIndex()
+
                             log.addMessage(log.indent('Final estimation'))
                             i = 1;
                             while max(abs(corr)) > 0.2 && i < 3
@@ -9361,7 +9384,6 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 this.getSatCache(all_go_id, true); % force cache update of satellite orbits here I'm computing it for all the id_sync
                                 [corr, s0] = this.codeStaticPositioning(sys_list, this.id_sync, this.state.cut_off, rw_loops); % no reweight
                                 % final estimation of time of flight
-                                this.updateAllAvailIndex()
                                 this.updateAllTOT(true);
                                 i = i+1;
                             end
@@ -9375,7 +9397,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                                     n_out = sum(id_ko(:)) ;
                                 end
                                 pr(id_ko) = nan;
-                                if (sum(id_ko(:)) / sum(~isnan(pr(:)))) < 0.5 % I've flagged less than 50% of data
+                                if (sum(id_ko(:)) > 0) && ((sum(id_ko(:)) / sum(~isnan(pr(:)))) < 0.5) % I've flagged less than 50% of data
                                     this.setPseudoRanges(pr, id_pr);
                                     log.addWarning(sprintf('%d pseudo-ranges have been removed to stabilize the solution', sum(id_ko(:))));
                                     % Redo the estimation
@@ -9461,13 +9483,13 @@ classdef Receiver_Work_Space < Receiver_Commons
                         % restore flag in reference frame object
                         rf.setFlag(this.parent.getMarkerName4Ch, 3);
                     end
-                    log.addMessage(log.indent(sprintf('Final estimation sigma0 %.3f m', s0) ))
+                    log.addMessage(log.indent(sprintf('Final estimation sigma0 %.3f m, using %d epochs', s0, numel(this.id_sync)) ));
                 else
-                    log.addMessage(log.indent(sprintf('A good a-priori is set, skipping pre estimation of the coordinates') ))
+                    log.addMessage(log.indent(sprintf('A good a-priori is set, skipping pre estimation of the coordinates') ));
                 end
             end
         end
-        
+
         function s0 = initStaticPositioningNew(this, sys_list)
             % SYNTAX
             %   this.StaticPositioning(sys_c)
@@ -9621,7 +9643,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             while max(abs(dpos)) > 10
                 this.getSatCache(all_go_id, true); % force cache update of satellite orbits
                 [dpos, s0] = this.codeStaticPositioning(sys_list, ep_coarse, [], 0);
-                
+                log.addMessage(log.indent(sprintf('New solution s0 = %.4f using %d epochs\nCorrecting coarse solution by %.3f meters', s0, numel(ep_coarse), sqrt(sum(dpos.^2)))));
                 if sum(abs(dpos)) > 1e8
                     % Solution is diverging => exit
                     log.addError('Data are too bad, positioning is not possible!');
@@ -9636,7 +9658,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                 if ~this.isMultiFreq()
                     this.updateErrIono(all_go_id);
                 end
-                this.codeStaticPositioning(sys_list, ep_coarse, 15, 0);
+                [dpos, s0] = this.codeStaticPositioning(sys_list, ep_coarse, 15, 0);
+                log.addMessage(log.indent(sprintf('New solution s0 = %.4f using %d epochs\nCorrecting coarse solution by %.3f meters', s0, numel(ep_coarse), sqrt(sum(dpos.^2)))));                
             end
             this.id_sync = [];
             this.updateErrTropo(all_go_id);
@@ -10277,7 +10300,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                             %                         this.codeStaticPositioning();
                             
                             % if the clock is stable I can try to smooth more => this.smoothAndApplyDt([0 this.length/2]);
-                            this.dt_ip = simpleFill1D(this.dt, this.dt == 0, 'linear') + this.dt_pr; % save init_positioning clock
+                            this.dt_ip = this.dt_ip + simpleFill1D(this.dt, this.dt == 0, 'linear') + this.dt_pr; % save init_positioning clock
                             % smooth clock estimation
                             if perc(abs(this.dt), 0.97) > 1e-7 % 30 meters : is it only useful to reallining receivers that have a large drifts from the nominal value
                                 this.smoothAndApplyDt(0, is_pr_jumping, is_ph_jumping);
