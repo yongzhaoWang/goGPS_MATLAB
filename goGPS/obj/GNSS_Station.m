@@ -5715,11 +5715,12 @@ classdef GNSS_Station < handle
                     end
                     f.UserData = struct('fig_name', fig_name);
                     
-                    if sub_plot_nsat
+                    if new_fig
                         ax1 = subplot(3,1,1:2);
                     else
                         try
                             ax1 = f.Children(end);
+                            subplot(ax1);
                         catch
                             ax1 = axes();
                         end
