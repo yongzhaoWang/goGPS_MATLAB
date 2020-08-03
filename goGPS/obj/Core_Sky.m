@@ -3558,4 +3558,54 @@ classdef Core_Sky < handle
             end
         end
     end
+    
+    % ==================================================================================================================================================
+    %% SHOW
+    % ==================================================================================================================================================
+    methods
+        function fh = showOrbitsAvailability(this, start_date, stop_date, flag_no_clock)
+            % Basic visualization of the orbits availability for the current
+            % processing time
+            %
+            % SYNTAX:
+            %    this.showOrbitsAvailability(<start_date>, <stop_time>)
+            
+            if nargin == 1
+                start_date = Core.getState.getSessionsStartExt;
+                stop_date = Core.getState.getSessionsStopExt;
+            end
+            
+            if nargin == 2
+                stop_date = start_date.last();
+                start_date = start_date.first();
+            end
+            
+            if nargin <= 3 || isempty(flag_no_clock)
+                flag_no_clock = false;
+            end
+            
+            this.initSession(start_date, stop_date);
+            
+            fh = figure;
+            subplot(2,1,1); Core_UI.addBeautifyMenu(fh); drawnow
+            imagesc(this.getClockTime.getMatlabTime, 1 : size(this.clock, 2), not(isnan(zero2nan(this.clock))));
+            setTimeTicks();
+            ax(1) = gca;
+            title(sprintf('Clock availability\\fontsize{5} \n'));
+
+            subplot(2,1,2);
+            imagesc(this.getCoordTime.getMatlabTime, 1 : size(this.clock, 2), not(isnan(zero2nan(this.coord(:,:,1)))));
+            colormap(Cmap.get('viridis'));
+            setTimeTicks();
+            ax(2) = gca;
+            title(sprintf('Coordinates availability\\fontsize{5} \n'));
+            
+            linkaxes(ax);
+            fig_name = sprintf('Orbits availability');
+            fh.UserData = struct('fig_name', fig_name);
+            Core_UI.beautifyFig(fh);
+            Core_UI.addExportMenu(fh);
+            Core_UI.addBeautifyMenu(fh);
+        end
+    end
 end
