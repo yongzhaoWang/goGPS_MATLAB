@@ -4168,7 +4168,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 this.updateAllTOT();
             end
             if ~isempty(this.sat.tot)
-                time_tx.addSeconds( - this.sat.tot(idx, sat));                
+                time_tx.addSeconds( - zero2nan(this.sat.tot(idx, sat)));                
             end
         end
         
@@ -6608,7 +6608,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             if isempty(this.sat.tot)
                 this.sat.tot = zeros(size(this.sat.avail_index));
             end
-            if ~this.isPreProcessed() && apply_dt% this has to be done beacuse dt from phase measurement might be off of an intger number of ambiguities and thus be completely not representative of the actual time offset
+            if ~this.isPreProcessed() && apply_dt % this has to be done because dt from phase measurement might be off of an integer number of ambiguities and thus be completely not representative of the actual time offset
                 this.sat.tot(:, go_id) =   nan2zero(zero2nan(obs)' / Core_Utils.V_LIGHT - this.dt(:, 1));  %<---- check dt with all the new dts field
             else
                 this.sat.tot(:, go_id) =   nan2zero(zero2nan(obs)' / Core_Utils.V_LIGHT);  %<---- check dt with all the new dts field
