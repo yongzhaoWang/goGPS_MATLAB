@@ -1990,52 +1990,59 @@ classdef Receiver_Work_Space < Receiver_Commons
                             % Hp 1
                             % I have different biases per satellite
                             % let's remove them on the least precise trackings
-                            trk_bia = median(round(median((res(:,:,t) - res(:,:,1) - round(res(:,:,t) - res(:,:,1))), 'omitnan') * 4) / 4, 'omitnan');
-                            trk_bia = nan2zero(round(median((res(:,:,t) - res(:,:,1) - round(res(:,:,t) - res(:,:,1))) - trk_bia, 'omitnan'), 4)) + trk_bia;
-                            res(:, :, t) = bsxfun(@minus, zero2nan(res(:, :, t)), trk_bia);
-                            
-                            % Merge arc by arc to detect outliers and cycle sleep
-                            for s = 1 : size(res,2)
-                                arc = getOutliers(~isnan(res(:, s, t)));
-                                for a = 1 : size(arc, 1)
-                                    id_arc = arc(a,1) : arc(a,2);
-                                    tmp = res(id_arc, s, 1);
-                                    corr = round(res(id_arc, s, t) - tmp);
-                                    % if the arc in ref is shorter than the arc to be merged in
-                                    if any(~isnan(corr))
-                                        if any(isnan(corr))
-                                            lim = getOutliers(~isnan(corr));
-                                            % fill beginning and end
-                                            tmp(1 : lim(1)) = tmp(lim(1));
-                                            tmp(lim(end) : end) = tmp(lim(end));
-                                            corr(1 : lim(1)) = corr(lim(1));
-                                            corr(lim(end) : end) = corr(lim(end));
-                                            % fill middle gaps by expanding the previous data
-                                            for l = 1 : size(lim, 1) - 1
-                                                tmp((lim(l,2) + 1) : (lim(l+1,1) - 1)) = tmp(lim(l,2));
-                                                corr((lim(l,2) + 1) : (lim(l+1,1) - 1)) = corr(lim(l,2));
-                                            end
-                                        end
-                                        cs_list = find(round([0; diff(corr)]) > 0);
-                                        if ~isempty(cs_list)
-                                            % for each cycle slip
-                                            for cs = cs_list(:)'
-                                                jmp_ref = round(diff(tmp(cs + -1:0)));
-                                                jmp_trk = round(diff(res(id_arc(cs + -1:0), s, t)));
-                                                if abs(jmp_trk) > abs(jmp_ref)
-                                                    % the merged tracking is jumping
-                                                    % correction is ok as it is
-                                                else
-                                                    % the reference tracking is jumping
-                                                    res(id_arc(cs):end, s, 1) = res(id_arc(cs):end, s, 1) + diff(corr(cs+[-1 0]));
-                                                    corr(cs : end) = corr(cs : end) - diff(corr(cs+[-1 0]));
+                            for t_ref = 1 : (numel(trk_avail)-1)
+                                if t ~= t_ref
+                                    trk_bia = median(round(median((res(:,:,t) - res(:,:,t_ref) - round(res(:,:,t) - res(:,:,t_ref))), 'omitnan') * 4) / 4, 'omitnan');
+                                    trk_bia = nan2zero(round(median((res(:,:,t) - res(:,:,t_ref)) - trk_bia, 'omitnan'), 4)) + trk_bia;
+                                    res(:, :, t) = bsxfun(@minus, zero2nan(res(:, :, t)), trk_bia);
+                                    
+                                    % Merge arc by arc to detect outliers and cycle sleep
+                                    for s = 1 : size(res,2)
+                                        arc = getOutliers(~isnan(res(:, s, t)));
+                                        for a = 1 : size(arc, 1)
+                                            id_arc = arc(a,1) : arc(a,2);
+                                            tmp = res(id_arc, s, t_ref);
+                                            corr = round(res(id_arc, s, t) - tmp);
+                                            % if the arc in ref is shorter than the arc to be merged in
+                                            if any(~isnan(corr))
+                                                if any(isnan(corr))
+                                                    lim = getOutliers(~isnan(corr));
+                                                    % fill beginning and end
+                                                    tmp(1 : lim(1)) = tmp(lim(1));
+                                                    tmp(lim(end) : end) = tmp(lim(end));
+                                                    corr(1 : lim(1)) = corr(lim(1));
+                                                    corr(lim(end) : end) = corr(lim(end));
+                                                    % fill middle gaps by expanding the previous data
+                                                    for l = 1 : size(lim, 1) - 1
+                                                        tmp((lim(l,2) + 1) : (lim(l+1,1) - 1)) = tmp(lim(l,2));
+                                                        corr((lim(l,2) + 1) : (lim(l+1,1) - 1)) = corr(lim(l,2));
+                                                    end
                                                 end
+                                                cs_list = find(round([0; diff(corr)]) > 0);
+                                                if ~isempty(cs_list)
+                                                    % for each cycle slip
+                                                    for cs = cs_list(:)'
+                                                        jmp_ref = round(diff(tmp(cs + -1:0)));
+                                                        jmp_trk = round(diff(res(id_arc(cs + -1:0), s, t)));
+                                                        if abs(jmp_trk) > abs(jmp_ref)
+                                                            % the merged tracking is jumping
+                                                            % correction is ok as it is
+                                                        else
+                                                            % the reference tracking is jumping
+                                                            res(id_arc(cs):end, s, t_ref) = res(id_arc(cs):end, s, t_ref) + diff(corr(cs+[-1 0]));
+                                                            corr(cs : end) = corr(cs : end) - diff(corr(cs+[-1 0]));
+                                                        end
+                                                    end
+                                                end
+                                                res(id_arc, s, t) = res(id_arc, s, t) - corr;
+                                                 % move all the arcs till the end - this limit the possibility to brake arcs
+                                                res((id_arc(end)+1) : end, s, t) = res((id_arc(end)+1) : end, s, t) - corr(end);
                                             end
                                         end
-                                        res(id_arc, s, t) = res(id_arc, s, t) - corr;
                                     end
                                 end
                             end
+
                         end
                         el = (this.sat.el(:,cc.getSys(sys_c).go_ids));
                         % fh = figure();
@@ -2073,9 +2080,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 %weight = weight*0 + 1;
                                 weight(id_ko) = 0;
                                 % for now keep only the data when the best tracking is available
-                                if any(~id_ko(:,1)) % unless only one of the trackings is actually seeing a satellite
-                                    weight(id_ko(:,1),2:end) = 0; % <= to be checked in the future
-                                end
+                                % if any(~id_ko(:,1)) % unless only one of the trackings is actually seeing a satellite
+                                %    weight(id_ko(:,1),2:end) = 0; % <= to be checked in the future
+                                % end
                                 
                                 weight = bsxfun(@rdivide, weight, sum(weight,2) + eps);
                                 % plot(squeeze(res(:,s,:)), 'o');
