@@ -989,9 +989,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                         name = name(1:min(4, numel(name)));
                         xyz = median(fr.coo.getXYZ,1,'omitnan');
                         coo_found = any(xyz);
-                        time_start = fr.first_epoch.first.toString('yyyy-mm-dd HH:MM:SS');
-                        time_stop = fr.last_epoch.last.toString('yyyy-mm-dd HH:MM:SS');
+                        %time_start = fr.first_epoch.first.toString('yyyy-mm-dd HH:MM:SS');
+                        %time_stop = fr.last_epoch.last.toString('yyyy-mm-dd HH:MM:SS');
                         
+                        time_start = GPS_Time('1980-01-07').toString('yyyy-mm-dd HH:MM:SS');
+                        time_stop = GPS_Time('2080-12-31').toString('yyyy-mm-dd HH:MM:SS');
                         if ~isempty(xyz)
                             if ~isempty(data)
                                 data = [data; {name, xyz(1), xyz(2), xyz(3), Core_Reference_Frame.FLAG_STRING{2}, 50, 50, time_start, time_stop, 0, 0, 0}];
