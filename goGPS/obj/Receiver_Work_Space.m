@@ -4281,7 +4281,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 if isempty(XR)
                     XR = [0 0 0];
                 end
-                XS_loc = XS_loc - XR;
+                XS_loc = bsxfun(@minus, XS_loc, XR);
             else
                 cc = Core.getState.getConstellationCollector;
                 n_sat = cc.getMaxNumSat();
@@ -9366,7 +9366,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                             % This sensor works using the first LS adjustment
                             thr_multiplier = 2;
                             [pr , id_pr] = this.getPseudoRanges;
-                            sensor = pr - this.getSyntPrObs - this.dt * Core_Utils.V_LIGHT;
+                            sensor = bsxfun(@minus, pr - this.getSyntPrObs, this.dt * Core_Utils.V_LIGHT);
                             
                             % Perform LS on all the data
                             this.updateAllAvailIndex();
