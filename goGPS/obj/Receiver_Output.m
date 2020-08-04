@@ -664,33 +664,34 @@ classdef Receiver_Output < Receiver_Commons
                                 this.tgn     = Core_Utils.injectData(this.tgn, gn, idx1, idx2);
                                 this.tge     = Core_Utils.injectData(this.tge, ge, idx1, idx2);
                             end
-                            if this.state.isResOut
-                                if isempty(this.sat.res)
-                                    this.sat.res = Residuals();
-                                end
-                                
-                                % Get the residual only in the time span relative to the session (no buffers)
-                                res = rec_work.sat.res.getCopy();
-                                [is_ph] = rec_work.sat.res.isPhase();
-                                [is_combined] = rec_work.sat.res.isCombined();
-                                if ~this.state.isResPrOut
-                                    res.remEntry(~is_ph);
-                                end
-                                if ~this.state.isResPhOut
-                                    res.remEntry(is_ph);
-                                end
-                                if ~this.state.isResCoOut
-                                    res.remEntry(is_combined);
-                                end
-                                [~, lim] = this.state.getSessionLimits;
-                                res.cutEpochs(lim);
-                                this.sat.res.injest(res);
-                            end
                         else
                             % there is probably smoothing
                             % save idx, they might be useful
                             bk_idx1 = idx1;
                             bk_idx2 = idx2;
+                        end
+                        
+                        if this.state.isResOut
+                            if isempty(this.sat.res)
+                                this.sat.res = Residuals();
+                            end
+                            
+                            % Get the residual only in the time span relative to the session (no buffers)
+                            res = rec_work.sat.res.getCopy();
+                            [is_ph] = rec_work.sat.res.isPhase();
+                            [is_combined] = rec_work.sat.res.isCombined();
+                            if ~this.state.isResPrOut
+                                res.remEntry(~is_ph);
+                            end
+                            if ~this.state.isResPhOut
+                                res.remEntry(is_ph);
+                            end
+                            if ~this.state.isResCoOut
+                                res.remEntry(is_combined);
+                            end
+                            [~, lim] = this.state.getSessionLimits;
+                            res.cutEpochs(lim);
+                            this.sat.res.injest(res);
                         end
                     end
                     
@@ -779,17 +780,6 @@ classdef Receiver_Output < Receiver_Commons
                                 this.tgn     = Core_Utils.injectSmtData(zero2nan(this.tgn), zero2nan(gn), idx_smt1, idx_smt2, time_1, time_2, id_stop, id_start);
                                 this.tge     = Core_Utils.injectSmtData(zero2nan(this.tge), zero2nan(ge), idx_smt1, idx_smt2, time_1, time_2, id_stop, id_start);
                             end
-                            if this.state.isResOut
-                                if isempty(this.sat.res)
-                                    this.sat.res = Residuals();
-                                end                                
-                                
-                                % Get the residual only in the time span relative to the session (no buffers)
-                                res = rec_work.sat.res.getCopy();
-                                [~, lim] = this.state.getSessionLimits;                                
-                                res.cutEpochs(lim);
-                                this.sat.res.injest(res);
-                            end
                         else
                             % Inject tropo related parameters
                             if this.state.flag_out_ztd
@@ -808,10 +798,6 @@ classdef Receiver_Output < Receiver_Commons
                                 [gn, ge]     = rec_work.getGradient();
                                 this.tgn     = [this.tgn; gn(~idx_smt2)];
                                 this.tge     = [this.tge; ge(~idx_smt2)];
-                            end
-                            if this.state.isResCoOut
-                                res_in = rec_work.getU1();
-                                this.sat.res = [this.sat.res; res_in(~idx_smt2,:)];
                             end
                         end
                         rec_work.id_sync = id_sync_old; % restore id_sync_old
