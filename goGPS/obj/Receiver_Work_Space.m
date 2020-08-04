@@ -1589,8 +1589,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         is = st_idx(i);
                         ie = end_idx(i);
                         c_rate = cs.coord_rate;
-                        bad_ep_st = min(this.time.length,max(1, floor((-coord_ref_time_diff + is * c_rate - c_rate * 11)/this.getRate())-1));
-                        bad_ep_en = max(1,min(this.time.length, ceil((-coord_ref_time_diff + ie * c_rate + c_rate * 11)/this.getRate())+1));
+                        % Delete observations that are within the end of an orbit to avoid bad polynomial interpolation
+                        bad_ep_st = min(this.time.length+1,max(1, floor((-coord_ref_time_diff + is * c_rate - c_rate * 5)/this.getRate())-1));
+                        bad_ep_en = max(0,min(this.time.length, ceil((-coord_ref_time_diff + ie * c_rate + c_rate * 5)/this.getRate())+1));
                         this.obs(o_idx , bad_ep_st : bad_ep_en) = 0;
                     end
                 else
@@ -1629,8 +1630,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 is = st_idx(i);
                                 ie = end_idx(i);
                                 c_rate = cs.clock_rate;
-                                bad_ep_st = min(this.time.length,max(1, floor((-clock_ref_time_diff + is*c_rate - c_rate * 1)/this.time.getRate())));
-                                bad_ep_en = max(1,min(this.time.length, ceil((-clock_ref_time_diff + ie*c_rate + c_rate * 1)/this.time.getRate())));
+                                bad_ep_st = min(this.time.length+1,max(1, floor((-clock_ref_time_diff + is*c_rate)/this.time.getRate())));
+                                bad_ep_en = max(0,min(this.time.length, ceil((-clock_ref_time_diff + ie*c_rate)/this.time.getRate())));
                                 this.obs(o_idx , bad_ep_st : bad_ep_en) = 0;
                             end
                         else
@@ -12391,8 +12392,8 @@ classdef Receiver_Work_Space < Receiver_Commons
         function fh_list = showDataAvailability(this, sys_c, band)
             % Plot all the satellite seen by the system
             % SYNTAX this.plotDataAvailability(sys_c)
-            
             if this.isEmpty
+                fh_list = [];
                 Core.getLogger.addWarning(sprintf('Receiver %s is empty', this.parent.getMarkerName4Ch));
             else
                 cc = Core.getState.getConstellationCollector;

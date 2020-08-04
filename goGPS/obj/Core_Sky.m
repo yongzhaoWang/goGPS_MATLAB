@@ -2135,9 +2135,11 @@ classdef Core_Sky < handle
             t_diff = gps_time.getRefTime(this.time_ref_coord.getMatlabTime);
             
             pid_floor = floor(t_diff / this.coord_rate) + 1 - n_border;
+            % Ignore solution at the border of the polynomial
             pid_floor(pid_floor < 1) = 1;
             pid_floor(pid_floor > size(this.getPolyCoeff, 4)) = size(this.getPolyCoeff, 4);
             pid_ceil = ceil(t_diff / this.coord_rate) + 1 - n_border;
+            % Ignore solution at the border of the polynomial
             pid_ceil(pid_ceil < 1) = 1;
             pid_ceil(pid_ceil > size(this.getPolyCoeff, 4)) = size(this.getPolyCoeff, 4);
             
