@@ -1928,7 +1928,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             % Estimate rough clock
             log = Core.getLogger;
             log.addMarkedMessage('Combining trackings');
-            [ph, ~, id_ph] = this.getPhases;
+            [ph, ~, id_ph0] = this.getPhases;
             n_obs = size(ph,1);
             phs = this.getSyntPhases();
             clk0 = detrend(cumsum(nan2zero(median(Core_Utils.diffAndPred(ph-phs), 2, 'omitnan'))));
@@ -2520,7 +2520,9 @@ classdef Receiver_Work_Space < Receiver_Commons
             if any(id_ko)
                 n_out = sum(serialize(this.sat.outliers_ph_by_ph(id_ko, :)));
                 n_ko = sum(serialize(~isnan(ph(id_ko, :))));
-                log.addMessage(log.indent(sprintf('Adding other %d phase outliers due to missing valid pseudo-ranges', n_ko - n_out)));
+                if (n_ko - n_out) > 0
+                    log.addMessage(log.indent(sprintf('Adding other %d phase outliers due to missing valid pseudo-ranges', n_ko - n_out)));
+                end
                 this.sat.outliers_ph_by_ph(id_ko, :) = ~isnan(ph(id_ko, :));
             end
             
@@ -6240,7 +6242,14 @@ classdef Receiver_Work_Space < Receiver_Commons
                 if ischar(arg2)
                     synt_ph = synt_ph(:, this.system(id_ph) == arg2');
                 else
+                    % Fuse all the syntetic obs of the same go_id
                     lookup(this.go_id(id_ph)) = (1 : sum(id_ph))';
+                    for gid = unique(serialize(this.go_id(id_ph))')
+                        id_out = find(arg2 == gid);
+                        if not(isempty(id_out))
+                            synt_ph(:, lookup(arg2(id_out))) = mean(synt_ph(:, (this.go_id(id_ph) == arg2(id_out))), 2, 'omitnan');
+                        end
+                    end
                     synt_ph = synt_ph(:, lookup(arg2));
                 end
             end
@@ -10360,7 +10369,12 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 this.remUnderSnrThr([], this.state.getScaledSnrThr());
                                 this.detectOutlierMarkCycleSlip();
                                 this.remShortArc(this.state.getMinArc(this.time.getRate));
-                                this.codeStaticPositioning(sys_list); % <== to be substituted with U2
+                                [dpos, s0] = this.codeStaticPositioning(sys_list); % <== to be substituted with U2
+                                if s0 < 3
+                                    log.addStatusOk(log.indent(sprintf('End of pre-processing s0 = %.4f\nCorrecting solution by %.3f meters', s0, sqrt(sum(dpos.^2)))));
+                                else
+                                    log.addWarning(log.indent(sprintf('End of pre-processing s0 = %.4f\nCorrecting solution by %.3f meters', s0, sqrt(sum(dpos.^2)))));
+                                end
                                 this.dt_ip = this.dt_ip + this.dt; % save init_positioning clock
                                 % smooth clock estimation
                                 this.smoothAndApplyDt(0, false, false,0);
