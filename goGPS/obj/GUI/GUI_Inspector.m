@@ -107,6 +107,7 @@ classdef GUI_Inspector < GUI_Unique_Win
                 this.getUniqueWinHandle();
                 this.init();
             end
+            this.bringOnTop;
         end
     end
     
