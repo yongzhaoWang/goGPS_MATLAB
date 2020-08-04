@@ -3563,7 +3563,7 @@ classdef Core_Sky < handle
     %% SHOW
     % ==================================================================================================================================================
     methods
-        function fh = showOrbitsAvailability(this, start_date, stop_date, flag_no_clock)
+        function fh = showOrbitsAvailability(this, start_time, stop_time, flag_no_clock)
             % Basic visualization of the orbits availability for the current
             % processing time
             %
@@ -3571,37 +3571,52 @@ classdef Core_Sky < handle
             %    this.showOrbitsAvailability(<start_date>, <stop_time>)
             
             if nargin == 1
-                start_date = Core.getState.getSessionsStartExt;
-                stop_date = Core.getState.getSessionsStopExt;
+                start_time = Core.getState.getSessionsStartExt;
+                stop_time = Core.getState.getSessionsStopExt;
             end
             
             if nargin == 2
-                stop_date = start_date.last();
-                start_date = start_date.first();
+                stop_time = start_time.last();
+                start_time = start_time.first();
             end
             
             if nargin <= 3 || isempty(flag_no_clock)
                 flag_no_clock = false;
             end
             
-            this.initSession(start_date, stop_date);
+            this.initSession(start_time, stop_time);
             
             fh = figure;
-            subplot(2,1,1); Core_UI.addBeautifyMenu(fh); drawnow
-            imagesc(this.getClockTime.getMatlabTime, 1 : size(this.clock, 2), not(isnan(zero2nan(this.clock))));
+            subplot(16,1,1:6); Core_UI.addBeautifyMenu(fh); drawnow
+            t_clock = this.getClockTime.getMatlabTime;
+            imagesc(t_clock, 1 : size(this.clock, 2), not(isnan(zero2nan(this.clock)))');
+            xlim([start_time.getMatlabTime, stop_time.getMatlabTime]);
             setTimeTicks();
             ax(1) = gca;
             title(sprintf('Clock availability\\fontsize{5} \n'));
+            ylabel('Satellites');
 
-            subplot(2,1,2);
-            imagesc(this.getCoordTime.getMatlabTime, 1 : size(this.clock, 2), not(isnan(zero2nan(this.coord(:,:,1)))));
-            colormap(Cmap.get('viridis'));
+            subplot(16,1,9:16);
+            cmap = [0.2 0.2 0.2; 1 0.5 0.1; 0.3 1 0.3];
+            coord_validity = not(isnan(zero2nan(this.coord(:,:,1))));
+            coord_validity = coord_validity + flagShrink(coord_validity, 5);
+            t_clock = this.getCoordTime.getMatlabTime;
+            imagesc(t_clock, 1 : size(this.coord, 2), coord_validity');
+            xlim([start_time.getMatlabTime, stop_time.getMatlabTime]);
+            colormap(cmap);
             setTimeTicks();
             ax(2) = gca;
             title(sprintf('Coordinates availability\\fontsize{5} \n'));
+            ylabel('Satellites');
             
+            cb = colorbar('Location', 'SouthOutside');
+            cb.Ticks  = (1:2:5)/3;
+            cb.TickLabels = {'No data', 'Polynomial border', 'Good data'};
+
             linkaxes(ax);
-            fig_name = sprintf('Orbits availability');
+            xlim([start_time.getMatlabTime, stop_time.getMatlabTime]);
+            
+            fig_name = sprintf('Orbits_availability');
             fh.UserData = struct('fig_name', fig_name);
             Core_UI.beautifyFig(fh);
             Core_UI.addExportMenu(fh);

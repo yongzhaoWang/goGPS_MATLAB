@@ -170,6 +170,8 @@ classdef Command_Interpreter < handle
         PAR_S_STD       % ZTD Slant
         PAR_S_RES_STD   % Slant Total Delay Residuals (polar plot)
         PAR_S_TGRAD     % Gradients table
+        PAR_S_ORBOK     % Current session available orbits
+        PAR_S_ALLORBOK  % All the session available orbits
         
         PAR_V_RAOB      % Validate ZTD with RAOB
         PAR_V_IGS_ZTD   % Validate ZTD with IGS
@@ -676,6 +678,20 @@ classdef Command_Interpreter < handle
             this.PAR_S_TGRAD.limits = [];
             this.PAR_S_TGRAD.accepted_values = [];
             
+            this.PAR_S_ORBOK.name = 'Available orbits';
+            this.PAR_S_ORBOK.descr = 'ORBOK              Available orbits for the current session';
+            this.PAR_S_ORBOK.par = '(orbok)|(ORBOK)';
+            this.PAR_S_ORBOK.class = '';
+            this.PAR_S_ORBOK.limits = [];
+            this.PAR_S_ORBOK.accepted_values = [];
+            
+            this.PAR_S_ALLORBOK.name = 'All available orbits';
+            this.PAR_S_ALLORBOK.descr = 'ALLORBOK           Available orbits for all the sessions';
+            this.PAR_S_ALLORBOK.par = '(allorbok)|(ALLORBOK)';
+            this.PAR_S_ALLORBOK.class = '';
+            this.PAR_S_ALLORBOK.limits = [];
+            this.PAR_S_ALLORBOK.accepted_values = [];
+
             this.PAR_V_IGS.name = 'IGS position and troposphere validation';
             this.PAR_V_IGS.descr = 'IGS                Use IGS results for validation';
             this.PAR_V_IGS.par = '(igs)|(IGS)';
@@ -926,7 +942,7 @@ classdef Command_Interpreter < handle
                 this.PAR_S_MPN this.PAR_S_SNR this.PAR_S_SNRI ...
                 this.PAR_S_OSTAT this.PAR_S_PSTAT this.PAR_S_OCS this.PAR_S_OCSP this.PAR_S_RES_PR this.PAR_S_RES_PH this.PAR_S_RES_PR_STAT this.PAR_S_RES_PH_STAT this.PAR_S_RES_PR_SKY this.PAR_S_RES_PH_SKY ...
                 this.PAR_S_RES_PR_SKYP this.PAR_S_RES_PH_SKYP this.PAR_S_PTH this.PAR_S_NSAT this.PAR_S_NSATSS this.PAR_S_NSATSSS this.PAR_S_ZTD this.PAR_S_ZTD_VSH this.PAR_S_ZHD this.PAR_S_ZWD ...
-                this.PAR_S_ZWD_VSH this.PAR_S_ZWD_STAT this.PAR_S_PWV this.PAR_S_STD this.PAR_S_RES_STD this.PAR_S_TGRAD];
+                this.PAR_S_ZWD_VSH this.PAR_S_ZWD_STAT this.PAR_S_PWV this.PAR_S_STD this.PAR_S_RES_STD this.PAR_S_TGRAD this.PAR_S_ORBOK this.PAR_S_ALLORBOK];
 
             this.CMD_VALIDATE.name = {'VALIDATE', 'validate'};
             this.CMD_VALIDATE.descr = 'Validate estimated parameter with external data';
@@ -2428,7 +2444,24 @@ classdef Command_Interpreter < handle
             [sys_list, sys_found] = this.getConstellation(tok);
             show_ok = 0;
             if ~found_trg
-                log.addWarning('No target found -> nothing to do');
+                for t = 1 : numel(tok) % global for all target
+                    try
+                        if Core_Utils.isHold; hold off; end
+                        if ~isempty(regexp(tok{t}, ['^(' this.PAR_S_ORBOK.par ')*$'], 'once'))
+                            fh_list = [fh_list; Core.getCoreSky.showOrbitsAvailability(Core.getState.getSessionLimits.first, Core.getState.getSessionLimits.last)]; %#ok<AGROW>
+                            show_ok  = show_ok + 1;
+                        elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_ALLORBOK.par ')*$'], 'once'))
+                            fh_list = [fh_list; Core.getCoreSky.showOrbitsAvailability()]; %#ok<AGROW>
+                            show_ok  = show_ok + 1;
+                        end
+                    catch ex
+                        Core_Utils.printEx(ex);
+                        log.addError(sprintf('%s',ex.message));
+                    end
+                end
+                if not(show_ok)
+                    log.addWarning('No target found -> nothing to do');
+                end
             else
                 for t = 1 : numel(tok) % global for all target
                     try
@@ -2539,7 +2572,7 @@ classdef Command_Interpreter < handle
                     end
                 end
                 
-                for r = id_trg % different for each target                    
+                for r = id_trg % different for each target
                     for t = 1 : numel(tok)
                         try
                             if sss_lev == 0
