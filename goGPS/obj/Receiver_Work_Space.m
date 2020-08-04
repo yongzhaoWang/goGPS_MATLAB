@@ -2211,7 +2211,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             bad_id = find(arc_mean > max(0.001, median(movstd(sensor_ph0, 5), 'omitnan')));
             % This mean should be less than 10cm, otherwise the satellite have some very bad observations
             arc_std = abs(std(sensor_ph0,'omitnan'));
-            bad_id = [];%unique([bad_id find(arc_std > 12*median(serialize(movstd(sensor_ph0, 5)), 'omitnan'))]);
+            bad_id = unique([bad_id find(arc_std > 12*median(serialize(movstd(sensor_ph0, 5)), 'omitnan'))]);
             for i = 1 : numel(bad_id)
                 % analize current arc
                 sensor_tmp = sensor_ph(:, bad_id(i));
