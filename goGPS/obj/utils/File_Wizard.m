@@ -184,7 +184,7 @@ classdef File_Wizard < handle
         end
         
         function [status, file_tree, ext] = navigateTree(this, file_tree, mode)
-            % Navigate into th logical file tree (see Remote_resource_manager.getFileStr) and perform operations
+            % Navigate into the logical file tree (see Remote_resource_manager.getFileStr) and perform operations
             %
             % SYNTAX:
             %      [status, file_tree] = this.navigateTree(file_tree, mode)

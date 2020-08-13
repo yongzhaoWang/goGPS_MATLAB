@@ -222,7 +222,7 @@ classdef Tropo_Mat_Reader
                         plot(this.data_set(i).utc_time, this.data_set(i).(lower(tropo_par)) .* 1e2, 'color', color); hold on
                     end
                 end
-                plot(time_utc(tropo_std .* 1e2 <= 0.6), tropo_opt(tropo_std .* 1e2 <= 0.6) .* 1e2, '-k', 'LineWidth', 2); % plot only "good" prediction values
+                plotSep(time_utc(tropo_std .* 1e2 <= 0.6), tropo_opt(tropo_std .* 1e2 <= 0.6) .* 1e2, '-k', 'LineWidth', 2); % plot only "good" prediction values
                 if nargin < 3 || isempty(color)
                     caxis = [0 12];
                     colorbar('Location', 'southOutside');
