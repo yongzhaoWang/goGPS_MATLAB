@@ -1844,7 +1844,26 @@ classdef Core_Sky < handle
                 
                 dts_tmp = NaN * ones(size(SP3_c,1), size(SP3_c,2));
                 idx = (sum(nan2zero(SP3_c) ~= 0,2) == 2 .* ~any(SP3_c >= 0.999,2)) > 0;
+                
+                %t = this.getClockTime.getRefTime(round(gps_time.first.getMatlabTime));
+                data = this.clock(:, sat);
+                %[~, ~, ~, dts_tmp] = splinerMat(t(not(isnan(data))), data(not(isnan(data))), 300, 1e-10, gps_time.getRefTime(round(gps_time.first.getMatlabTime)));
                 dts_tmp = (1-u) .* SP3_c(:,1) + (u) .* SP3_c(:,2);
+                % detect anomalous clock jumps ( > 5 cm) if the clack have
+                % a rate of at least 5 minutes
+                if this.getClockTime.getRate >= 300
+                    id_ko = find(abs(diff(data) - median(diff(data))) * Core_Utils.V_LIGHT > 0.05);
+                    for i = 1 : numel(id_ko)
+                        id_ko_tmp = find((p == id_ko(i) & b_neg_idx) | ...
+                            (p == id_ko(i) + 1 & b_pos_idx));
+                        %lid_ok = flagExpand(lid_ko, 5);
+                        if numel(id_ko_tmp) > 3
+                            % This will force to split the system
+                            dts_tmp(id_ko_tmp([2 end-1])) = NaN;
+                        end
+                    end
+                end
+                clear data;
                 dts_tmp(not(idx)) = NaN;
                 
                 %             dt_S_SP3=NaN;
