@@ -3656,6 +3656,96 @@ classdef GNSS_Station < handle
             end
         end
 
+        function fh_list = showSyncronizedPos(sta_list)
+            % Show syncronized 
+            rec = sta_list(not(sta_list.isEmpty_mr));
+            rate = rec(1).getPos.time.getRate;
+            t0 = inf;
+            tend = 0;
+            for r = 1 : numel(rec)
+                coo = rec(r).getPos;
+                t = floor(coo.time.getMatlabTime()*(86400/rate));
+                tc{r} = t;
+                
+                t0 = min(t0, tc{r}(1));
+                tend = max(tend, tc{r}(1));
+            end
+            t_sync = nan(tend - t0 + 1, numel(rec));
+            xyz_sync = nan(tend - t0 + 1, 3, numel(rec));
+            for r = 1 : numel(rec)
+                t_sync(tc{r} - t0 + 1, r) = r + (mod(r, 2)*2)-1;
+                xyz_sync(tc{r} - t0 + 1, :, r) = rec(r).getPos.getXYZ;
+            end
+            
+            % realign XYZ coordinates
+            for c = 1 : 3
+                tmp = squeeze(zero2nan(xyz_sync(:,c,:)));
+                [~, id_max] = max(sum(not(isnan(tmp))));
+                med_bsl = median(zero2nan(tmp) - tmp(:, id_max), 'omitnan');
+                tmp = squeeze(tmp - med_bsl);
+                tmp = bsxfun(@minus, tmp, median(tmp, 2, 'omitnan'));
+                tmp = tmp + med_bsl;
+                xyz_sync(:,c,:) = reshape(tmp, size(tmp,1), 1, size(tmp,2));
+            end
+            
+            % XYZ to ENU
+            enu_sync = [];
+            for r = 1: numel(rec)
+                coo = Coordinates.fromXYZ(xyz_sync(:,:,r));
+                enu_sync(:,:,r) = coo.getLocal(coo.getMedianPos);
+            end
+            
+            fh = figure;
+            %imagesc(((1:size(t_sync,1)) + t0) /(86400/rate) , 1:size(t_sync,2), t_sync'); colormap(Cmap.get('viridis',20));
+            tmp_e = squeeze(zero2nan(enu_sync(:,1,:)));
+            tmp_n = squeeze(zero2nan(enu_sync(:,2,:)));
+            tmp_u = squeeze(zero2nan(enu_sync(:,3,:)));
+            ax_list = [];
+            
+            subplot(3,1,1); imagesc(1:size(t_sync,1), 1:size(t_sync,2), sqrt(tmp_e.^2)');
+            title('Sessions with a position');
+            ax = gca;
+            ax.YAxis.TickValues = 1 : numel(rec);
+            for r = 1 : numel(rec)
+                ax.YAxis.TickLabels{r} = rec(r).getMarkerName4Ch;
+            end
+            ax_list(1) = ax;
+            caxis([-0.03 0.05])
+            ylabel('East')
+            
+            subplot(3,1,2); imagesc(1:size(t_sync,1), 1:size(t_sync,2), sqrt(tmp_n.^2)');
+            ax = gca;
+            ax.YAxis.TickValues = 1 : numel(rec);
+            for r = 1 : numel(rec)
+                ax.YAxis.TickLabels{r} = rec(r).getMarkerName4Ch;
+            end
+            ax_list(2) = ax;
+            caxis([-0.03 0.05])
+            ylabel('North')
+            
+            subplot(3,1,3); imagesc(1:size(t_sync,1), 1:size(t_sync,2), sqrt(tmp_u.^2)');
+            ax = gca;
+            ax.YAxis.TickValues = 1 : numel(rec);
+            for r = 1 : numel(rec)
+                ax.YAxis.TickLabels{r} = rec(r).getMarkerName4Ch;
+            end
+            ax_list(3) = ax;
+            caxis([-0.03 0.05])
+            
+            linkaxes(ax_list);
+            %imagesc(1:size(t_sync,1), 1:size(t_sync,2), sqrt(tmp_x.^2 + tmp_y.^2 + tmp_z.^ 2)');
+            colormap(Cmap.get('viridis',20));
+            xlabel('Session')
+            ylabel('Up')
+            
+            fig_name = sprintf('Coo_report');
+            fh.UserData = struct('fig_name', fig_name);
+            Core_UI.beautifyFig(fh);
+            Core_UI.addExportMenu(fh);
+            Core_UI.addBeautifyMenu(fh);
+            fh_list = fh;
+        end
+        
         function fh_list = showPositionENU(sta_list, flag_add_coo)
             % Plot East North Up coordinates of the receiver
             %
