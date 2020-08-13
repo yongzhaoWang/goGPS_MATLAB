@@ -2110,7 +2110,24 @@ classdef LS_Manipulator_new < handle
         function applyWeightingStrategy()
         end
         
-        function res = getResidual(this)
+        function res = getResiduals(this)
+            % Get current residuals (as obj) per receiver
+            %
+            % SYNTAX
+            %    res = this.getResiduals();
+            
+            n_rec = sum(unique(this.rec_par) > 0);
+            cc = Core.getConstellationCollector();
+            for r = 1 : n_rec
+                [res_ph, sat, obs_id,~, res_time] = this.getPhRes(r);
+                obs_code_ph = reshape(cell2mat(this.unique_obs_codes(obs_id))',4,length(obs_id))';
+                prn_ph = cc.prn(sat);
+                [res_pr, sat, obs_id] = this.getPrRes(r);
+                obs_code_pr = reshape(cell2mat(this.unique_obs_codes(obs_id))',4,length(obs_id))';
+                prn_pr = cc.prn(sat);
+                res(r) = Residuals;
+                res(r).import(3, res_time, [res_ph res_pr], [prn_ph; prn_pr], [obs_code_ph; obs_code_pr], Coordinates.fromXYZ([0 0 0]));
+            end
         end
         
         function elevationWeigth(this, fun)
