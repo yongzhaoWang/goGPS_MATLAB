@@ -316,6 +316,7 @@ classdef GNSS_Station < handle
             % SYNTAX
             %   sta_list.netProPro()
 
+            flag_ct_apply = true; % Apply the estimated clock to the data and repeat outlier detection
             realign_ph = true;
             out_det = true;
 
@@ -325,18 +326,18 @@ classdef GNSS_Station < handle
             work_list = [sta_list(~sta_list.isEmptyWork_mr).work];
             if numel(work_list) > 1 && (show_fig || out_det)
 
-                [~, id_rsync] = Receiver_Commons.getSyncTimeExpanded(work_list);
-                id_rsync(any(isnan(zero2nan(id_rsync)')), :) = [];
+                [t_sync, id_rsync] = Receiver_Commons.getSyncTimeExpanded(work_list);
+                %id_rsync(any(isnan(zero2nan(id_rsync)')), :) = [];
 
                 n_epochs = size(id_rsync, 1);
                 n_rec = numel(work_list);
 
                 clear dt_red ph_red id_ph_red
                 for r = 1 : n_rec
-                    work_list(r).keepBestTracking();
+                    %work_list(r).keepBestTracking();
                     [dt_red{r}, ph_red{r}, id_ph_red{r}] = work_list(r).getReducedPhases();
-                    dt_red{r} = dt_red{r}(id_rsync(:, r), :);
-                    ph_red{r} = bsxfun(@rdivide, ph_red{r}(id_rsync(:, r), :), work_list(r).wl(id_ph_red{r})');
+                    dt_red{r} = dt_red{r}(noNaN(id_rsync(:, r)), :);
+                    %ph_red{r} = bsxfun(@rdivide, ph_red{r}(noNaN(id_rsync(:, r)), :), work_list(r).wl(id_ph_red{r})');
                 end
 
                 % Get all SS present in the receivers
@@ -346,76 +347,106 @@ classdef GNSS_Station < handle
                     prn_list = [];
                     bands = '';
                     % Each phase will be added
+                    id_sat = {};
                     for r = 1 : n_rec
                         obs_code = work_list(r).getAvailableObsCode('L', sys_c);
                         bands = [bands; obs_code(:,2:3)];
                         n_obs = n_obs + size(obs_code, 1);
-                        prn_list = unique([prn_list; work_list(r).prn(work_list(r).findObservableByFlag('L', sys_c))]);
+                        id_ph{r} = work_list(r).findObservableByFlag('L');
+                        id_sat{r} = work_list(r).system(id_ph{r}) == sys_c;
+                        prn_list = unique([prn_list; work_list(r).prn(id_ph{r}(id_sat{r}))]);
                     end
                     n_sat = numel(prn_list);
                     tracking = unique(bands(:,2));
                     bands = unique(bands(:,1));
                     n_bands = numel(bands);
 
-                    all_ph_red = zeros(n_epochs, n_sat * n_bands, n_rec);
+                    all_ph_red = nan(n_epochs, n_sat * n_bands, n_rec);
                     all_dph_red = nan(n_rec, n_epochs, n_sat * n_bands);
                     for r = 1 : n_rec
+                        % Find all the phases
                         id = work_list(r).findObservableByFlag('L', sys_c);
                         [id_ok, ~, id_red] = intersect(id, id_ph_red{r});
-                        [~, ~, p_list] = intersect(work_list(r).prn(id_ok), prn_list);
-                        [~, ~, b_list] = intersect(work_list(r).obs_code(id_ok, 2), bands);
-
-                        sid = repmat(p_list, n_bands,1 ) + serialize(repmat(numel(prn_list) * (b_list - 1)', numel(p_list), 1)); %< -this only works if all band are available on all satellites, otherwise it will crash, to be fixed
-                        all_ph_red(:, sid, r) = zero2nan(ph_red{r}(:, id_red));
-                        tmp = Core_Utils.diffAndPred(all_ph_red(:, sid, r));
-                        tmp = bsxfun(@minus, tmp, strongMean(tmp,0.95, 0.95, 2));
-                        tmp(work_list(r).sat.outliers_ph_by_ph(id_rsync(:, r),:) | work_list(r).sat.cycle_slip_ph_by_ph(id_rsync(:, r),:)) = nan;
-                        all_dph_red(r, :, sid) = zero2nan(permute(tmp, [3 1 2]));
+                        for i = 1 : numel(id_ok)
+                            [~, ~, p_list] = intersect(work_list(r).prn(id_ok(i)), prn_list);
+                            [~, ~, b_list] = intersect(work_list(r).obs_code(id_ok(i), 2), bands);
+                            
+                            sid = repmat(p_list, n_bands, 1) + serialize(repmat(numel(prn_list) * (b_list - 1)', numel(p_list), 1)); % < -this only works if all band are available on all satellites, otherwise it will crash, to be fixed
+                            all_ph_red(not(isnan(id_rsync(:,r))), sid, r) = zero2nan(ph_red{r}(:, id_red(i)));
+                            tmp = Core_Utils.diffAndPred(all_ph_red(:, sid, r));
+                            tmp = bsxfun(@minus, tmp, strongMean(tmp,0.95, 0.95, 2));
+                            id_ko = work_list(r).sat.outliers_ph_by_ph(noNaN(id_rsync(:, r)), id_sat{r}(id_red(i))) | work_list(r).sat.cycle_slip_ph_by_ph(noNaN(id_rsync(:, r)), id_sat{r}(id_red(i)));
+                            tmp(not(isnan(id_rsync(:,r)))) = tmp(not(isnan(id_rsync(:,r)))) .* (1-id_ko);
+                            all_dph_red(r, :, sid) = zero2nan(tmp);
+                        end
                     end
 
                     if show_fig || out_det
                         % Estimate common term from data
-                        ct = squeeze(median(all_dph_red, 1, 'omitnan'));
-                        ct(sum(~isnan(zero2nan(all_dph_red))) <= 1) = 0;
+                        dct = nan(size(all_dph_red,2), size(all_dph_red,3));
+                        for s = 1 : size(dct, 2)
+                            dct(:,s) = strongMean(all_dph_red(:,:,s));
+                        end
+                        dct = squeeze(median(all_dph_red, 1, 'omitnan'));
+                        dct(sum(~isnan(zero2nan(all_dph_red))) <= 1) = 0;
 
                         id_even = squeeze(sum(~isnan(zero2nan(all_dph_red))) == 2);
                         if any(id_even(:))
                             % find the observation that is closer to zero
                             [tmp, id] = min(abs(zero2nan(all_dph_red)));
-                            tmp_min = all_dph_red(id(:) + 2*(0 : (numel(ct) -1))');
+                            tmp_min = all_dph_red(id(:) + 2*(0 : (numel(dct) -1))');
 
                             % when I have 2 observations choose the observation closer to zero
-                            ct(id_even) = tmp_min(id_even);
+                            dct(id_even) = tmp_min(id_even);
                         end
-                        ct = nan2zero(ct);
+                        dct = nan2zero(dct);
+                        ct = cumsum(dct);
+                        ct(dct == 0) = nan;
                     end
 
                     if out_det
+                        if flag_ct_apply
+                            [ph, wl] = work_list(r).getPhases(sys_c);
+                            cur_id_ph = id_ph{r}(id_sat{r});
+                            
+                            [id_ok, ~, id_red] = intersect(cur_id_ph, id_ph_red{r});
+                            for i = 1 : numel(id_ok)
+                                [~, ~, p_list] = intersect(work_list(r).prn(id_ok(i)), prn_list);
+                                [~, ~, b_list] = intersect(work_list(r).obs_code(id_ok(i), 2), bands);
+                                
+                                sid = repmat(p_list, n_bands, 1) + serialize(repmat(numel(prn_list) * (b_list - 1)', numel(p_list), 1)); % < -this only works if all band are available on all satellites, otherwise it will crash, to be fixed
+                                ph(:, i) = ph(:, i) + ct(noNaN(id_rsync(:,r)), sid);
+                            end
+                            work_list(r).setPhases(ph, wl, cur_id_ph)
+                        end
+                        
                         for r = 1 : n_rec
                             id = work_list(r).findObservableByFlag('L', sys_c);
                             [id_ok, ~, id_red] = intersect(id, id_ph_red{r});
-                            [~, ~, p_list] = intersect(work_list(r).prn(id_ok), prn_list);
-                            [~, ~, b_list] = intersect(work_list(r).obs_code(id_ok, 2), bands);
-
-                            sid = p_list + numel(prn_list) * (b_list - 1);
-
-                            sensor = abs((squeeze(all_dph_red(r,:,sid)) - ct(:, sid))  .* (abs(ct(:, sid)) > 0)) > 0.1;
-
-                            % V0
-                            % id_ph = work_list(r).findObservableByFlag('L', sys_c);
-                            % for b = b_list'
-                            %     for p = 1: numel(p_list)
-                            %         sid = p + numel(prn_list) * (b - 1);
-                            %
-                            %         id_obs = work_list(r).findObservableByFlag(['L' bands(b)], sys_c, prn_list(p_list(p)));
-                            %         [~, ~, ido] = intersect(id_obs, id_ph);
-                            %         work_list(r).sat.outliers_ph_by_ph(id_rsync(:,r), ido) = work_list(r).sat.outliers_ph_by_ph(id_rsync(:,r), ido) | ;
-                            %     end
-                            % end
-
-                            % V1 (improve V0)
                             id_ko = false(size(work_list(r).sat.outliers_ph_by_ph));
-                            id_ko(id_rsync(:,r),:) = sensor;
+                            for i = 1 : numel(id_ok)
+                                [~, ~, p_list] = intersect(work_list(r).prn(id_ok(i)), prn_list);
+                                [~, ~, b_list] = intersect(work_list(r).obs_code(id_ok(i), 2), bands);
+                                
+                                sid = repmat(p_list, n_bands, 1) + serialize(repmat(numel(prn_list) * (b_list - 1)', numel(p_list), 1)); % < -this only works if all band are available on all satellites, otherwise it will crash, to be fixed
+                                
+                                sensor = abs((squeeze(all_dph_red(r,not(isnan(id_rsync(:,r))),sid))' - zero2nan(dct(not(isnan(id_rsync(:,r))), sid))) .* (abs(dct(not(isnan(id_rsync(:,r))), sid)) > 0)) > 0.05;
+                                
+                                % V0
+                                % id_ph = work_list(r).findObservableByFlag('L', sys_c);
+                                % for b = b_list'
+                                %     for p = 1: numel(p_list)
+                                %         sid = p + numel(prn_list) * (b - 1);
+                                %
+                                %         id_obs = work_list(r).findObservableByFlag(['L' bands(b)], sys_c, prn_list(p_list(p)));
+                                %         [~, ~, ido] = intersect(id_obs, id_ph);
+                                %         work_list(r).sat.outliers_ph_by_ph(id_rsync(:,r), ido) = work_list(r).sat.outliers_ph_by_ph(id_rsync(:,r), ido) | ;
+                                %     end
+                                % end
+                                
+                                % V1 (improve V0)
+                                id_ko(noNaN(id_rsync(:,r)),id_sat{r}(id_red(i))) = sensor;
+                            end
                             work_list(r).addOutliers(id_ko, true);
                         end
                     end
@@ -455,9 +486,9 @@ classdef GNSS_Station < handle
                     for sys_c = all_ss
 
                         for r = 1 : n_rec
-                            figure; plot(squeeze(all_dph_red(r,:,:)) - ct); title(sprintf('Receiver %d diff', r));
+                            figure; plot(squeeze(all_dph_red(r,:,:)) - dct); title(sprintf('Receiver %d diff', r));
                             figure; clf;
-                            [tmp, tmp_trend, tmp_jmp] = work_list(r).flattenPhases(squeeze(all_ph_red(:, :, r)) - cumsum(ct));
+                            [tmp, tmp_trend, tmp_jmp] = work_list(r).flattenPhases(squeeze(all_ph_red(:, :, r)) - cumsum(dct));
                             plot(all_ph_red(:, :, r) - tmp_trend + tmp_jmp - repmat(strongMean(all_ph_red(:, :, r) - tmp_trend + tmp_jmp), size(tmp_trend, 1), 1));
                             title(sprintf('Receiver (Possible Repair) %d full', r));
                             dockAllFigures;
