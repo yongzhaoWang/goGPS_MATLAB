@@ -179,7 +179,7 @@ classdef Network < handle
                     [~, id_ref] = intersect(this.net_id, id_ref);
                     lid_ref(id_ref) = true;
                 end
-                l_fixed = 0; % nothing is Fise
+                l_fixed = 0; % nothing is Fixed
                 is_empty_recs = ~this.rec_list.hasRangeObs_mr;
                 e = find(is_empty_recs);
                 if ~isempty(e)
