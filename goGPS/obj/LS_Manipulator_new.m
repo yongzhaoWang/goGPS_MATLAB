@@ -2651,7 +2651,7 @@ classdef LS_Manipulator_new < handle
             this.bondParamsGenerateIdx(ls_param);
         end
         
-        function setUpNET(this, sta_list, coo_rate, flag, param_selction, parametrization)
+        function setUpNET(this, sta_list, coo_rate, flag, param_selction, parametrization, time_lim)
             % set up single point adjustment
             %
             % SYNTAX:
@@ -2674,11 +2674,20 @@ classdef LS_Manipulator_new < handle
                     this.PAR_SAT_EBFR;
                     this.PAR_SAT_EB ];
             end
-            if nargin < 5
+            if nargin < 6
                 parametrization = LS_Parametrization();
             end
             % get time common at least to two receiver
             [p_time, id_sync] = Receiver_Work_Space.getSyncTimeExpanded(sta_list, coo_rate);
+            if nargin == 7
+                % ignore the data outiside the time limits of the network
+                id_ok = p_time.getNominalTime >= time_lim.first & p_time.getNominalTime <= time_lim.last;
+                id_sync(~id_ok, :) = NaN;
+            else
+                [lim_ext, ~] = Core.getState.getSessionLimits();
+                id_ok = p_time.getNominalTime >= lim_ext.first & p_time.getNominalTime <= lim_ext.last;
+                id_sync(~id_ok, :) = NaN;
+            end
             id_rem = sum(~isnan(id_sync),2) <= 1;
             p_time.remEpoch(id_rem);
             id_sync(id_rem,:) = [];
