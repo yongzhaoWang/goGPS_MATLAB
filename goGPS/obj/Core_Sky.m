@@ -149,6 +149,13 @@ classdef Core_Sky < handle
                 this.phase_delays = zeros(this.cc.getNumSat(),82); % group delay of code measurements (meters) referenced to their constellation reference:
                 
                 eph_f_name   = Core.getState.getEphFileName(start_date, stop_date);
+                [~, file_name, ~] = fileparts(eph_f_name{1});
+                if isempty(file_name)
+                    fw = File_Wizard;
+                    fw.conjureNavFiles(start_date, stop_date);
+                    eph_f_name   = Core.getState.getEphFileName(start_date, stop_date);
+                end
+            
                 clock_f_name = Core.getState.getClkFileName(start_date, stop_date);
                 clock_is_present = true;
                 for i = 1:length(clock_f_name)
