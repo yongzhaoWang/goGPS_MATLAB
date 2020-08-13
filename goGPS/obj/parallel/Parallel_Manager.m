@@ -911,12 +911,14 @@ classdef Parallel_Manager < Com_Interface
                     % check if executiong time has not passed max time
                     % (sometimes a parallel job die without notice)
                     for w = 1:length(worker2jobstart)
-                        if ~ismember(worker2job(w),completed_job)
-                            if toc(worker2jobstart(w)) > Core.getCurrentSettings.getMaxExecutionTimePar()
-                                completed_job = [completed_job; worker2job(w)]; %#ok<AGROW>
-                                this.log.addWarning(sprintf('Worker %d is taking too long to complete, signaling job %d as complete, results will be missing',w, numel(completed_job)));
-                                this.log.addWarning(sprintf('Removing worker %d from workers'' pool',w));
-                                n_job_done = n_job_done +1;
+                        if worker2jobstart(w) > 0
+                            if ~ismember(worker2job(w),completed_job)
+                                if toc(worker2jobstart(w)) > Core.getCurrentSettings.getMaxExecutionTimePar()
+                                    completed_job = [completed_job; worker2job(w)]; %#ok<AGROW>
+                                    this.log.addWarning(sprintf('Worker %d is taking too long to complete, signaling job %d as complete, results will be missing',w, numel(completed_job)));
+                                    this.log.addWarning(sprintf('Removing worker %d from workers'' pool',w));
+                                    n_job_done = n_job_done +1;
+                                end
                             end
                         end
                     end
