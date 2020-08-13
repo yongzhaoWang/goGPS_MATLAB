@@ -864,21 +864,37 @@ classdef LS_Manipulator_new < handle
                                                         ep_pgr_id(lid_maj) = p_s;
                                                         time_par_tmp = [time_par_tmp; [min(ep_id(lid_maj))*obs_rate max(ep_id)*obs_rate]]; %start of the arc
                                                         if p_s > 1
-                                                            time_par_tmp(p_s-1,2) = max(ep_id(~lid_maj))*obs_rate; % end of the arc
+                                                            % shorten the previous arc
+                                                            last_previous = max(ep_id(~lid_maj))*obs_rate;
+                                                            if isempty(last_previous)
+                                                                % the last arc is not present, shoud be removed
+                                                                time_par_tmp(p_s-1,:) = [];
+                                                                p_s = p_s - 1;
+                                                            else
+                                                                time_par_tmp(p_s-1,2) = last_previous; % end of the arc
+                                                            end
                                                         end
                                                         p_s = p_s +1;
                                                     end
                                                 end
-                                            elseif parametriz(3) == ls_parametrization.ALL_SAT  % you can use differents step for step wise receiver dependent paraters
+                                            elseif parametriz(3) == ls_parametrization.ALL_SAT  % you can use different steps for step-wise receiver dependent parameters
                                                 steps = round(steps_set{rr}.getNominalTime(obs_rate).getRefTime(time_min)/obs_rate);
                                                 p_s = 1;
                                                 for st = steps'
                                                     lid_maj = ep_id >= st;
                                                     if any(lid_maj)
                                                         ep_pgr_id(lid_maj) = p_s;
-                                                        time_par_tmp = [time_par_tmp; [min(ep_id(lid_maj))*obs_rate max(ep_id)*obs_rate]]; %start of the arc
+                                                        time_par_tmp = [time_par_tmp; [min(ep_id(lid_maj))*obs_rate max(ep_id)*obs_rate]]; % start of the arc
                                                         if p_s > 1
-                                                            time_par_tmp(p_s-1,2) = max(ep_id(~lid_maj))*obs_rate; % end of the arc
+                                                            % shorten the previous arc
+                                                            last_previous = max(ep_id(~lid_maj))*obs_rate;
+                                                            if isempty(last_previous)
+                                                                % the last arc is not present, shoud be removed
+                                                                time_par_tmp(p_s-1,:) = [];
+                                                                p_s = p_s - 1;
+                                                            else
+                                                                time_par_tmp(p_s-1,2) = last_previous; % end of the arc
+                                                            end
                                                         end
                                                         p_s = p_s +1;
                                                     end
