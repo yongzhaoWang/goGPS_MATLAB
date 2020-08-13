@@ -196,277 +196,295 @@ classdef Network < handle
                     n_clean = 3;
                 end
                 
-                ls = LS_Manipulator_new();
-                phase = true;
-                
-                parametrization = LS_Parametrization();
-                
-                if phase
-                    param_selection =  [ls.PAR_AMB];
-                else
-                    param_selection =  [];
-                end
-                state = this.state;
-                if this.state.flag_coo_net
-                    param_selection = [param_selection;
-                        LS_Manipulator_new.PAR_REC_X;
-                        LS_Manipulator_new.PAR_REC_Y;
-                        LS_Manipulator_new.PAR_REC_Z;
-                        ];
+                flag_try = 2;
+                while flag_try > 0
+                    ls = LS_Manipulator_new();
+                    phase = true;
                     
-                    % time parametrization coordinates
-                    parametrization.rec_x(1) = state.tparam_coo_net;
-                    parametrization.rec_y(1) = state.tparam_coo_net;
-                    parametrization.rec_z(1) = state.tparam_coo_net;
+                    parametrization = LS_Parametrization();
                     
-                    
-                    parametrization.rec_x(4) = state.fparam_coo_net;
-                    parametrization.rec_y(4) = state.fparam_coo_net;
-                    parametrization.rec_z(4) = state.fparam_coo_net;
-                end
-                %if this.state.flag_iono_net
-                param_selection = [param_selection;
-                    ls.PAR_IONO;];
-                %end
-                if this.state.flag_ztd_net
-                    param_selection = [param_selection;
-                        ls.PAR_TROPO;];
-                end
-                
-                if this.state.flag_grad_net
-                    param_selection = [param_selection;
-                        ls.PAR_TROPO_N;
-                        ls.PAR_TROPO_E;];
-                end
-                
-                  glonass_r_sum = 0;
-                for i = 1 : length(this.rec_list)
-                    if sum(this.rec_list(i).work.system == 'R') > 0
-                        glonass_r_sum = glonass_r_sum + 1;
+                    if phase
+                        param_selection =  [ls.PAR_AMB];
+                    else
+                        param_selection =  [];
                     end
-                end
-                if glonass_r_sum && false
-                    param_selection = [param_selection;
-                        ls.PAR_REC_EB_LIN;];
-                end
-                if state.flag_rec_clock_net
-                    if state.flag_phpr_rec_clock_net
-                        param_selection =  [param_selection;
-                            LS_Manipulator_new.PAR_REC_CLK_PR;
-                            LS_Manipulator_new.PAR_REC_CLK_PH;
+                    state = this.state;
+                    if this.state.flag_coo_net
+                        param_selection = [param_selection;
+                            LS_Manipulator_new.PAR_REC_X;
+                            LS_Manipulator_new.PAR_REC_Y;
+                            LS_Manipulator_new.PAR_REC_Z;
                             ];
-                    else
+                        
+                        % time parametrization coordinates
+                        parametrization.rec_x(1) = state.tparam_coo_net;
+                        parametrization.rec_y(1) = state.tparam_coo_net;
+                        parametrization.rec_z(1) = state.tparam_coo_net;
+                        
+                        % tracking parametrization
+                        parametrization.rec_x(4) = state.fparam_coo_net;
+                        parametrization.rec_y(4) = state.fparam_coo_net;
+                        parametrization.rec_z(4) = state.fparam_coo_net;
+                    end
+                    %if this.state.flag_iono_net
+                    param_selection = [param_selection;
+                        ls.PAR_IONO;];
+                    %end
+                    if this.state.flag_ztd_net
+                        param_selection = [param_selection;
+                            ls.PAR_TROPO;];
+                    end
+                    
+                    if this.state.flag_grad_net
+                        param_selection = [param_selection;
+                            ls.PAR_TROPO_N;
+                            ls.PAR_TROPO_E;];
+                    end
+                    
+                    glonass_r_sum = 0;
+                    for i = 1 : length(this.rec_list)
+                        if sum(this.rec_list(i).work.system == 'R') > 0
+                            glonass_r_sum = glonass_r_sum + 1;
+                        end
+                    end
+                    if glonass_r_sum && false
+                        param_selection = [param_selection;
+                            ls.PAR_REC_EB_LIN;];
+                    end
+                    if state.flag_rec_clock_net
+                        if state.flag_phpr_rec_clock_net
+                            param_selection =  [param_selection;
+                                LS_Manipulator_new.PAR_REC_CLK_PR;
+                                LS_Manipulator_new.PAR_REC_CLK_PH;
+                                ];
+                        else
+                            param_selection =  [param_selection;
+                                LS_Manipulator_new.PAR_REC_CLK;
+                                LS_Manipulator_new.PAR_REC_PPB;
+                                ];
+                        end
+                    end
+                    if state.flag_sat_clock_net
+                        if state.flag_phpr_sat_clock_net
+                            param_selection =  [param_selection;
+                                LS_Manipulator_new.PAR_SAT_CLK_PR;
+                                LS_Manipulator_new.PAR_SAT_CLK_PH;
+                                ];
+                        else
+                            param_selection =  [param_selection;
+                                LS_Manipulator_new.PAR_SAT_CLK;
+                                LS_Manipulator_new.PAR_SAT_PPB;
+                                ];
+                        end
+                    end
+                    
+                    if state.flag_rec_trkbias_net
                         param_selection =  [param_selection;
-                            LS_Manipulator_new.PAR_REC_CLK;
-                            LS_Manipulator_new.PAR_REC_PPB;
-                            ];
+                            LS_Manipulator_new.PAR_REC_EB;];
+                        parametrization.setTimeParametrization(LS_Manipulator_new.PAR_REC_EB, state.tparam_rec_trkbias_net );
+                        if state.tparam_rec_trkbias_net > 1 && state.rate_rec_trkbias_net > 0
+                            parametrization.setRate(LS_Manipulator_new.PAR_REC_EB, state.rate_rec_trkbias_net );
+                        end
+                        
                     end
-                end
-                if state.flag_sat_clock_net
-                    if state.flag_phpr_sat_clock_net
+                    
+                    if state.flag_rec_ifbias_net
                         param_selection =  [param_selection;
-                            LS_Manipulator_new.PAR_SAT_CLK_PR;
-                            LS_Manipulator_new.PAR_SAT_CLK_PH;
-                            ];
-                    else
+                            LS_Manipulator_new.PAR_REC_EBFR;];
+                        parametrization.setTimeParametrization(LS_Manipulator_new.PAR_REC_EBFR, state.tparam_rec_ifbias_net );
+                        if state.tparam_rec_ifbias_net > 1 && state.rate_rec_ifbias_net > 0
+                            parametrization.setRate(LS_Manipulator_new.PAR_REC_EBFR, state.rate_rec_ifbias_net );
+                        end
+                    end
+                    
+                    if state.flag_sat_trkbias_net
                         param_selection =  [param_selection;
-                            LS_Manipulator_new.PAR_SAT_CLK;
-                            LS_Manipulator_new.PAR_SAT_PPB;
-                            ];
-                    end
-                end
-                
-                if state.flag_rec_trkbias_net
-                    param_selection =  [param_selection;
-                        LS_Manipulator_new.PAR_REC_EB;];
-                    parametrization.setTimeParametrization(LS_Manipulator_new.PAR_REC_EB, state.tparam_rec_trkbias_net );
-                    if state.tparam_rec_trkbias_net > 1 && state.rate_rec_trkbias_net > 0
-                        parametrization.setRate(LS_Manipulator_new.PAR_REC_EB, state.rate_rec_trkbias_net );
+                            LS_Manipulator_new.PAR_SAT_EB;];
+                        parametrization.setTimeParametrization(LS_Manipulator_new.PAR_SAT_EB, state.tparam_sat_trkbias_net );
+                        if state.tparam_sat_trkbias_net > 1 && state.rate_sat_trkbias_net > 0
+                            parametrization.setRate(LS_Manipulator_new.PAR_SAT_EB, state.rate_sat_trkbias_net );
+                        end
+                        
                     end
                     
-                end
-                
-                if state.flag_rec_ifbias_net
-                    param_selection =  [param_selection;
-                        LS_Manipulator_new.PAR_REC_EBFR;];
-                    parametrization.setTimeParametrization(LS_Manipulator_new.PAR_REC_EBFR, state.tparam_rec_ifbias_net );
-                    if state.tparam_rec_ifbias_net > 1 && state.rate_rec_ifbias_net > 0
-                        parametrization.setRate(LS_Manipulator_new.PAR_REC_EBFR, state.rate_rec_ifbias_net );
-                    end
-                end
-                
-                if state.flag_sat_trkbias_net
-                    param_selection =  [param_selection;
-                        LS_Manipulator_new.PAR_SAT_EB;];
-                    parametrization.setTimeParametrization(LS_Manipulator_new.PAR_SAT_EB, state.tparam_sat_trkbias_net );
-                    if state.tparam_sat_trkbias_net > 1 && state.rate_sat_trkbias_net > 0
-                        parametrization.setRate(LS_Manipulator_new.PAR_SAT_EB, state.rate_sat_trkbias_net );
+                    if state.flag_sat_ifbias_net
+                        param_selection =  [param_selection;
+                            LS_Manipulator_new.PAR_SAT_EBFR;];
+                        parametrization.setTimeParametrization(LS_Manipulator_new.PAR_SAT_EBFR, state.tparam_sat_ifbias_net );
+                        if state.tparam_sat_ifbias_net > 1 && state.rate_sat_ifbias_net > 0
+                            parametrization.setRate(LS_Manipulator_new.PAR_SAT_EBFR, state.rate_sat_ifbias_net );
+                        end
                     end
                     
-                end
-                
-                if state.flag_sat_ifbias_net
-                    param_selection =  [param_selection;
-                        LS_Manipulator_new.PAR_SAT_EBFR;];
-                    parametrization.setTimeParametrization(LS_Manipulator_new.PAR_SAT_EBFR, state.tparam_sat_ifbias_net );
-                    if state.tparam_sat_ifbias_net > 1 && state.rate_sat_ifbias_net > 0
-                        parametrization.setRate(LS_Manipulator_new.PAR_SAT_EBFR, state.rate_sat_ifbias_net );
+                    
+                    
+                    
+                    if ~this.state.flag_iono_net
+                        parametrization.iono(2) = LS_Parametrization.ALL_REC;
                     end
-                end
-                
-                
-              
-                
-                if ~this.state.flag_iono_net
-                    parametrization.iono(2) = LS_Parametrization.ALL_REC;
-                end
-                 if state.tparam_ztd_net == 1
-                    parametrization.tropo(1) = parametrization.EP_WISE;
-                elseif state.tparam_ztd_net == 2
-                    parametrization.tropo(1) = parametrization.SPLINE_LIN;
-                    parametrization.tropo_opt.spline_rate = state.rate_ztd_net;
-                elseif state.tparam_ztd_net == 3
-                    parametrization.tropo(1) = parametrization.SPLINE_CUB;
-                    parametrization.tropo_opt.spline_rate = state.rate_ztd_net;
-                end
-                                
-                % Use spline for estimating ZTD gradients
-                if state.tparam_grad_net == 1
-                    parametrization.tropo_n(1) = parametrization.EP_WISE;
-                    parametrization.tropo_e(1) = parametrization.EP_WISE;
-                elseif state.tparam_grad_net == 2
-                    parametrization.tropo_n(1) = parametrization.SPLINE_LIN;
-                    parametrization.tropo_n_opt.spline_rate = state.rate_grad_net;
+                    if state.tparam_ztd_net == 1
+                        parametrization.tropo(1) = parametrization.EP_WISE;
+                    elseif state.tparam_ztd_net == 2
+                        parametrization.tropo(1) = parametrization.SPLINE_LIN;
+                        parametrization.tropo_opt.spline_rate = state.rate_ztd_net;
+                    elseif state.tparam_ztd_net == 3
+                        parametrization.tropo(1) = parametrization.SPLINE_CUB;
+                        parametrization.tropo_opt.spline_rate = state.rate_ztd_net;
+                    end
                     
-                    parametrization.tropo_e(1) = parametrization.SPLINE_LIN;
-                    parametrization.tropo_e_opt.spline_rate = state.rate_grad_net;
-                elseif state.tparam_grad_net == 3
-                    parametrization.tropo_n(1) = parametrization.SPLINE_CUB;
-                    parametrization.tropo_n_opt.spline_rate = state.rate_grad_net;
+                    % Use spline for estimating ZTD gradients
+                    if state.tparam_grad_net == 1
+                        parametrization.tropo_n(1) = parametrization.EP_WISE;
+                        parametrization.tropo_e(1) = parametrization.EP_WISE;
+                    elseif state.tparam_grad_net == 2
+                        parametrization.tropo_n(1) = parametrization.SPLINE_LIN;
+                        parametrization.tropo_n_opt.spline_rate = state.rate_grad_net;
+                        
+                        parametrization.tropo_e(1) = parametrization.SPLINE_LIN;
+                        parametrization.tropo_e_opt.spline_rate = state.rate_grad_net;
+                    elseif state.tparam_grad_net == 3
+                        parametrization.tropo_n(1) = parametrization.SPLINE_CUB;
+                        parametrization.tropo_n_opt.spline_rate = state.rate_grad_net;
+                        
+                        parametrization.tropo_e(1) = parametrization.SPLINE_CUB;
+                        parametrization.tropo_e_opt.spline_rate = state.rate_grad_net;
+                    end
+                    [buf_left, buf_right] = state.getBuffer();
+                    if state.isSepCooAtBoundaries && (buf_right ~= 0 || buf_left ~=0)% separete coordinate of the buffers
+                        parametrization.rec_x(1) = parametrization.STEP_CONST;
+                        parametrization.rec_y(1) = parametrization.STEP_CONST;
+                        parametrization.rec_z(1) = parametrization.STEP_CONST;
+                        [sss_ext_lim, sss_lim] = state.getSessionLimits();
+                        steps = GPS_Time();
+                        if buf_left ~= 0
+                            steps.append(sss_ext_lim.first);
+                            steps.append(sss_lim.first);
+                        else
+                            steps.append(sss_lim.first);
+                        end
+                        if buf_right ~= 0
+                            steps.append(sss_lim.last);
+                        end
+                        for r = 1 : length(this.rec_list)
+                            parametrization.rec_x_opt.steps_set{r} = steps.getCopy();
+                            parametrization.rec_y_opt.steps_set{r} = steps.getCopy();
+                            parametrization.rec_z_opt.steps_set{r} = steps.getCopy();
+                        end
+                    end
                     
-                    parametrization.tropo_e(1) = parametrization.SPLINE_CUB;
-                    parametrization.tropo_e_opt.spline_rate = state.rate_grad_net;
-                end
-                  [buf_left, buf_right] = state.getBuffer();
-                if state.isSepCooAtBoundaries && (buf_right ~= 0 || buf_left ~=0)% separete coordinate of the buffers
-                    parametrization.rec_x(1) = parametrization.STEP_CONST;
-                    parametrization.rec_y(1) = parametrization.STEP_CONST;
-                    parametrization.rec_z(1) = parametrization.STEP_CONST;
-                    [sss_ext_lim, sss_lim] = state.getSessionLimits();
-                    steps = GPS_Time();
-                    if buf_left ~= 0
-                        steps.append(sss_ext_lim.getEpoch(1));
-                        steps.append(sss_lim.getEpoch(1));
+                    if flag_try == 1
+                        % Try without buffers\
+                        [~, lim_sss] = Core.getState.getSessionLimits();
+                        ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization, lim_sss);
                     else
-                        steps.append(sss_lim.getEpoch(1));
+                        ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization);
                     end
-                    if buf_right ~= 0
-                        steps.append(sss_lim.getEpoch(2));
-                    end
-                    for r = 1 : length(this.rec_list)
-                        parametrization.rec_x_opt.steps_set{r} = steps.getCopy();
-                        parametrization.rec_y_opt.steps_set{r} = steps.getCopy();
-                        parametrization.rec_z_opt.steps_set{r} = steps.getCopy();
-                    end
-                end
-                
-                
-                ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization);
-               
-                if this.state.flag_free_net_tropo
-                    ls.free_tropo = true;
-                end
-                
-                this.is_tropo_decorrel = this.state.isReferenceTropoEnabled;
-                this.is_coo_decorrel = free_net;
-                
-                
-                 if state.areg_ztd_net > 0
-                   ls.absValRegularization(ls.PAR_TROPO, (state.areg_ztd_net)^2);
-                end
-                if state.areg_grad_net > 0
-                    ls.absValRegularization(ls.PAR_TROPO_N, (state.areg_grad_net)^2);
-                    ls.absValRegularization(ls.PAR_TROPO_E, (state.areg_grad_net)^2);
-                end
-                if state.areg_rec_clock_net > 0
-                    if  state.flag_phpr_rec_clock_net
-                        ls.absValRegularization(ls.PAR_REC_CLK_PH, (state.areg_rec_clock_net)^2);
-                        ls.absValRegularization(ls.PAR_REC_CLK_PR, (state.areg_rec_clock_net)^2);
-                    else
-                        ls.absValRegularization(ls.PAR_REC_CLK, (state.areg_rec_clock_net)^2);
-                    end
-                end
-                if state.areg_rec_ifbias_net > 0
-                    ls.absValRegularization(ls.PAR_REC_EBFR, (state.areg_rec_ifbias_net)^2);
-                end
-                if state.areg_rec_trkbias_net > 0
-                    ls.absValRegularization(ls.PAR_REC_EB, (state.areg_rec_trkbias_net)^2);
-                end
-                
-                if state.dreg_ztd_net > 0
-                    ls.timeRegularization(ls.PAR_TROPO, (state.dreg_ztd_net)^2/ 3600);
-                end
-                if state.dreg_grad_net > 0
-                    ls.timeRegularization(ls.PAR_TROPO_N, (state.dreg_grad_net)^2/ 3600);
-                    ls.timeRegularization(ls.PAR_TROPO_E, (state.dreg_grad_net)^2/ 3600);
-                end
-                
-                if state.dreg_rec_ifbias_net > 0
-                    ls.timeRegularization(ls.PAR_REC_EBFR, (state.dreg_rec_ifbias_net)^2/ 3600);
-                end
-                if state.dreg_rec_trkbias_net > 0
-                    ls.timeRegularization(ls.PAR_REC_EB, (state.dreg_rec_trkbias_net)^2/ 3600);
-                end
-                
-                if state.areg_sat_clock_net > 0
-                    if  state.flag_phpr_sat_clock_net
-                        ls.absValRegularization(ls.PAR_SAT_CLK_PH, (state.areg_sat_clock_net)^2);
-                        ls.absValRegularization(ls.PAR_SAT_CLK_PR, (state.areg_sat_clock_net)^2);
-                    else
-                        ls.absValRegularization(ls.PAR_SAT_CLK, (state.areg_sat_clock_net)^2);
-                    end
-                end
-                if state.areg_sat_ifbias_net > 0
-                    ls.absValRegularization(ls.PAR_SAT_EBFR, (state.areg_sat_ifbias_net)^2);
-                end
-                if state.areg_sat_trkbias_net > 0
-                    ls.absValRegularization(ls.PAR_SAT_EB, (state.areg_sat_trkbias_net)^2);
-                end
-                
-                if state.dreg_sat_ifbias_net > 0
-                    ls.timeRegularization(ls.PAR_SAT_EBFR, (state.dreg_sat_ifbias_net)^2/ 3600);
-                end
-                if state.dreg_sat_trkbias_net > 0
-                    ls.timeRegularization(ls.PAR_SAT_EB, (state.dreg_sat_trkbias_net)^2/ 3600);
-                end
-                
-                
-                if Core.isGReD
-                    % distance regularization to be set up
                     
-                end
-                this.common_time = ls.unique_time;
-                ls.solve(Core.getState.net_amb_fix_approach >1);
-%                 idx_fix = ls.class_par == ls.PAR_AMB;
-%                 idx_fix(idx_fix) = abs(fracFNI(ls.x(idx_fix))) < 1e-9; % fixed ambiguoty
-%                 ls.removeEstParam(idx_fix);
-                ls.reweightHuber();
-                ls.solve(Core.getState.net_amb_fix_approach >1);
-                ls.simpleSnoop();
-               % ls.snoopGatt(Core.getState.getMaxPhaseErrThr, Core.getState.getMaxCodeErrThr);
-                ls.solve(Core.getState.net_amb_fix_approach >1); 
-
-                s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
-                if s0 < 0.05
-                    this.log.addStatusOk(sprintf('Network adjustment completed with sigma0 = %.4f m ', s0));
-                    % initialize array for results
-                    this.initOutNew(ls);
-                    this.addAdjValuesNew(ls);
-                    this.changeReferenceFrame(id_ref);
-                    this.addAprValues();
-                    this.pushBackInReceiver(ls);
-                else
-                    this.log.addWarning(sprintf('s0 ( %.4f) too high! not updating the results',s0));
+                    if this.state.flag_free_net_tropo
+                        ls.free_tropo = true;
+                    end
+                    
+                    this.is_tropo_decorrel = this.state.isReferenceTropoEnabled;
+                    this.is_coo_decorrel = free_net;
+                    
+                    
+                    if state.areg_ztd_net > 0
+                        ls.absValRegularization(ls.PAR_TROPO, (state.areg_ztd_net)^2);
+                    end
+                    if state.areg_grad_net > 0
+                        ls.absValRegularization(ls.PAR_TROPO_N, (state.areg_grad_net)^2);
+                        ls.absValRegularization(ls.PAR_TROPO_E, (state.areg_grad_net)^2);
+                    end
+                    if state.areg_rec_clock_net > 0
+                        if  state.flag_phpr_rec_clock_net
+                            ls.absValRegularization(ls.PAR_REC_CLK_PH, (state.areg_rec_clock_net)^2);
+                            ls.absValRegularization(ls.PAR_REC_CLK_PR, (state.areg_rec_clock_net)^2);
+                        else
+                            ls.absValRegularization(ls.PAR_REC_CLK, (state.areg_rec_clock_net)^2);
+                        end
+                    end
+                    if state.areg_rec_ifbias_net > 0
+                        ls.absValRegularization(ls.PAR_REC_EBFR, (state.areg_rec_ifbias_net)^2);
+                    end
+                    if state.areg_rec_trkbias_net > 0
+                        ls.absValRegularization(ls.PAR_REC_EB, (state.areg_rec_trkbias_net)^2);
+                    end
+                    
+                    if state.dreg_ztd_net > 0
+                        ls.timeRegularization(ls.PAR_TROPO, (state.dreg_ztd_net)^2/ 3600);
+                    end
+                    if state.dreg_grad_net > 0
+                        ls.timeRegularization(ls.PAR_TROPO_N, (state.dreg_grad_net)^2/ 3600);
+                        ls.timeRegularization(ls.PAR_TROPO_E, (state.dreg_grad_net)^2/ 3600);
+                    end
+                    
+                    if state.dreg_rec_ifbias_net > 0
+                        ls.timeRegularization(ls.PAR_REC_EBFR, (state.dreg_rec_ifbias_net)^2/ 3600);
+                    end
+                    if state.dreg_rec_trkbias_net > 0
+                        ls.timeRegularization(ls.PAR_REC_EB, (state.dreg_rec_trkbias_net)^2/ 3600);
+                    end
+                    
+                    if state.areg_sat_clock_net > 0
+                        if  state.flag_phpr_sat_clock_net
+                            ls.absValRegularization(ls.PAR_SAT_CLK_PH, (state.areg_sat_clock_net)^2);
+                            ls.absValRegularization(ls.PAR_SAT_CLK_PR, (state.areg_sat_clock_net)^2);
+                        else
+                            ls.absValRegularization(ls.PAR_SAT_CLK, (state.areg_sat_clock_net)^2);
+                        end
+                    end
+                    if state.areg_sat_ifbias_net > 0
+                        ls.absValRegularization(ls.PAR_SAT_EBFR, (state.areg_sat_ifbias_net)^2);
+                    end
+                    if state.areg_sat_trkbias_net > 0
+                        ls.absValRegularization(ls.PAR_SAT_EB, (state.areg_sat_trkbias_net)^2);
+                    end
+                    
+                    if state.dreg_sat_ifbias_net > 0
+                        ls.timeRegularization(ls.PAR_SAT_EBFR, (state.dreg_sat_ifbias_net)^2/ 3600);
+                    end
+                    if state.dreg_sat_trkbias_net > 0
+                        ls.timeRegularization(ls.PAR_SAT_EB, (state.dreg_sat_trkbias_net)^2/ 3600);
+                    end
+                    
+                    
+                    if Core.isGReD
+                        % distance regularization to be set up
+                        
+                    end
+                    this.common_time = ls.unique_time;
+                    %ls.solve(Core.getState.net_amb_fix_approach >1);
+                    ls.solve(false);
+                    %                 idx_fix = ls.class_par == ls.PAR_AMB;
+                    %                 idx_fix(idx_fix) = abs(fracFNI(ls.x(idx_fix))) < 1e-9; % fixed ambiguoty
+                    %                 ls.removeEstParam(idx_fix);
+                    ls.reweightHuber();
+                    %ls.solve(Core.getState.net_amb_fix_approach >1);
+                    ls.solve(false);
+                    ls.simpleSnoop();
+                    % ls.snoopGatt(Core.getState.getMaxPhaseErrThr, Core.getState.getMaxCodeErrThr);
+                    ls.solve(Core.getState.net_amb_fix_approach >1);
+                    
+                    s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
+                    
+                    if (s0 < 0.01 || (flag_try == 1 && s0 < 0.05))
+                        this.log.addStatusOk(sprintf('Network adjustment completed with sigma0 = %.4f m ', s0));
+                        % initialize array for results
+                        this.initOutNew(ls);
+                        this.addAdjValuesNew(ls);
+                        this.changeReferenceFrame(id_ref);
+                        this.addAprValues();
+                        this.pushBackInReceiver(ls);
+                        flag_try = 0;
+                    else
+                        if state.isSepCooAtBoundaries
+                            this.log.addError(sprintf('s0 ( %.4f) too high! try to repeat the solution with separate coordinates',s0));
+                            flag_try = flag_try - 1;
+                        else
+                            this.log.addWarning(sprintf('s0 ( %.4f) too high! not updating the results',s0));
+                            flag_try = 0;
+                        end
+                    end
                 end
             end
             
@@ -509,7 +527,7 @@ classdef Network < handle
             n_rec = length(this.rec_list);
             % --- fill the correction values in the network
             rec_vcv = ls.rec_par([find(ls.class_par == ls.PAR_REC_X); find(ls.class_par == ls.PAR_REC_Y); find(ls.class_par == ls.PAR_REC_Z)]);
-            rec_vcv(rec_vcv == this.id_ref) = [];
+            rec_vcv(ismember(rec_vcv, this.id_ref)) = [];
 
             for i = 1 : n_rec
                 % if all value in the receiver are set to nan initilaize them to zero
@@ -522,7 +540,7 @@ classdef Network < handle
                 idx_rec = ls.rec_par == i;
                 [~, int_lim] = this.state.getSessionLimits();
                 
-                if i > 0 & sum(ls.class_par == ls.PAR_REC_X ) >0% coordiantes are always zero on first receiver
+                if i > 0 & sum(ls.class_par == ls.PAR_REC_X ) >0 % coordiantes are always zero on first receiver
                     coo_vcv = [];
                     if this.state.isSepCooAtBoundaries
                         % Push coordinates from LS object to rec
@@ -557,7 +575,7 @@ classdef Network < handle
                         
                         coo = [cox coy coz];
                     else
-                        if i ~= this.id_ref && false
+                        if ~ismember(i, this.id_ref) && false
                             coo_vcv = ls.coo_vcv(rec_vcv == i,rec_vcv == i);
                             if ~isempty(coo_vcv)
                                 coo_vcv = [coo_vcv(1,1) (coo_vcv(1,2) + coo_vcv(2,1))/2  (coo_vcv(1,3) + coo_vcv(3,1))/2 coo_vcv(2,2) (coo_vcv(2,3) + coo_vcv(3,2))/2 coo_vcv(3,3)];
