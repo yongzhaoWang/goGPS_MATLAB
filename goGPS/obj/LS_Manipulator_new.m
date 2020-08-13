@@ -255,7 +255,7 @@ classdef LS_Manipulator_new < handle
             par_sat_clk_ph_lid = param_selection == this.PAR_SAT_CLK_PH;
             par_sat_clk_ph = sum(par_sat_clk_ph_lid) > 0;
             
-            % ---- add the recever to the recibers
+            % ---- add the receiver to the receivers
             if Core_Utils.findAinB(rec.parent.getMarkerName,this.unique_rec_name) == 0
                 this.unique_rec_name{end+1} = rec.parent.getMarkerName;
                 this.rec_xyz = [this.rec_xyz; rec.getMedianPosXYZ];
@@ -301,7 +301,7 @@ classdef LS_Manipulator_new < handle
                 %mfw = mfw(id_sync_out,:); % getting only the desampled values
             end
             
-            % check whivh observations are phase ones
+            % check if observations are phase ones
             phase_s = obs_set.obs_code(:,2) == 'L'; % first char is the system second MUST be the bervation type (Phase pseudorance doppler snr)
             
             % initliaze the matrices
@@ -520,7 +520,7 @@ classdef LS_Manipulator_new < handle
             obs_rate = this.obs_rate;
             time_min = this.time_min.getMatlabTime;
             
-            % generate system and band of the uniqes obs codes
+            % generate system and band of the uniques obs codes
             this.unique_obs_codes_band = char(zeros(size(this.unique_obs_codes)));
             this.unique_obs_codes_sys_c = char(zeros(size(this.unique_obs_codes)));
             for o = 1 : length(this.unique_obs_codes)
@@ -532,7 +532,7 @@ classdef LS_Manipulator_new < handle
             cumulative_idx = 0;
             i_col = 1;
             
-            % is the observatio  pahse or code
+            % is the observation  phase or code
             phpr_unique_obs_codes = zeros(size(this.unique_obs_codes));
             for o = 1 : length(this.unique_obs_codes)
                 if this.unique_obs_codes{o}(2) == 'C'
@@ -739,14 +739,14 @@ classdef LS_Manipulator_new < handle
                 end
                 this.param_ch_set{i_p_o} = ch_set;
                 
-                % ------- Now constructing the index, the epoch dependednce will be dealt inside the loop -------------
+                % ------- Now constructing the index, the epoch dependence will be dealt inside the loop -------------
                 for r = 1 : n_rec_set
                     rec_lid = false(size(this.A,1),1);
                     for rr = rec_set{r}
                         rec_lid = rec_lid | this.receiver_obs == rr;
                     end
                     % find an id for the receiver set to keep track of the
-                    % parameters if recievr is sigle is simply the receiver
+                    % parameters, if receiver is single this is simply the receiver
                     % progessince number, otherwise they are negative
                     % number with the index in the receiver set
                     if length(rec_set{r}) == 1
@@ -855,7 +855,7 @@ classdef LS_Manipulator_new < handle
                                         else
                                             steps_set = opt.steps_set;
                                             
-                                            if parametriz(2) == ls_parametrization.ALL_REC % you can use differents step for step wise satellite dependent paraters
+                                            if parametriz(2) == ls_parametrization.ALL_REC % you can use different steps for step-wise satellite dependent parameters
                                                 steps = round(steps_set{ss}.getNominalTime(obs_rate).getRefTime(time_min)/obs_rate);
                                                 p_s = 1;
                                                 for st = steps'
@@ -2362,9 +2362,9 @@ classdef LS_Manipulator_new < handle
         end
         
         function [iono, iono_time] = getIono(this)
-            % get phase residuals
+            % get iono
             %
-            % SYNTAX:  [res_pr, sat, obs_id] = getPrRes(this)
+            % SYNTAX:  [iono, iono_time] = getIono(this)
             [iono, sat, obs_id] = deal([]);
             min_time_res = min(this.time_par(:,1));
             duration = max(this.time_par(:,1)) - min_time_res;
@@ -2387,10 +2387,10 @@ classdef LS_Manipulator_new < handle
             iono_time.addSeconds(double(iono_time_ref'));
         end
         
-        function [res_pr, sat, obs_id,res_time] = getPrRes(this, rec ,exclude_outlier)
+        function [res_pr, sat, obs_id, res_time] = getPrRes(this, rec ,exclude_outlier)
             % get phase residuals
             %
-            % SYNTAX:  [res_pr, sat, obs_id] = getPrRes(this)
+            % SYNTAX:  [res_pr, sat, obs_id,res_time] = getPrRes(this)
             [res_pr, sat, obs_id] = deal([]);
             if nargin <2  && isempty(rec_num)
                 rec = 1;
@@ -2721,7 +2721,7 @@ classdef LS_Manipulator_new < handle
         end
         
         function computeRefTimeObs(this)
-            % compute referebnce time fro observations
+            % compute reference time fro observations
             %
             % SYNTAX:
             %   this.computeRefTimeObs()
