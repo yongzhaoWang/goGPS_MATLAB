@@ -2129,7 +2129,7 @@ classdef Core_Utils < handle
                                             %dos(sprintf('%s -j 20 -c -i %s -d %s', aria2c_path, file_name, old_od));  % do not suppress output
                                         end
                                     catch
-                                        this.log.addError('aria2c is not working, is it installed?');
+                                        log.addError('aria2c is not working, is it installed?');
                                     end
                                 end
                                 % Check for zero byte files (download errors)

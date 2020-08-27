@@ -523,7 +523,7 @@ classdef Atmosphere < handle
                         first_lat = 90;
                         first_lon = 0.0;
                     elseif strcmpi(state.vmf_res,'5x5')
-                        n_lat = 18;
+                        n_lat = 36;
                         n_lon = 72;
                         d_lat = -5;
                         d_lon = 5;
@@ -1795,7 +1795,7 @@ classdef Atmosphere < handle
                     if version == 1
                         [bh, bw, ch, cw] = this.getGMFVMFBC(time, lat);
                     elseif version == 3
-                        [bh, bw, ch, cw] = this.getVMF3BC(time, lat);
+                        [bh, bw, ch, cw] = this.getVMF3BC(time, lat,lon);
                     end
                     [gmfh_11_1] = this.mfContinuedFractionForm(repmat(squeeze(ah_calc_1(1,1,:)),1,n_sat),bh,repmat(ch,1,n_sat),el);
                     [gmfw_11_1] = this.mfContinuedFractionForm(repmat(squeeze(aw_calc_1(1,1,:)),1,n_sat),bw,cw,el);
@@ -2013,7 +2013,7 @@ classdef Atmosphere < handle
             cw = 0.04391;
         end
         
-        function [bh, bw, ch, cw] = getVMF3BC(time, lat)
+        function [bh, bw, ch, cw] = getVMF3BC(time, lat,lon)
             % get the coefficients b and c of the continued fraction form,
             % both for for VMF3 
             % code taken from : https://vmf.geo.tuwien.ac.at/codes/vmf3.m
@@ -2059,9 +2059,10 @@ classdef Atmosphere < handle
             
             days = [31 28 31 30 31 30 31 31 30 31 30 31];
             doy = sum(days(1:month-1)) + day;
-            if leapYear == 1 && month > 2
-                doy = doy + 1;
-            end
+%             if leapYear == 1 & month > 2
+%                 doy = doy + 1;
+%             end
+            doy(leapYear == 1 & month > 2) =  doy(leapYear == 1 & month > 2) +1;
             doy = doy + mjd-floor(mjd);   % add decimal places
             
             
