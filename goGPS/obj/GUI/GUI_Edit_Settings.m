@@ -1991,9 +1991,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             
             
-            
             % Resource tree
-            Core_UI.insertEmpty(tab_bv);
             bottom_box = uix.VBox( 'Parent', tab_bv, ...
                 'BackgroundColor', Core_UI.LIGHT_GREY_BG);
             
@@ -2027,7 +2025,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             dir_box = uix.VBox( 'Parent', bottom_box, ...
                 'Spacing', 5, ...
                 'BackgroundColor', Core_UI.LIGHT_GREY_BG);
-            bottom_box.Heights = [-1 5 28 28*11];
+            bottom_box.Heights = [-1 2 28 28*11];
                          
             [~, this.edit_texts{end + 1}, this.edit_texts{end + 2}, this.flag_list{end + 1}] = Core_UI.insertDirFileBox(dir_box, 'Antex (ATX) filename', 'atx_dir', 'atx_name', @this.onEditChange, [28 130 -3 5 -1 25]);
             [~, this.edit_texts{end + 1}, this.edit_texts{end + 2}, this.flag_list{end + 1}] = Core_UI.insertDirFileBox(dir_box, 'Geoid local path', 'geoid_dir', 'geoid_name', @this.onEditChange, [28 130 -3 5 -1 25]);
@@ -2042,7 +2040,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ATM local dir', 'atm_load_dir', @this.onEditChange, [28 130 -1 25]);
 
             
-            tab_bv.Heights = [10 5 13 22 15 22 13 13  1 -1];
+            tab_bv.Heights = [15 2 18 22 18 22 18 18 -1];
             this.uip.tab_rr = tab;            
         end
                 
