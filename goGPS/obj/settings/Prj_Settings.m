@@ -2331,7 +2331,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniStringComment('SELECTED computational center (e.g. default, igs_glo, igs_gps, code, code_mgex, gfz, jaxa', str_cell);
             str_cell = Ini_Manager.toIniString('selected_orbit_center', this.selected_orbit_center, str_cell);
             str_cell = Ini_Manager.toIniString('selected_iono_center', this.selected_iono_center, str_cell);
+            str_cell = Ini_Manager.toIniString('preferred_vmf_res', this.preferred_vmf_res, str_cell);
             str_cell = Ini_Manager.toIniStringComment(sprintf('accepted values: %s', Ini_Manager.strCell2Str(this.PREFERRED_VMF_RES)), str_cell);
+            str_cell = Ini_Manager.toIniString('preferred_vmf_source', this.preferred_vmf_source, str_cell);
             str_cell = Ini_Manager.toIniStringComment(sprintf('accepted values: %s', Ini_Manager.strCell2Str(this.PREFERRED_VMF_SOURCE)), str_cell);
 
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
@@ -5611,7 +5613,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   is_vmf = this.isVMF()
-            is_vmf = this.mapping_function == 2 || this.zd_model == 2;
+            is_vmf = this.mapping_function == 2 || this.mapping_function == 4 || this.zd_model == 2;
         end
         
         function is_seamless = isSeamlessKF(this)

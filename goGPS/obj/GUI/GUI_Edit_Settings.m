@@ -2414,31 +2414,35 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             else
                 value = caller.Value;
             end
-            
-            
-            
             Core.getCurrentSettings.setProperty(caller.UserData, value);
             % Update VMF Resolution Preferences
             if strcmpi(caller.UserData,'mapping_function')
-                r_man = Remote_Resource_Manager.getInstance();
-                state = Core.getCurrentSettings();
-                
-                available_orbit = r_man.getVMFResType();
-                flag_preferred_orbit = true(3,1);
-                for i = 1 : 3
-                    this.rv1pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
-                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv1pref{i}.Value);
+                if (caller.Value == 2 || caller.Value == 4)
+                    r_man = Remote_Resource_Manager.getInstance();
+                    state = Core.getCurrentSettings();
+                    
+                    available_orbit = r_man.getVMFResType();
+                    flag_preferred_orbit = true(3,1);
+                    for i = 1 : 3
+                        this.rv1pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
+                        flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv1pref{i}.Value);
+                    end
+                    state.setPreferredVMFRes(flag_preferred_orbit)
+                    
+                    % Update VMF Source Preferences
+                    available_orbit = r_man.getVMFSourceType();
+                    flag_preferred_orbit = true(3,1);
+                    for i = 1 : 3
+                        this.rv2pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
+                        flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv2pref{i}.Value);
+                    end
+                    state.setPreferredVMFSource(flag_preferred_orbit)
+                else
+                    for i = 1 : 3
+                        this.rv1pref{i}.Enable = 'off';
+                        this.rv2pref{i}.Enable = 'off';
+                    end
                 end
-                state.setPreferredVMFRes(flag_preferred_orbit)
-                
-                % Update VMF Source Preferences
-                available_orbit = r_man.getVMFSourceType();
-                flag_preferred_orbit = true(3,1);
-                for i = 1 : 3
-                    this.rv2pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
-                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv2pref{i}.Value);
-                end
-                state.setPreferredVMFSource(flag_preferred_orbit)
             end
             this.updateINI();
         end
