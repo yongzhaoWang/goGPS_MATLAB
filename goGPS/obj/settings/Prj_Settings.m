@@ -276,7 +276,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                                                         % 1 : GMF
                                                         % 2 : VMF gridded
                                                         % 3 : Niell
-                                                        % 4 : VMF3 grifdded
+                                                        % 4 : VMF3 1x1 grifdded
+                                                        % 5 : VMF3 5x5 grifdded
         MAPPING_FUNCTION_GRADIENT = 1                   % Mapping function to be used
                                                         % 1 : chen and  herring
                                                         % 2 : macmillan
@@ -605,8 +606,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         MF_SMODE = {'1: Global Mapping Function', ...
             '2: Vienna Mapping Function 1 gridded', ...
             '3: Niell Mapping Function', ...
-            '4: Vienna Mapping Function 3 gridded', }
-        MF_LABEL = {'GMF','VMF1 gridded','Niell','VMF3 gridded'}
+            '4: Vienna Mapping Function 3 1x1 gridded', ...
+            '5: Vienna Mapping Function 3 5x5 gridded'}
+        MF_LABEL = {'GMF','VMF1 gridded','Niell','VMF3 gridded 1x1','VMF3 gridded 5x5'}
 
         % id to string of gradients mappig functions
         MFG_SMODE = {'1: Chen and Herring', '2: MacMillan'}
@@ -5613,7 +5615,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   is_vmf = this.isVMF()
-            is_vmf = this.mapping_function == 2 || this.mapping_function == 4 || this.zd_model == 2;
+            is_vmf = this.mapping_function == 2 || this.mapping_function == 4 || this.mapping_function == 5 || this.zd_model == 2;
         end
         
         function is_seamless = isSeamlessKF(this)

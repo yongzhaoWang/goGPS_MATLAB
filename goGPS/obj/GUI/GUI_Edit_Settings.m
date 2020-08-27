@@ -1969,26 +1969,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             this.ripref{3} = Core_UI.insertCheckBoxLight(box_v1pref, 'Predicted 2 days', 'iono3', @this.onResourcesPrefChange);
             this.ripref{4} = Core_UI.insertCheckBoxLight(box_v1pref, 'Broadcast', 'iono4', @this.onResourcesPrefChange);
             box_v1pref.Widths = [250 -1 -1 -1 -1];
-            
-            % vmf resolution 
-            box_v1pref = uix.HBox( 'Parent', tab_bv, ...
-                'Spacing', 5, ...
-                'BackgroundColor', Core_UI.LIGHT_GREY_BG);
-            
-            uicontrol('Parent', box_v1pref, ...
-                'Style', 'Text', ...
-                'HorizontalAlignment', 'left', ...
-                'String', 'VMF resolution preference', ...
-                'BackgroundColor', Core_UI.LIGHT_GREY_BG, ...
-                'ForegroundColor', Core_UI.BLACK, ...
-                'FontSize', Core_UI.getFontSize(9));
-            
-            this.rv1pref = {};
-            this.rv1pref{1} = Core_UI.insertCheckBoxLight(box_v1pref, '1x1', 'vmfr1', @this.onResourcesPrefChange);
-            this.rv1pref{2} = Core_UI.insertCheckBoxLight(box_v1pref, '2.5x2', 'vmfr2', @this.onResourcesPrefChange);
-            this.rv1pref{3} = Core_UI.insertCheckBoxLight(box_v1pref, '5x5', 'vmfr3', @this.onResourcesPrefChange);
-            box_v1pref.Widths = [250 -1 -1 -1 ];
-            
+                 
             % vmf source
             box_v2pref = uix.HBox( 'Parent', tab_bv, ...
                 'Spacing', 5, ...
@@ -2061,7 +2042,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ATM local dir', 'atm_load_dir', @this.onEditChange, [28 130 -1 25]);
 
             
-            tab_bv.Heights = [10 5 13 22 15 22 13 13 13  1 -1];
+            tab_bv.Heights = [10 5 13 22 15 22 13 13  1 -1];
             this.uip.tab_rr = tab;            
         end
                 
@@ -2417,17 +2398,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             Core.getCurrentSettings.setProperty(caller.UserData, value);
             % Update VMF Resolution Preferences
             if strcmpi(caller.UserData,'mapping_function')
-                if (caller.Value == 2 || caller.Value == 4)
+                if (caller.Value == 2 || caller.Value == 4 || caller.Value == 5)
                     r_man = Remote_Resource_Manager.getInstance();
                     state = Core.getCurrentSettings();
-                    
-                    available_orbit = r_man.getVMFResType();
-                    flag_preferred_orbit = true(3,1);
-                    for i = 1 : 3
-                        this.rv1pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
-                        flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv1pref{i}.Value);
-                    end
-                    state.setPreferredVMFRes(flag_preferred_orbit)
                     
                     % Update VMF Source Preferences
                     available_orbit = r_man.getVMFSourceType();
@@ -2439,7 +2412,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     state.setPreferredVMFSource(flag_preferred_orbit)
                 else
                     for i = 1 : 3
-                        this.rv1pref{i}.Enable = 'off';
                         this.rv2pref{i}.Enable = 'off';
                     end
                 end
@@ -2507,7 +2479,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     flag_preferred_iono(i) = available_iono(i) && logical(this.ripref{i}.Value);
                 end
                 state.setPreferredIono(flag_preferred_iono)
-            elseif strcmp(caller.UserData(1:4), 'orbit')
+            elseif strcmp(caller.UserData(1:4), 'orbi')
                 % Update Orbit Preferences
                 available_orbit = r_man.getOrbitType(state.getRemoteCenter());
                 flag_preferred_orbit = true(4,1);
@@ -2515,14 +2487,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     flag_preferred_orbit(i) = available_orbit(i) && logical(this.ropref{i}.Value);
                 end
                 state.setPreferredOrbit(flag_preferred_orbit)
-            elseif strcmp(caller.UserData(1:4), 'vmfr')
-                % Update Orbit Preferences
-                available_orbit = r_man.getVMFResType();
-                flag_preferred_orbit = true(3,1);
-                for i = 1 : 3
-                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv1pref{i}.Value);
-                end
-                state.setPreferredVMFRes(flag_preferred_orbit)
             elseif strcmp(caller.UserData(1:4), 'vmfs')
                 % Update Orbit Preferences
                 available_orbit = r_man.getVMFSourceType();
@@ -2833,6 +2797,18 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     this.ripref{i}.Value = this.ripref{i}.Value | flag_preferred_iono(i);
                 end
             end
+            % Update VMF source Preferences
+            available_vmf = r_man.getVMFSourceType();
+            for i = 1 : 3
+                this.rv2pref{i}.Enable = iif(available_vmf(i), 'on', 'off');
+            end
+            flag_preferred_vmf = state.getPreferredVMFSource();            
+            for i = 1 : 3
+                if available_vmf(i)
+                    this.rv2pref{i}.Value = this.rv2pref{i}.Value | flag_preferred_vmf(i);
+                end
+            end
+            
         end
         
         function onSessionSummaryCheck(this, caller, event)

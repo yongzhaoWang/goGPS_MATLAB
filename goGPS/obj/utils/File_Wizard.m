@@ -493,25 +493,26 @@ classdef File_Wizard < handle
             state = Core.getCurrentSettings();
             if state.mapping_function == 2
                 vers = '1';
+                res = '2.5x2';
             elseif state.mapping_function == 4
                 vers = '3';
+                res = '1x1';
+            elseif state.mapping_function == 5
+                vers = '3';
+                res = '5x5';
             end
-            for i = 1 : length(list_preferred_res)
-                for j = 1 : length(list_preferred_source)
-                    this.vmf_res = list_preferred_res{i};
-                    this.vmf_source = list_preferred_source{j};
-                    state.vmf_res = list_preferred_res{i};
-                    state.vmf_source = list_preferred_source{j};
-                    status = this.conjureResource(['vmf' vers '_' list_preferred_res{i} '_' list_preferred_source{j}], date_start, date_stop);
-                    if status
-                        
-                        break
-                    end
-                end
+            for j = 1 : length(list_preferred_source)
+                this.vmf_res = res;
+                this.vmf_source = list_preferred_source{j};
+                state.vmf_res = res;
+                state.vmf_source = list_preferred_source{j};
+                status = this.conjureResource(['vmf' vers '_' res '_' list_preferred_source{j}], date_start, date_stop);
                 if status
+                    
                     break
                 end
             end
+  
             if status
                 this.log.addStatusOk('Vienna Mapping Function files are present ^_^');
             else
