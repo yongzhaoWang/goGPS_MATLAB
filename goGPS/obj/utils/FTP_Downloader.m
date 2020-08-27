@@ -63,6 +63,8 @@ classdef FTP_Downloader < handle
         ftp_server;     % object containing the connector
         addr;           % IP address of the FTP server, stored as string
         f_name_pool = {};    % list with checked folder ant its names
+        user;           % user
+        passwd;         % Password
     end
 
 
@@ -80,7 +82,7 @@ classdef FTP_Downloader < handle
             addr = ['ftp://' this.addr ':' this.port '/' this.remote_dir];
         end
         
-        function this = FTP_Downloader(ftp_addr, ftp_port, remote_dir, file_name,  local_dir)
+        function this = FTP_Downloader(ftp_addr, ftp_port, remote_dir, file_name,  local_dir, user, passwd)
             % Constructor
             % EXAMPLE: FTP_Downloader('')
 
@@ -109,11 +111,18 @@ classdef FTP_Downloader < handle
             if (nargin > 4)
                 this.local_dir = local_dir;
             end
+            if (nargin > 5)
+                this.user = user;
+            end
+            if (nargin > 6)
+                this.passwd = passwd;
+            end
+
 
             % Open the connection with the server
             if (this.checkNet)
                 try
-                    this.ftp_server = ftp(strcat(this.addr, ':', this.port));
+                    this.ftp_server = ftp(strcat(this.addr, ':', this.port), this.user, this.passwd);
                     cd(this.ftp_server);
                     warning('off')
                     sf = struct(this.ftp_server);

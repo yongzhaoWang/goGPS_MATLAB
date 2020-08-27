@@ -71,6 +71,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         rpop_up     % Remote resources pup-up
         ropref      % Remote Orbit Preferences
         ripref      % Remote Iono preferences
+        rv1pref     % Remote VMF resolution preferences
+        rv2pref     % Remote VMF source preferences
         j_rrini     % ini resources file
         edit_texts  % List of editable text
         edit_texts_array % list of editable text array
@@ -1949,11 +1951,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 str = sprintf('[!!] Resource file missing:\n"%s"\nnot found\n\ngoGPS may not work properly', state.getRemoteSourceFile);
             end
             
-            box_ipref = uix.HBox( 'Parent', tab_bv, ...
+            box_v1pref = uix.HBox( 'Parent', tab_bv, ...
                 'Spacing', 5, ...
                 'BackgroundColor', Core_UI.LIGHT_GREY_BG);
             
-            uicontrol('Parent', box_ipref, ...
+            uicontrol('Parent', box_v1pref, ...
                 'Style', 'Text', ...
                 'HorizontalAlignment', 'left', ...
                 'String', 'Center iono type preference', ...
@@ -1962,11 +1964,52 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 'FontSize', Core_UI.getFontSize(9));
             
             this.ripref = {};
-            this.ripref{1} = Core_UI.insertCheckBoxLight(box_ipref, 'Final', 'iono1', @this.onResourcesPrefChange);
-            this.ripref{2} = Core_UI.insertCheckBoxLight(box_ipref, 'Predicted 1 day', 'iono2', @this.onResourcesPrefChange);
-            this.ripref{3} = Core_UI.insertCheckBoxLight(box_ipref, 'Predicted 2 days', 'iono3', @this.onResourcesPrefChange);
-            this.ripref{4} = Core_UI.insertCheckBoxLight(box_ipref, 'Broadcast', 'iono4', @this.onResourcesPrefChange);
-            box_ipref.Widths = [250 -1 -1 -1 -1];
+            this.ripref{1} = Core_UI.insertCheckBoxLight(box_v1pref, 'Final', 'iono1', @this.onResourcesPrefChange);
+            this.ripref{2} = Core_UI.insertCheckBoxLight(box_v1pref, 'Predicted 1 day', 'iono2', @this.onResourcesPrefChange);
+            this.ripref{3} = Core_UI.insertCheckBoxLight(box_v1pref, 'Predicted 2 days', 'iono3', @this.onResourcesPrefChange);
+            this.ripref{4} = Core_UI.insertCheckBoxLight(box_v1pref, 'Broadcast', 'iono4', @this.onResourcesPrefChange);
+            box_v1pref.Widths = [250 -1 -1 -1 -1];
+            
+            % vmf resolution 
+            box_v1pref = uix.HBox( 'Parent', tab_bv, ...
+                'Spacing', 5, ...
+                'BackgroundColor', Core_UI.LIGHT_GREY_BG);
+            
+            uicontrol('Parent', box_v1pref, ...
+                'Style', 'Text', ...
+                'HorizontalAlignment', 'left', ...
+                'String', 'VMF resolution preference', ...
+                'BackgroundColor', Core_UI.LIGHT_GREY_BG, ...
+                'ForegroundColor', Core_UI.BLACK, ...
+                'FontSize', Core_UI.getFontSize(9));
+            
+            this.rv1pref = {};
+            this.rv1pref{1} = Core_UI.insertCheckBoxLight(box_v1pref, '1x1', 'vmfr1', @this.onResourcesPrefChange);
+            this.rv1pref{2} = Core_UI.insertCheckBoxLight(box_v1pref, '2.5x2', 'vmfr2', @this.onResourcesPrefChange);
+            this.rv1pref{3} = Core_UI.insertCheckBoxLight(box_v1pref, '5x5', 'vmfr3', @this.onResourcesPrefChange);
+            box_v1pref.Widths = [250 -1 -1 -1 ];
+            
+            % vmf source
+            box_v2pref = uix.HBox( 'Parent', tab_bv, ...
+                'Spacing', 5, ...
+                'BackgroundColor', Core_UI.LIGHT_GREY_BG);
+            
+            uicontrol('Parent', box_v2pref, ...
+                'Style', 'Text', ...
+                'HorizontalAlignment', 'left', ...
+                'String', 'VMF source preference', ...
+                'BackgroundColor', Core_UI.LIGHT_GREY_BG, ...
+                'ForegroundColor', Core_UI.BLACK, ...
+                'FontSize', Core_UI.getFontSize(9));
+            
+            this.rv2pref = {};
+            this.rv2pref{1} = Core_UI.insertCheckBoxLight(box_v2pref, 'Operational', 'vmfs1', @this.onResourcesPrefChange);
+            this.rv2pref{2} = Core_UI.insertCheckBoxLight(box_v2pref, 'ERA-Interim', 'vmfs2', @this.onResourcesPrefChange);
+            this.rv2pref{3} = Core_UI.insertCheckBoxLight(box_v2pref, 'Forecast', 'vmfs3', @this.onResourcesPrefChange);
+            box_v2pref.Widths = [250 -1 -1 -1 ];
+            
+            
+            
             
             % Resource tree
             Core_UI.insertEmpty(tab_bv);
@@ -2018,7 +2061,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ATM local dir', 'atm_load_dir', @this.onEditChange, [28 130 -1 25]);
 
             
-            tab_bv.Heights = [15 20 15 20 22 18 18 1 -1];
+            tab_bv.Heights = [10 5 13 22 15 22 13 13 13  1 -1];
             this.uip.tab_rr = tab;            
         end
                 
@@ -2371,7 +2414,32 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             else
                 value = caller.Value;
             end
+            
+            
+            
             Core.getCurrentSettings.setProperty(caller.UserData, value);
+            % Update VMF Resolution Preferences
+            if strcmpi(caller.UserData,'mapping_function')
+                r_man = Remote_Resource_Manager.getInstance();
+                state = Core.getCurrentSettings();
+                
+                available_orbit = r_man.getVMFResType();
+                flag_preferred_orbit = true(3,1);
+                for i = 1 : 3
+                    this.rv1pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
+                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv1pref{i}.Value);
+                end
+                state.setPreferredVMFRes(flag_preferred_orbit)
+                
+                % Update VMF Source Preferences
+                available_orbit = r_man.getVMFSourceType();
+                flag_preferred_orbit = true(3,1);
+                for i = 1 : 3
+                    this.rv2pref{i}.Enable = iif(available_orbit(i), 'on', 'off');
+                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv2pref{i}.Value);
+                end
+                state.setPreferredVMFSource(flag_preferred_orbit)
+            end
             this.updateINI();
         end
         
@@ -2435,7 +2503,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     flag_preferred_iono(i) = available_iono(i) && logical(this.ripref{i}.Value);
                 end
                 state.setPreferredIono(flag_preferred_iono)
-            else
+            elseif strcmp(caller.UserData(1:4), 'orbit')
                 % Update Orbit Preferences
                 available_orbit = r_man.getOrbitType(state.getRemoteCenter());
                 flag_preferred_orbit = true(4,1);
@@ -2443,6 +2511,22 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     flag_preferred_orbit(i) = available_orbit(i) && logical(this.ropref{i}.Value);
                 end
                 state.setPreferredOrbit(flag_preferred_orbit)
+            elseif strcmp(caller.UserData(1:4), 'vmfr')
+                % Update Orbit Preferences
+                available_orbit = r_man.getVMFResType();
+                flag_preferred_orbit = true(3,1);
+                for i = 1 : 3
+                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv1pref{i}.Value);
+                end
+                state.setPreferredVMFRes(flag_preferred_orbit)
+            elseif strcmp(caller.UserData(1:4), 'vmfs')
+                % Update Orbit Preferences
+                available_orbit = r_man.getVMFSourceType();
+                flag_preferred_orbit = true(3,1);
+                for i = 1 : 3
+                    flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv2pref{i}.Value);
+                end
+                state.setPreferredVMFSource(flag_preferred_orbit)
             end
                                     
             this.updateINI();

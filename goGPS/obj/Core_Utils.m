@@ -2026,7 +2026,7 @@ classdef Core_Utils < handle
             log = Core.getLogger();
             fnp = File_Name_Processor();
             rm = Remote_Resource_Manager.getInstance;
-            
+            state = Core.getCurrentSettings();
             if ispc()
                 aria2c_path = '.\utility\thirdParty\aria2-extra\aria2_win\aria2c.exe';
             elseif ismac()
@@ -2055,12 +2055,18 @@ classdef Core_Utils < handle
                 server = regexp(file_name,'(?<=\?{)\w*(?=})','match', 'once'); % saerch for ?{server_name} in paths
                 if ~isempty(server)
                     file_name = strrep(file_name,['?{' server '}'],'');
-                    [s_ip, port] = rm.getServerIp(server);
+                    [s_ip, port, user,passwd] = rm.getServerIp(server);
                     switch port
                         case '21'
                             fnl{i} = ['ftp://' s_ip ':' port file_name fel{i}];
+                            if ~isempty(user) & ~isempty(passwd)
+                            credentials = sprintf('--ftp-user=%s  --ftp-passw=%s',user,passwd);
+                            end
                         otherwise
                             fnl{i} = ['http://' s_ip ':' port file_name fel{i}];
+                            if ~isempty(user) & ~isempty(passwd)
+                            credentials = sprintf('--http-user=%s  --http-passw=%s',user,passwd);
+                            end
                     end
                 else
                     fnl{i} = [file_name fel{i}];
@@ -2069,7 +2075,7 @@ classdef Core_Utils < handle
                     out_dir = Core.getState.getFileDir(file_name);
                 end
                 if nargin >= 4 && ~isempty(date_list)
-                    out_dir = fnp.dateKeyRep(out_dir, date_list.getEpoch(date_list.length - idf(i) + 1));
+                    out_dir = fnp.dateKeyRep(out_dir, date_list.getEpoch(date_list.length - idf(i) + 1),'',state.vmf_res,upper(state.vmf_source));
                 end
                 odl{i} = out_dir;
                 [~, name, ext] = fileparts(fnl{i});
@@ -2116,10 +2122,10 @@ classdef Core_Utils < handle
                                     log.addMessage(log.indent(sprintf('%s', str)));
                                     try
                                         if ispc()
-                                            dos(sprintf('"%s" -j 20 -c -i %s -d %s >nul 2>&1', aria2c_path, file_name, old_od)); % suppress output
+                                            dos(sprintf('"%s" %s -j 20 -c -i %s -d %s >nul 2>&1', aria2c_path, credentials, file_name, old_od)); % suppress output
                                             % dos(sprintf('"%s" -j 20 -c -i %s -d %s', aria2c_path, file_name, old_od)); % do not suppress output
                                         else
-                                            dos(sprintf('%s -j 20 -c -i %s -d %s &> /dev/null', aria2c_path, file_name, old_od));  % suppress output
+                                            dos(sprintf('%s %s -j 20 -c -i %s -d %s &> /dev/null', aria2c_path, credentials, file_name, old_od));  % suppress output
                                             %dos(sprintf('%s -j 20 -c -i %s -d %s', aria2c_path, file_name, old_od));  % do not suppress output
                                         end
                                     catch
@@ -2185,13 +2191,19 @@ classdef Core_Utils < handle
             
         end
         
-        function [status] = downloadHttpTxtResUncompress(filename, out_dir)
+        function [status] = downloadHttpTxtResUncompress(filename, out_dir,user,passwd)
+             if nargin < 3
+                user = '';
+                passwd = '';
+            end
             log = Core.getLogger();
             fnp = File_Name_Processor();
             try
                 options = weboptions;
                 options.ContentType = 'text';
                 options.Timeout = 15;
+                options.Username = user;
+                options.Password = passwd;
                 [remote_location, filename, ext] = fileparts(filename);
                 filename = [filename ext];
                 log.addMessage(log.indent(sprintf('downloading %s ...',filename)));
@@ -2201,17 +2213,17 @@ classdef Core_Utils < handle
                     mkdir(out_dir);
                 end
                 try
-                    txt = websave(fullfile(out_dir, filename), ['http://' remote_location '/' filename]);
+                    txt = websave(fullfile(out_dir, filename), ['http://' remote_location '/' filename],options);
                 catch ex
                     if instr(ex.message, '404')
                         try
                             compressed_name = [filename, '.gz'];
-                            txt = websave(fullfile(out_dir, compressed_name), ['http://' remote_location '/' compressed_name]);
+                            txt = websave(fullfile(out_dir, compressed_name), ['http://' remote_location '/' compressed_name],options);
                         catch ex
                             if instr(ex.message, '404')
                                 try
                                     compressed_name = [filename, '.Z'];
-                                    txt = websave(fullfile(out_dir, compressed_name), ['http://' remote_location '/' compressed_name]);
+                                    txt = websave(fullfile(out_dir, compressed_name), ['http://' remote_location '/' compressed_name],options);
                                 catch
                                     status = false;
                                 end

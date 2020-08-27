@@ -140,6 +140,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         SELECTED_ORBIT_CENTER= {'default'}
         SELECTED_IONO_CENTER= {'default'}
         PREFERRED_IONO = {'final', 'predicted1', 'predicted2', 'broadcast'}
+        
+        PREFERRED_VMF_RES = {'1x1', '2.5x2', '5x5'}
+        PREFERRED_VMF_SOURCE = {'operational', 'era-interim', 'forecast'}
 
         % SATELLITES
         EPH_DIR = [Prj_Settings.DEFAULT_DIR_IN 'satellite' filesep 'EPH' filesep '${WWWW}' filesep]; % Path to Ephemeris files folder
@@ -273,6 +276,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                                                         % 1 : GMF
                                                         % 2 : VMF gridded
                                                         % 3 : Niell
+                                                        % 4 : VMF3 grifdded
         MAPPING_FUNCTION_GRADIENT = 1                   % Mapping function to be used
                                                         % 1 : chen and  herring
                                                         % 2 : macmillan
@@ -599,9 +603,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         ZD_LABEL =  {'Saastamoinen from meteo data','VMF gridded zenith delays'}
         % id to string of mappig functions
         MF_SMODE = {'1: Global Mapping Function', ...
-            '2: Vienna Mapping Function gridded', ...
-            '3: Niell Mapping Function'}
-        MF_LABEL = {'GMF','VMF gridded','Niell'}
+            '2: Vienna Mapping Function 1 gridded', ...
+            '3: Niell Mapping Function', ...
+            '4: Vienna Mapping Function 3 gridded', }
+        MF_LABEL = {'GMF','VMF1 gridded','Niell','VMF3 gridded'}
 
         % id to string of gradients mappig functions
         MFG_SMODE = {'1: Chen and Herring', '2: MacMillan'}
@@ -732,6 +737,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         selected_orbit_center = Prj_Settings.SELECTED_ORBIT_CENTER;
         selected_iono_center = Prj_Settings.SELECTED_IONO_CENTER;
 
+        preferred_vmf_res = Prj_Settings.PREFERRED_VMF_RES;         % kind of orbits to prefer
+        preferred_vmf_source = Prj_Settings.PREFERRED_VMF_SOURCE;
         %------------------------------------------------------------------
         % SATELLITES
         %------------------------------------------------------------------
@@ -1084,6 +1091,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         flag_out_res_pr = true;     % code residuals
         flag_out_res_ph = true;     % phase residuals
         flag_out_mf = true;         % mapping functions (wet / hydrostatic)
+        vmf_res;                    % found vmf res
+        vmf_source;                 % found vmf source
     end
 
     % =========================================================================
@@ -1221,6 +1230,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.preferred_iono = state.getData('preferred_iono');
                 this.selected_orbit_center = state.getData('selected_orbit_center');
                 this.selected_iono_center = state.getData('selected_iono_center');
+                
+                this.preferred_vmf_res = state.getData('preferred_vmf_res');
+                this.preferred_vmf_source = state.getData('preferred_vmf_source');
+                
                 if isempty(this.selected_orbit_center)
                     %                                try                                                                the old name:
                     this.selected_orbit_center = 'default';
@@ -1609,6 +1622,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.preferred_iono = state.preferred_iono;
                 this.selected_orbit_center = state.selected_orbit_center;
                 this.selected_iono_center = state.selected_iono_center;
+                
+                this.preferred_vmf_res = state.preferred_vmf_res;
+                this.preferred_vmf_source = state.preferred_vmf_source;
 
                 % SATELLITES
                 this.eph_dir     = state.eph_dir;
@@ -1922,8 +1938,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Try to download the missing resources:            %d\n\n', this.flag_download)];
             str = [str sprintf(' Preferred order for orbits products:              %s\n', strCell2Str(this.preferred_eph))];
             str = [str sprintf(' Preferred order for iono products:                %s\n', strCell2Str(this.preferred_iono))];
-            str = [str sprintf(' Selected orbital center:                          %s\n\n', strCell2Str(this.selected_orbit_center))];
-            str = [str sprintf(' Selected ionosphere center:                          %s\n\n', strCell2Str(this.selected_iono_center))];
+            str = [str sprintf(' Selected orbital center:                          %s\n', strCell2Str(this.selected_orbit_center))];
+            str = [str sprintf(' Selected ionosphere center:                          %s\n', strCell2Str(this.selected_iono_center))];
+            str = [str sprintf(' Selected VMF resolution:                          %s\n', strCell2Str(this.preferred_vmf_res))];
+            str = [str sprintf(' Selected VMF source:                          %s\n\n', strCell2Str(this.preferred_vmf_source))];
             
             str = [str '---- INPUT: SATELLITE ------------------------------------------------------' 10 10];
             str = [str sprintf(' Directory of Ephemeris files:                     %s\n', fnp.getRelDirPath(this.eph_dir, this.prj_home))];
@@ -2313,6 +2331,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniStringComment('SELECTED computational center (e.g. default, igs_glo, igs_gps, code, code_mgex, gfz, jaxa', str_cell);
             str_cell = Ini_Manager.toIniString('selected_orbit_center', this.selected_orbit_center, str_cell);
             str_cell = Ini_Manager.toIniString('selected_iono_center', this.selected_iono_center, str_cell);
+            str_cell = Ini_Manager.toIniStringComment(sprintf('accepted values: %s', Ini_Manager.strCell2Str(this.PREFERRED_VMF_RES)), str_cell);
+            str_cell = Ini_Manager.toIniStringComment(sprintf('accepted values: %s', Ini_Manager.strCell2Str(this.PREFERRED_VMF_SOURCE)), str_cell);
 
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
         end
@@ -3234,6 +3254,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.checkCellStringField('preferred_iono', EMPTY_IS_NOT_VALID);
             this.checkCellStringField('selected_orbit_center', EMPTY_IS_NOT_VALID);
             this.checkCellStringField('selected_iono_center', EMPTY_IS_NOT_VALID);
+            this.checkCellStringField('preferred_vmf_res', EMPTY_IS_NOT_VALID);
+            this.checkCellStringField('preferred_vmf_source', EMPTY_IS_NOT_VALID);
 
             this.checkStringField('sss_id_list', EMPTY_IS_NOT_VALID);
             this.checkStringField('sss_id_start', EMPTY_IS_NOT_VALID);
@@ -4135,7 +4157,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 dir_path = this.getDcbDir();
             elseif strcmpi(ext,'.apl')
                 dir_path = this.getAtmLoadDir();
-            elseif instr(name,'VMFG') && instr(ext,'.H')
+            elseif instr(name,'VMF') && instr(ext,'.H')
                 dir_path = this.getVMFDir();
             end            
         end
@@ -4933,14 +4955,14 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             step_s = fnp.getStepSec(file_name);
             date_start.addSeconds(-step_s);
             date_stop.addSeconds(step_s);
-            vmf_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
+            vmf_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop, this.vmf_res, upper(this.vmf_source));
         end
         
         function vmf_height_name = getVMFHeightFileName(this)
             % Get the full name of the ERP files (replacing special keywords)
             % SYNTAX: erp_full_name = getErpFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            vmf_height_name = fnp.checkPath(strcat(strrep(this.vmf_dir, '${YYYY}',''), filesep, 'orography_ell'), this.getHomeDir());
+            vmf_height_name = fnp.checkPath(strcat(strrep(strrep(strrep(this.vmf_dir, '${YYYY}',''), '${VMFR}',''), '${VMFS}',''), filesep, 'orography_ell'), this.getHomeDir());
 
         end
 
@@ -4987,7 +5009,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.setIonoFile(filename);
             elseif strcmpi(ext,'.DCB') || (strcmpi(ext,'.SNX') && strcmpi(name(1:3),'DCB'))
                 this.setDcbFile(filename);
-            elseif instr(fname,'VMFG_')
+            elseif instr(fname,'VMF')
                 this.setVMFFile(filename);
             end
         end
@@ -5276,6 +5298,38 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   this.setPreferredIono(flag)
             iono = {'final', 'predicted1', 'predicted2', 'broadcast'};
             this.preferred_iono = iono(flag);
+        end
+        
+         function setPreferredVMFRes(this, flag)
+            % Set the preferred iono sequence:
+            %   1 final
+            %   2 predicted 1
+            %   3 predicted 2
+            %   4 broadcast
+            %
+            % INPUT
+            %   flag is a logical array with 4 values (see above)
+            %
+            % SYNTAX
+            %   this.setPreferredIono(flag)
+            iono = {'1x1', '2.5x2', '5x5'};
+            this.preferred_vmf_res = iono(flag);
+         end
+        
+          function setPreferredVMFSource(this, flag)
+            % Set the preferred iono sequence:
+            %   1 final
+            %   2 predicted 1
+            %   3 predicted 2
+            %   4 broadcast
+            %
+            % INPUT
+            %   flag is a logical array with 4 values (see above)
+            %
+            % SYNTAX
+            %   this.setPreferredIono(flag)
+            iono = {'operational', 'era-interim', 'forecast'};
+            this.preferred_vmf_source = iono(flag);
         end
  
         function setPrjHome(this, prj_home)
@@ -5938,6 +5992,50 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                     case 'predicted1', flag(2) = true;
                     case 'predicted2', flag(3) = true;
                     case 'broadcast', flag(4) = true;
+                end
+            end
+        end
+        
+        function flag = getPreferredVMFRes(this)
+            % Get the preferred iono sequence:
+            %   1 final
+            %   2 predicted 1
+            %   3 predicted 2
+            %   4 broadcast
+            %
+            % OUTPUT
+            %   flag is a logical array with 4 values (see above)
+            %
+            % SYNTAX
+            %   flag = this.getPreferredIono()
+            flag = false(3,1);
+            for i = 1 : numel(this.preferred_vmf_res)
+                switch this.preferred_vmf_res{i}
+                    case '1x1', flag(1) = true;
+                    case '2.5x2', flag(2) = true;
+                    case '5x5', flag(3) = true;
+                end
+            end
+        end
+        
+        function flag = getPreferredVMFSource(this)
+            % Get the preferred iono sequence:
+            %   1 final
+            %   2 predicted 1
+            %   3 predicted 2
+            %   4 broadcast
+            %
+            % OUTPUT
+            %   flag is a logical array with 4 values (see above)
+            %
+            % SYNTAX
+            %   flag = this.getPreferredIono()
+            flag = false(3,1);
+            for i = 1 : numel(this.preferred_vmf_source)
+                switch this.preferred_vmf_source{i}
+                    case 'operational', flag(1) = true;
+                    case 'era-interim', flag(2) = true;
+                    case 'forecast', flag(3) = true;
                 end
             end
         end

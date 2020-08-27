@@ -56,6 +56,8 @@ classdef File_Wizard < handle
         rm;         % resource manager
         sys_c;      % system collector
         current_resource; % current resource being processed 
+        vmf_res; %vfm resolution
+        vmf_source; % vmf source
         
         nrt = false;%near real time flag % continue even if all the files have not been found
     end
@@ -161,7 +163,7 @@ classdef File_Wizard < handle
             this.sys_c = this.state.cc.SYS_C(this.state.cc.active_list); % set sys_c again from constellation collector
         end
         
-        function idx = getServerIdx(this, address , port)
+        function idx = getServerIdx(this, address , port, user, passwd)
             % Get idx of server int the FTP_downlader if not present open
             % the connection and append a FTP_downloder object
             %
@@ -178,7 +180,7 @@ classdef File_Wizard < handle
                 end
             end
             if idx == 0
-                this.ftp_downloaders{end+1} = FTP_Downloader(address, port);
+                this.ftp_downloaders{end+1} = FTP_Downloader(address, port, [], [], [], user, passwd);
                 idx = length(this.ftp_downloaders);
             end
         end
@@ -194,6 +196,8 @@ classdef File_Wizard < handle
             %     mode: 'local_check' , 'remote_check' , 'download'
             status = false;
             ext = '';
+            vmf_res = this.vmf_res;
+            vmf_source = upper(this.vmf_source); 
             if iscell(file_tree) % if is a leaf
                 if strcmp(file_tree{1}, 'null') || file_tree{2}
                     status = true;
@@ -207,7 +211,7 @@ classdef File_Wizard < handle
                         dso = this.date_stop.getCopy();
                         dsa.addIntSeconds(-step_s);
                         dso.addIntSeconds(+step_s);
-                        [file_name_lst, date_list] = this.fnp.dateKeyRepBatch(f_path, dsa, dso);
+                        [file_name_lst, date_list] = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
                         file_name_lst = flipud(file_name_lst);
                         status = true;
                         f_status_lst = file_tree{4};
@@ -220,15 +224,15 @@ classdef File_Wizard < handle
                                 file_name = file_name_lst{i};
                                 server = regexp(file_name,'(?<=\?{)\w*(?=})','match','once'); % search for ?{server_name} in paths
                                 file_name = strrep(file_name,['?{' server '}'],'');
-                                [s_ip, port] = this.rm.getServerIp(server);
+                                [s_ip, port, user, passwd] = this.rm.getServerIp(server);
                                 out_dir = this.state.getFileDir(file_name);
-                                out_dir =  this.fnp.dateKeyRep(out_dir, date_list.getEpoch(date_list.length - i + 1));
+                                out_dir =  this.fnp.dateKeyRep(out_dir, date_list.getEpoch(date_list.length - i + 1),'0',vmf_res,vmf_source);
                                 if ~(exist(out_dir, 'file') == 7)
                                     mkdir(out_dir);
                                 end
                                 %out_dir = out_dir{1};
                                 if instr(port,'21')
-                                    idx = this.getServerIdx(s_ip, port);
+                                    idx = this.getServerIdx(s_ip, port, user, passwd);
                                     if ~this.nrt
                                         status = status && this.ftp_downloaders{idx}.downloadUncompress(file_name, out_dir);
                                     else
@@ -236,9 +240,9 @@ classdef File_Wizard < handle
                                     end
                                 else
                                     if ~this.nrt
-                                        status = status && Core_Utils.downloadHttpTxtResUncompress([s_ip file_name], out_dir);
+                                        status = status && Core_Utils.downloadHttpTxtResUncompress([s_ip file_name], out_dir, user, passwd);
                                     else
-                                        status = Core_Utils.downloadHttpTxtResUncompress([s_ip file_name], out_dir) && status;
+                                        status = Core_Utils.downloadHttpTxtResUncompress([s_ip file_name], out_dir, user, passwd) && status;
                                     end
                                 end
                             end
@@ -258,7 +262,7 @@ classdef File_Wizard < handle
                             dso = this.date_stop.getCopy();
                             dsa.addIntSeconds(-step_s);
                             dso.addIntSeconds(+step_s);
-                            file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso));
+                            file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
                             status = true;
                             f_status_lst = false(length(file_name_lst),1); % file list to be saved in tree with flag of downloaded or not
                             for i = 1 : length(file_name_lst)
@@ -298,7 +302,7 @@ classdef File_Wizard < handle
                                 dso = this.date_stop.getCopy();
                                 dsa.addIntSeconds(-step_s);
                                 dso.addIntSeconds(+step_s);
-                                file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso));
+                                file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
                                 status = true;
                                 f_status_lst = file_tree{4};
                                 f_ext_lst = cell(numel(f_status_lst),1);
@@ -317,12 +321,12 @@ classdef File_Wizard < handle
                                                 s_ip = old_server.s_ip;
                                                 port = old_server.port;
                                             else
-                                                [s_ip, port] = this.rm.getServerIp(server);
+                                                [s_ip, port, user, passwd] = this.rm.getServerIp(server);
                                                 old_server = struct('name', server, 's_ip', s_ip, 'port', port);
                                             end
                                             
                                             if instr(port,'21')
-                                                idx = this.getServerIdx(s_ip, port);
+                                                idx = this.getServerIdx(s_ip, port, user, passwd);
                                                 [stat, ext] = this.ftp_downloaders{idx}.check(file_name);
                                                 if ~this.nrt
                                                     status = status && stat;
@@ -482,8 +486,32 @@ classdef File_Wizard < handle
             this.log.addMarkedMessage('Checking VMF files');
             date_stop = date_stop.getCopy();
             %date_stop.addSeconds(6*3600);
-            status = this.conjureResource('vmf',date_start, date_stop);
-
+            list_res = {'1x1','2.5x2','5x5'};
+            list_source = {'op','ei','fc'};
+            list_preferred_res = list_res(this.state.getPreferredVMFRes());
+            list_preferred_source = list_source(this.state.getPreferredVMFSource());
+            state = Core.getCurrentSettings();
+            if state.mapping_function == 2
+                vers = '1';
+            elseif state.mapping_function == 4
+                vers = '3';
+            end
+            for i = 1 : length(list_preferred_res)
+                for j = 1 : length(list_preferred_source)
+                    this.vmf_res = list_preferred_res{i};
+                    this.vmf_source = list_preferred_source{j};
+                    state.vmf_res = list_preferred_res{i};
+                    state.vmf_source = list_preferred_source{j};
+                    status = this.conjureResource(['vmf' vers '_' list_preferred_res{i} '_' list_preferred_source{j}], date_start, date_stop);
+                    if status
+                        
+                        break
+                    end
+                end
+                if status
+                    break
+                end
+            end
             if status
                 this.log.addStatusOk('Vienna Mapping Function files are present ^_^');
             else

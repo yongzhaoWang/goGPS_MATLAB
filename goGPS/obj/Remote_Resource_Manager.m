@@ -45,7 +45,8 @@ classdef Remote_Resource_Manager < Ini_Manager
     end
     
     properties (Access = private)
-        local_storage = ''
+        local_storage = '';
+        credentials; 
     end
     
     properties (Access = private)
@@ -85,6 +86,8 @@ classdef Remote_Resource_Manager < Ini_Manager
             end            
             
             this.readFile();
+            this.credentials = Ini_Manager([Core.getInstallDir filesep 'credentials.txt']);
+            this.credentials.readFile();
             this.log = Core.getLogger();
         end
     end
@@ -137,7 +140,7 @@ classdef Remote_Resource_Manager < Ini_Manager
     end
     
     methods        
-        function [ip, port] = getServerIp(this, name)
+        function [ip, port, user, passwd] = getServerIp(this, name)
             % Return the ip of a server given the server name
             %
             % SYNTAX:
@@ -147,6 +150,8 @@ classdef Remote_Resource_Manager < Ini_Manager
             ip_port = this.getData('SERVER', name);
             ip = ip_port{1};
             port = ip_port{2};
+            user = this.credentials.getData(name,'username');
+            passwd = this.credentials.getData(name,'password');
         end
         
         function f_struct = getFileLoc(this, file_name)
@@ -381,6 +386,43 @@ classdef Remote_Resource_Manager < Ini_Manager
                 flag_fp1p2b(2) = ~isempty(this.getData(['ic_default'], 'iono_predicted1'));
                 flag_fp1p2b(3) = ~isempty(this.getData(['ic_default'], 'iono_predicted2'));
                 flag_fp1p2b(4) = ~isempty(this.getData(['ic_default'], 'iono_broadcast'));
+            end
+        end
+        
+        function [flag_frub] = getVMFResType(this)
+            % Get the vmf res type availability
+            %
+            % SYNTAX
+            %   [flag_frub] = this.getVMFResType(center)
+            
+            state = Core.getCurrentSettings();
+            
+            if state.mapping_function == 1
+                flag_frub = [false false false];
+            elseif state.mapping_function == 2
+                flag_frub = [false true false];
+            elseif state.mapping_function == 3
+                flag_frub = [false false false];
+            elseif state.mapping_function == 4
+                flag_frub = [true false true];
+            end
+        end
+        
+        function [flag_frub] = getVMFSourceType(this)
+            % Get the vmf availability type availability
+            %
+            % SYNTAX
+            %   [flag_frub] = this.getVMFSourceType(center)
+            state = Core.getCurrentSettings();
+            
+            if state.mapping_function == 1
+                flag_frub = [false false false];
+            elseif state.mapping_function == 2
+                flag_frub = [true false true];
+            elseif state.mapping_function == 3
+                flag_frub = [false false false];
+            elseif state.mapping_function == 4
+                flag_frub = [true true true];
             end
         end
         

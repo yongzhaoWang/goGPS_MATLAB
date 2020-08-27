@@ -4386,7 +4386,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         if this.state.mapping_function == 3
                             [mfh, mfw] = atmo.niell(this.time, lat./180*pi, zero2nan(this.sat.el)./180*pi,h_ellipse);
                         elseif this.state.mapping_function == 2
-                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, zero2nan(this.sat.el)./180*pi, h_ellipse);
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,1);
+                        elseif this.state.mapping_function == 4
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,3);
                         elseif this.state.mapping_function == 1
                             [mfh, mfw] = atmo.gmf(this.time, lat./180*pi, lon./180*pi, h_ortho, zero2nan(this.sat.el)./180*pi);
                         end
@@ -11205,7 +11207,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     % Push quality info from LS object to rec
                     this.quality_info.s0 = s0;
                     this.quality_info.n_epochs = numel(unique(ls.time_par));
-                    this.quality_info.n_obs = size(ls.obs, 1);
+                    this.quality_info.n_obs = sum(ls.outlier_obs ~= 0);
                     this.quality_info.n_out = sum(this.sat.outliers_ph_by_ph(:));
                     this.quality_info.n_sat = length(unique(ls.sat_par));
                     this.quality_info.n_sat_max = uint16(max(hist(double(unique(uint32(ls.time_obs.getNominalTime().getRefTime(ls.time_obs.minimum.getMatlabTime) * 1000) + uint32(ls.satellite_obs))), uint32(this.quality_info.n_epochs))));
