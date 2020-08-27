@@ -195,3 +195,5 @@ goGPS/utility/thirdParty/m_map/m_etopo2.m
 goGPS/mex/
 
 goGPS/files.lst
+
+goGPS/credentials.txt
