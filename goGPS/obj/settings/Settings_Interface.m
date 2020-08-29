@@ -249,12 +249,12 @@ classdef Settings_Interface < Exportable
                     log = Core.getLogger();
                     if check_existence > 1 || ~empty_is_valid
                         if iscell(checked_val)
-                            log.addWarning(sprintf('The value "%s" of the settings field %s is not valid => using default: "%s"', iif(isempty(field_val), '<empty>', field_val), field_name, Ini_Manager.strCell2Str(checked_val)));
+                            log.addWarning(sprintf('The value "%s" of the settings field %s is not valid => using default: "%s"', iif(isempty(field_val), 'empty', field_val), field_name, Ini_Manager.strCell2Str(checked_val)));
                         else
-                            log.addWarning(sprintf('The value "%s" of the settings field %s is not valid => using default: "%s"', iif(isempty(field_val), '<empty>', field_val), field_name, checked_val));
+                            log.addWarning(sprintf('The value "%s" of the settings field %s is not valid => using default: "%s"', iif(isempty(field_val), 'empty', field_val), field_name, checked_val));
                         end
                     else
-                        log.addWarning(sprintf('The value "%s" of the settings field %s is not valid!!!', iif(isempty(field_val), '<empty>', field_val), field_name));
+                        log.addWarning(sprintf('The value "%s" of the settings field %s is not valid!!!', iif(isempty(field_val), 'empty', field_val), field_name));
                     end
                 end
             end
