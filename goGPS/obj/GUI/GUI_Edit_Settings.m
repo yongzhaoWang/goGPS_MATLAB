@@ -3116,6 +3116,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 
                 % Update rec table
                 this.rec_tbl.Data = cell(1, 4);
+                u = 0;
                 for r = 1 : n_rec
                     log.addMessage(log.indent(sprintf('Checking receiver %d of %d', r, n_rec)));
                     if ~isempty(available_files)
@@ -3170,8 +3171,10 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     this.rec_tbl.Data{r,3} = n_ok;
                     this.rec_tbl.Data{r,4} = n_ko;
                     % If many files have been checked update now
-                    if n_ok + n_ko > 10
+                    u = u + n_ok + n_ko;
+                    if u > 20
                         drawnow
+                        u = 0;
                     end
                 end
                 
