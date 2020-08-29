@@ -125,7 +125,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         ATM_LOAD_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'ATM_LOAD' filesep '${YYYY}' filesep];
         ATM_LOAD_NAME_NT = '';
         ATM_LOAD_NAME_T = 's1_s2_s3_cm_noib_grid.dat';
-        VMF_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'VMF' filesep '${YYYY}' filesep];
+        VMF_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'VMF' filesep '${VMFR}' filesep '${VMFS}' filesep '${YYYY}' filesep ];
         VMF_NAME = '';
 
         % COMPUTATION CENTERS
@@ -4804,6 +4804,20 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             center_name = this.selected_orbit_center;
         end
         
+        function setCurCenter(this, center_name)
+            % Set the current orbit center
+            %
+            % SYNTAX
+            %   this.setCurCenter(center_name);
+            
+            % Check validity
+            if ~iscell(center_name)
+                center_name = {center_name};
+            end
+            
+            this.selected_orbit_center = center_name;
+        end
+        
         function center_name = getCurIonoCenter(this)
             % Get the current orbit center
             %
@@ -5955,7 +5969,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         end
         
         function flag = getPreferredOrbit(this)
-            % Set the preferred orbit sequence:
+            % Get the preferred orbit sequence:
             %   1 final
             %   2 rapid
             %   3 ultra rapid
