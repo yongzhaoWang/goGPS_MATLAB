@@ -6588,6 +6588,9 @@ classdef GNSS_Station < handle
             
             % SYNTAX
             %   showBaselineENU(sta_list, <baseline_ids = []>)
+            tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            id2valid = nan(numel(sta_list), 1);
+            id2valid(tmp_id) = 1:numel(tmp_id);
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             out_list = [sta_list.out];
             if nargin < 3
@@ -6595,147 +6598,10 @@ classdef GNSS_Station < handle
             end
             if nargin < 2
                 baseline_ids = [ones(numel(out_list)-1,1) (2:numel(out_list))'];
+            else
+                baseline_ids(:) = id2valid(baseline_ids(:));
             end
             fh_list = out_list.showBaselineENU(baseline_ids, flag_add_coo);
-        end
-
-
-        function fh_list = showBaselineENU_Legacy(sta_list, baseline_ids, plot_relative_variation, one_plot)
-            % Function to plot baseline between 2 or more stations
-            %
-            % INPUT:
-            %   sta_list                 list of GNSS_Station objects
-            %   baseline_ids/ref_id      n_baseline x 2 - couple of id in sta_list to be used
-            %                            if this field is a single element interpret it as reference
-            %   plot_relative_variation  show full baseline dimension / variation wrt the median value
-            %   one_plot                 use subplots (E, N, U) or a single plot
-            %
-            % SYNTAX
-            %   showBaselineENU(sta_list, <baseline_ids = []>, <plot_relative_variation = true>, <one_plot = false>)
-            %   showBaselineENU(sta_list, <ref_id>, <plot_relative_variation = true>, <one_plot = false>)
-            
-            fh_list = [];
-            if (nargin < 4) || isempty(one_plot)
-                one_plot = false;
-            end
-            if (nargin < 3) || isempty(plot_relative_variation)
-                plot_relative_variation = true;
-            end
-
-            if nargin < 2 || isempty(baseline_ids)
-                % remove empty receivers
-                sta_list = sta_list(~sta_list.isEmpty_mr);
-
-                n_rec = numel(sta_list);
-                baseline_ids = GNSS_Station.getBaselineId(n_rec);
-            end
-
-            if numel(baseline_ids) == 1
-                n_rec = numel(sta_list);
-                ref_rec = setdiff((1 : n_rec)', baseline_ids);
-                baseline_ids = [baseline_ids * ones(n_rec - 1, 1), ref_rec];
-            end
-            
-            for b = 1 : size(baseline_ids, 1)
-                rec = sta_list(baseline_ids(b, :));
-                if ~isempty(rec(1)) && ~isempty(rec(2))
-                    [enu, time] = rec.getPosENU_mr();
-                    if size(enu, 1) > 1
-                        rec(1).log.addMessage('Plotting positions');
-
-                        % prepare data
-                        baseline = diff(enu, 1, 3);
-                        if plot_relative_variation
-                            baseline = bsxfun(@minus, baseline, median(baseline, 'omitnan')) * 1e3;
-                        end
-                        t = time.getMatlabTime();
-
-                        f = figure; f.Name = sprintf('%03d: BSL ENU %s - %s', f.Number, rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch); f.NumberTitle = 'off';
-                        
-                        fh_list = [fh_list; f]; %#ok<AGROW>
-                        fig_name = sprintf('BSL_ENU_%s-%s_%s', rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch, rec(1).getTime.first.toString('yyyymmdd_HHMM'));
-                        f.UserData = struct('fig_name', fig_name);
-                       
-                        color_order = handle(gca).ColorOrder;
-
-                        if ~one_plot, subplot(3,1,1); end
-                        Core_Utils.plotSep(t, baseline(:, 1), '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
-                        ax(3) = gca();
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = minMax(baseline(:,1));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        setTimeTicks(4);
-                        if plot_relative_variation
-                            h = ylabel('East [mm]'); h.FontWeight = 'bold';
-                        else
-                            h = ylabel('East [m]'); h.FontWeight = 'bold';
-                        end
-                        grid minor;
-                        if one_plot
-                            h = title(sprintf('Baseline %s - %s \t\tstd E %.2f - N %.2f - U%.2f -', rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch, std(baseline, 'omitnan')), 'interpreter', 'none'); h.FontWeight = 'bold'; %h.Units = 'pixels'; h.Position(2) = h.Position(2) + 8; h.Units = 'data';
-                        else
-                            h = title(sprintf('Baseline %s - %s \n std %.2f [mm]', rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch, std(baseline(:,1), 'omitnan')), 'interpreter', 'none'); h.FontWeight = 'bold';
-                        end
-
-                        if ~one_plot, subplot(3,1,2); end
-                        Core_Utils.plotSep(t, baseline(:, 2), '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:));                        
-                        if ~one_plot, h = title(sprintf('std %.2f [mm]', std(baseline(:,2), 'omitnan')), 'interpreter', 'none'); h.FontWeight = 'bold'; end
-                        ax(2) = gca();
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = minMax(baseline(:,2));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        setTimeTicks(4);
-                        if plot_relative_variation
-                            h = ylabel('North [mm]'); h.FontWeight = 'bold';
-                        else
-                            h = ylabel('North [m]'); h.FontWeight = 'bold';
-                        end
-                        
-                        grid minor;
-                        if ~one_plot, subplot(3,1,3); end
-                        Core_Utils.plotSep(t, baseline(:,3), '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:));
-                        if ~one_plot, h = title(sprintf('std %.2f [mm]', std(baseline(:,3), 'omitnan')), 'interpreter', 'none'); h.FontWeight = 'bold'; end
-                        ax(1) = gca();
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = minMax(baseline(:,3));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        setTimeTicks(4);
-                        if plot_relative_variation
-                            h = ylabel('Up [mm]'); h.FontWeight = 'bold';
-                        else
-                            h = ylabel('Up [m]'); h.FontWeight = 'bold';
-                        end
-
-                        grid minor;
-                        if one_plot
-                            if plot_relative_variation
-                                h = ylabel('ENU [mm]'); h.FontWeight = 'bold';
-                            else
-                                h = ylabel('ENU [m]'); h.FontWeight = 'bold';
-                            end
-                            yl = minMax(baseline(:));
-                            ylim([min(-20, yl(1)) max(20, yl(2))]);                            
-                            legend({'East', 'North', 'Up'}, 'Location', 'NorthEastOutside', 'interpreter', 'none');
-                        else
-                            linkaxes(ax, 'x');
-                        end
-                        grid on;
-
-                        Core_UI.beautifyFig(f);
-                        Core_UI.addExportMenu(f);
-                        Core_UI.addBeautifyMenu(f);
-                    else
-                        rec(1).log.addMessage('Plotting a single point static position is not yet supported');
-                    end
-                end
-
-            end
         end
         
         function fh_list = showBaselinePlanarUp(sta_list, baseline_ids, plot_relative_variation)
