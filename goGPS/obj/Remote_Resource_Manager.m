@@ -204,7 +204,11 @@ classdef Remote_Resource_Manager < Ini_Manager
             %                         found the resource
             %          
             
-            % Check if the requested resource is iono            
+            % Check if the requested resource is iono   
+            if iscell(center_name)
+                center_name = center_name{1};
+            end
+            
             if numel(resource_name) > 5 && strcmp(resource_name(1:5), 'iono_')
                 % Search for the iono center for the current orbit provider
                 state = Core.getCurrentSettings();
@@ -422,6 +426,8 @@ classdef Remote_Resource_Manager < Ini_Manager
             elseif state.mapping_function == 3
                 flag_frub = [false false false];
             elseif state.mapping_function == 4
+                flag_frub = [true true true];
+            elseif state.mapping_function == 5
                 flag_frub = [true true true];
             end
         end
