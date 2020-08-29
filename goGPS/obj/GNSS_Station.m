@@ -1492,7 +1492,11 @@ classdef GNSS_Station < handle
                 if ~isempty(sta_list(s).marker_name)
                     marker_name{s} = sta_list(s).marker_name;
                 else
-                    marker_name{s} = File_Name_Processor.getFileName(sta_list(s).work.rinex_file_name);
+                    if isempty(sta_list(s).work.rinex_file_name)
+                        marker_name{s} = 'NONE';
+                    else
+                        marker_name{s} = File_Name_Processor.getFileName(sta_list(s).work.rinex_file_name);
+                    end
                 end
                 marker_name{s} = marker_name{s}(1 : min(4, length(marker_name{s})));
             end
