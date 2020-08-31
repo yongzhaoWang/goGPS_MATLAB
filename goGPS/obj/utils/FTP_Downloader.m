@@ -55,7 +55,7 @@ classdef FTP_Downloader < handle
 
     end
 
-    properties (SetAccess = protected, GetAccess = protected)
+    properties (SetAccess = public, GetAccess = public)
         port = '21';    % PORT to access the FTP server, stored as number
         remote_dir;     % Base dir path on the remote server to locate the file to download
         file_name;      % name of the file
@@ -122,7 +122,11 @@ classdef FTP_Downloader < handle
             % Open the connection with the server
             if (this.checkNet)
                 try
-                    this.ftp_server = ftp(strcat(this.addr, ':', this.port), this.user, this.passwd);
+                    if isempty(this.user)
+                        this.ftp_server = ftp(strcat(this.addr, ':', this.port));
+                    else
+                        this.ftp_server = ftp(strcat(this.addr, ':', this.port), this.user, this.passwd);
+                    end
                     cd(this.ftp_server);
                     warning('off')
                     sf = struct(this.ftp_server);
