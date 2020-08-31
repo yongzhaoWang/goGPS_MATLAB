@@ -920,7 +920,9 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             
             % I can reduce the input only if I  have enough data
             if size(y, 2) >= 2
-                y = bsxfun(@minus, y, [0 cumsum(nan2zero(median(diff(y, 1, 2), 'omitnan')))]);
+                med = [0 cumsum(nan2zero(median(diff(y, 1, 2), 'omitnan')))];
+                med(abs(med) > 0.5) = 0; % ZWD out of more than 0.5m is an outlier!
+                y = bsxfun(@minus, y, med);
             end
             if size(y, 2) >= 2 && flag_reduce
                 reduction = median(y, 2, 'omitnan');
