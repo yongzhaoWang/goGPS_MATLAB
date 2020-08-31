@@ -3299,9 +3299,8 @@ classdef GNSS_Station < handle
             
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             clon = nwse([2 4]) + [-0.001 0.001];
-            clat = nwse([3 1]) + [-0.001 0.001];
+            clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
             clon = max(-180, min(180, clon));
-            clat = max(-90, min(90, clat));
             
             if (flag_polar)
                 if flag_polar == 'S'                    
@@ -3762,7 +3761,9 @@ classdef GNSS_Station < handle
             
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             out_list = [sta_list.out];
-            fh_list = out_list.showPositionENU(flag_add_coo);
+            if numel(out_list) > 0
+                fh_list = out_list.showPositionENU(flag_add_coo);
+            end
         end
 
         function fh_list = showPositionPlanarUp(sta_list, flag_add_coo)
@@ -3851,7 +3852,7 @@ classdef GNSS_Station < handle
                 new_fig = true;
             end
             if new_fig
-                f = figure('Visible', 'off');
+                f = figure('Visible', 'on');
             else
                 f = gcf;
                 hold on;
@@ -3892,11 +3893,11 @@ classdef GNSS_Station < handle
             end
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             clon = nwse([2 4]) + [-0.001 0.001];
-            clat = nwse([3 1]) + [-0.001 0.001];
+            clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
 
             m_proj('equidistant','lon',clon,'lat',clat);   % Projection
             %m_proj('utm', 'lon',lon_lim,'lat',lat_lim);   % Projection
-            axes
+            drawnow; axes
             cmap = flipud(gray(1000)); colormap(cmap(150: end, :));
             
             % retrieve external DTM
@@ -3970,17 +3971,19 @@ classdef GNSS_Station < handle
             end
             if flag_labels
                 % Label BG (in background w.r.t. the point)
-                for r = 1 : numel(sta_list)
-                    name = upper(sta_list(r).getMarkerName4Ch());
-                    text(x(r), y(r), ['     ' name ' '], ...
-                        'FontWeight', 'bold', 'FontSize', 12, 'Color', [1 1 1], ...
-                        'BackgroundColor', [1 1 1], 'EdgeColor', [0.3 0.3 0.3], ...
-                        'Margin', 2, 'LineWidth', 2, ...
-                        'HorizontalAlignment','left');
+                if numel(sta_list) < 60
+                    for r = 1 : numel(sta_list)
+                        name = upper(sta_list(r).getMarkerName4Ch());
+                        text(x(r), y(r), ['     ' name ' '], ...
+                            'FontWeight', 'bold', 'FontSize', 12, 'Color', [1 1 1], ...
+                            'BackgroundColor', [1 1 1], 'EdgeColor', [0.3 0.3 0.3], ...
+                            'Margin', 2, 'LineWidth', 2, ...
+                            'HorizontalAlignment','left');
+                    end
                 end
             end
             
-            if flag_large_points
+            if flag_large_points && numel(sta_list) < 60
                 for r = 1 : numel(sta_list)
                     plot(x(r), y(r), '.', 'MarkerSize', 45, 'Color', Core_UI.getColor(r, numel(sta_list)), 'UserData', 'GNSS_point');
                 end
@@ -3989,12 +3992,14 @@ classdef GNSS_Station < handle
             end
             
             if flag_labels
-                for r = 1 : numel(sta_list)
-                    name = upper(sta_list(r).getMarkerName4Ch());
-                    text(x(r), y(r), ['   ' name], ...
-                        'FontWeight', 'bold', 'FontSize', 12, 'Color', [0 0 0], ...
-                        'Margin', 2, 'LineWidth', 2, ...
-                        'HorizontalAlignment','left');
+                if numel(sta_list) < 60
+                    for r = 1 : numel(sta_list)
+                        name = upper(sta_list(r).getMarkerName4Ch());
+                        text(x(r), y(r), ['   ' name], ...
+                            'FontWeight', 'bold', 'FontSize', 12, 'Color', [0 0 0], ...
+                            'Margin', 2, 'LineWidth', 2, ...
+                            'HorizontalAlignment','left');
+                    end
                 end
             end
             Core_UI.addExportMenu(f); Core_UI.addBeautifyMenu(f); Core_UI.beautifyFig(f);
@@ -4062,7 +4067,7 @@ classdef GNSS_Station < handle
             end
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             clon = nwse([2 4]) + [-0.001 0.001];
-            clat = nwse([3 1]) + [-0.001 0.001];
+            clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
 
             axes
             xlim(clon);
@@ -4424,7 +4429,7 @@ classdef GNSS_Station < handle
             %   % over Japan
             %   sta_list.showAniMapTropoInterp('ZWD', [45.8, 123.5, 23, 146.5], 200, 2, false);
             
-            sta_list_full = sta_list_full(~sta_list_full.isEmpty_mr);
+            sta_list_full = sta_list_full(~sta_list_full.isEmptyOut_mr);
             
             switch lower(par_name)
                 case 'ztd'
@@ -4488,7 +4493,7 @@ classdef GNSS_Station < handle
                 lat_lim = nwse([3 1]);                
             end
             clon = nwse([2 4]) + [-0.001 0.001];
-            clat = nwse([3 1]) + [-0.001 0.001];
+            clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
 
             if flag_dtm == 2
                 subplot(1,2,1);
@@ -4839,7 +4844,7 @@ classdef GNSS_Station < handle
                 lat_lim = nwse([3 1]);                
             end
             clon = nwse([2 4]) + [-0.001 0.001];
-            clat = nwse([3 1]) + [-0.001 0.001];
+            clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
 
             if flag_dtm == 2
                 subplot(1,2,1);
@@ -7608,7 +7613,7 @@ classdef GNSS_Station < handle
                     end
                     nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
                     clon = nwse([2 4]) + [-0.001 0.001];
-                    clat = nwse([3 1]) + [-0.001 0.001];
+                    clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
                     
                     fh = figure('Visible', 'off');
                     fh.Color = [1 1 1];
