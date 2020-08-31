@@ -335,10 +335,21 @@ classdef Atmosphere < handle
             end
             h_fname = this.state.getVMFHeightFileName();
             fid = fopen(h_fname, 'rt');
-            fgetl(fid); %skip one line header
-            formatSpec = [repmat([repmat(' %f',1,10) '\n'],1,14) repmat(' %f',1,5)];
-            h_data = cell2mat(textscan(fid,formatSpec,91));
-            h_data(:,end) = [];
+            if strcmpi(this.state.vmf_res,'2.5x2')
+                fgetl(fid); %skip one line header
+                formatSpec = [repmat([repmat(' %f',1,10) '\n'],1,14) repmat(' %f',1,5)];
+                h_data = cell2mat(textscan(fid,formatSpec,91));
+                h_data(:,end) = [];
+            elseif strcmpi(this.state.vmf_res,'5x5')
+                formatSpec = '%f';
+                h_data = textscan(fid,formatSpec); h_data = h_data{1,1};
+                h_data = reshape(h_data,72,36)';
+            elseif strcmpi(this.state.vmf_res,'1x1')
+                formatSpec = '%f';
+                h_data = textscan(fid,formatSpec); h_data = h_data{1,1};
+                h_data = reshape(h_data,360,180)';
+            end
+                
             this.vmf_coeff.ell_height = h_data;
             fclose(fid);
         end

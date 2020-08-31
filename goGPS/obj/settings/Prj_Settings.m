@@ -4980,7 +4980,13 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % Get the full name of the ERP files (replacing special keywords)
             % SYNTAX: erp_full_name = getErpFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            vmf_height_name = fnp.checkPath(strcat(strrep(strrep(strrep(this.vmf_dir, '${YYYY}',''), '${VMFR}',''), '${VMFS}',''), filesep, 'orography_ell'), this.getHomeDir());
+            if strcmpi(this.vmf_res,'2.5x2')
+                vmf_height_name = fnp.checkPath(strcat(strrep(strrep(strrep(this.vmf_dir, '${YYYY}',''), '${VMFR}',''), '${VMFS}',''), filesep, 'orography_ell'), this.getHomeDir());
+            elseif strcmpi(this.vmf_res,'1x1')
+                vmf_height_name = fnp.checkPath(strcat(strrep(strrep(strrep(this.vmf_dir, '${YYYY}',''), '${VMFR}',''), '${VMFS}',''), filesep, 'orography_ell_1x1'), this.getHomeDir());
+            elseif strcmpi(this.vmf_res,'5x5')
+                vmf_height_name = fnp.checkPath(strcat(strrep(strrep(strrep(this.vmf_dir, '${YYYY}',''), '${VMFR}',''), '${VMFS}',''), filesep, 'orography_ell_5x5'), this.getHomeDir());
+            end
 
         end
 

@@ -69,6 +69,8 @@
 !/data/reference/VMF/.gitignore
 !/data/reference/VMF/orography
 !/data/reference/VMF/orography_ell
+!/data/reference/VMF/orography_ell_1x1
+!/data/reference/VMF/orography_ell_5x5
 
 
 !/data/station
