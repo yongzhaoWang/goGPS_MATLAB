@@ -2044,6 +2044,8 @@ classdef Core_Utils < handle
                 return
             end
 
+            credentials = '';
+
             % Get file list path for all the files present in the list
             idf = find(~f_status_lst);
             fnl = file_name_lst(idf);
@@ -2060,12 +2062,12 @@ classdef Core_Utils < handle
                         case '21'
                             fnl{i} = ['ftp://' s_ip ':' port file_name fel{i}];
                             if ~isempty(user) & ~isempty(passwd)
-                            credentials = sprintf('--ftp-user=%s  --ftp-passw=%s',user,passwd);
+                                credentials = sprintf('--ftp-user=%s  --ftp-passw=%s',user,passwd);
                             end
                         otherwise
                             fnl{i} = ['http://' s_ip ':' port file_name fel{i}];
                             if ~isempty(user) & ~isempty(passwd)
-                            credentials = sprintf('--http-user=%s  --http-passw=%s',user,passwd);
+                                credentials = sprintf('--http-user=%s  --http-passw=%s',user,passwd);
                             end
                     end
                 else
