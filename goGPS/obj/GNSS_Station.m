@@ -3307,6 +3307,9 @@ classdef GNSS_Station < handle
             lon_lim = max(-179.999, min(179.999, lon_lim));
             lat_lim = max(-89.999, min(89.999, lat_lim));
             
+            lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+            lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
+            
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             clon = nwse([2 4]) + [-0.001 0.001];
             clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
@@ -3901,6 +3904,8 @@ classdef GNSS_Station < handle
                 lon_lim = minMax(lon_tmp); lon_lim = lon_lim + [-1 1] * diff(lon_lim) / 6;
                 lat_lim = minMax(lat_tmp); lat_lim = lat_lim + [-1 1] * diff(lat_lim) / 6;
             end
+            lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+            lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             clon = nwse([2 4]) + [-0.001 0.001];
             clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
@@ -4075,6 +4080,8 @@ classdef GNSS_Station < handle
                 lon_lim = minMax(lon_tmp); lon_lim = lon_lim + [-1 1] * diff(lon_lim) / 6;
                 lat_lim = minMax(lat_tmp); lat_lim = lat_lim + [-1 1] * diff(lat_lim) / 6;
             end
+            lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+            lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             clon = nwse([2 4]) + [-0.001 0.001];
             clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
@@ -4238,7 +4245,9 @@ classdef GNSS_Station < handle
                 lat_lim(1) = lat_lim(1) - diff(lat_lim)/3;
                 lat_lim(2) = lat_lim(2) + diff(lat_lim)/3;
             end
-
+            lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+            lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
+            
             xlim(lon_lim);
             ylim(lat_lim);
 
@@ -4497,10 +4506,14 @@ classdef GNSS_Station < handle
                     lon_lim = minMax(lon); lon_lim = lon_lim + [-1 1] * diff(lon_lim)/15;
                     lat_lim = minMax(lat); lat_lim = lat_lim + [-1 1] * diff(lat_lim)/15;
                 end
+                lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+                lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
                 nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             else
                 lon_lim = nwse([2 4]);
-                lat_lim = nwse([3 1]);                
+                lat_lim = nwse([3 1]);
+                lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+                lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
             end
             clon = nwse([2 4]) + [-0.001 0.001];
             clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
@@ -4848,10 +4861,14 @@ classdef GNSS_Station < handle
                     lon_lim = minMax(lon); lon_lim = lon_lim + [-1 1] * diff(lon_lim)/15;
                     lat_lim = minMax(lat); lat_lim = lat_lim + [-1 1] * diff(lat_lim)/15;
                 end
+                lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+                lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
                 nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
             else
                 lon_lim = nwse([2 4]);
-                lat_lim = nwse([3 1]);                
+                lat_lim = nwse([3 1]);
+                lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+                lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
             end
             clon = nwse([2 4]) + [-0.001 0.001];
             clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
@@ -7621,6 +7638,8 @@ classdef GNSS_Station < handle
                         lon_lim = minMax(lon); lon_lim = lon_lim + [-1 1] * diff(lon_lim) / 6;
                         lat_lim = minMax(lat); lat_lim = lat_lim + [-1 1] * diff(lat_lim) / 6;
                     end
+                    lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
+                    lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
                     nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
                     clon = nwse([2 4]) + [-0.001 0.001];
                     clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
