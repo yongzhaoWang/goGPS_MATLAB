@@ -1744,20 +1744,30 @@ classdef GNSS_Station < handle
             end
         end
 
-        function [coo] = getPos(sta_list)
+        function [coo] = getPos(sta_list, flag_add_coo)
             % return the positions computed for the receiver
             %
             % OUTPUT
             %   coo     object array [ Coordinates ]
-            %
+            %   
             % SYNTAX
-            %   [coo] = sta_list.getPos()
+            %   [coo] = sta_list.getPos(flag_add_coo)
             
             coo = Coordinates;
-            for r = 1 : numel(sta_list)
-                coo(r) = sta_list(r).out.getPos();
-                if coo(r).time.isEmpty
-                    coo(r).setTime(sta_list(r).out.getPositionTime());
+            if nargin == 1 || isempty(flag_add_coo) || flag_add_coo == 0
+                for r = 1 : numel(sta_list)
+                    coo(r) = sta_list(r).out.getPos();
+                    if coo(r).time.isEmpty
+                        coo(r).setTime(sta_list(r).out.getPositionTime());
+                    end
+                end
+            else
+                for r = 1 : numel(sta_list)
+                    try
+                        coo(r) = sta_list(r).out.add_coo(flag_add_coo).coo;
+                    catch ex
+                        % no coordinate found, skip
+                    end
                 end
             end
         end
