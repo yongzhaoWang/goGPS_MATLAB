@@ -624,7 +624,7 @@ classdef Coordinates < Exportable & handle
                 pos = coo_list(i);
                 if not(isempty(pos.name))
                     str_title{1} = sprintf('%s\nPosition stability ENU [mm]\nSTD (detrended)', pos.name);
-                else
+                elseif isempty(str_title{1})
                     str_title{1} = sprintf('Position stability ENU [mm]\nSTD (detrended)');
                 end
                 if ~pos.isEmpty
