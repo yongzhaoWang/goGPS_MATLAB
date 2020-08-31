@@ -942,13 +942,20 @@ classdef Coordinates < Exportable & handle
                         % dashed
                         id_dashed = serialize(bsxfun(@plus, repmat((0:20:395)',1,5), (1:5)));
                         az_l(id_dashed) = nan;
-                        decl_s = ((10 : 10 : max_r));
+                        step = max(1, floor((max_r/10)/5)) * 10;
+                        if step > 10
+                            step = round(step/50)*50;
+                        end
+                        if step > 100
+                            step = round(step/100)*100;
+                        end    
+                        decl_s = ((step : step  : max_r));
                         for d = decl_s
                             x = cos(az_l).*d;
                             y = sin(az_l).*d;
                             plot(x,y,'color',[0.6 0.6 0.6], 'LineWidth', 2); hold on;
-                            x = cos(az_l).*(d-5);
-                            y = sin(az_l).*(d-5);
+                            x = cos(az_l).*(d-step/2);
+                            y = sin(az_l).*(d-step/2);
                             plot(x,y,'color',[0.75 0.75 0.75], 'LineWidth', 2); hold on;
                         end
                         
