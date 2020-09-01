@@ -1825,7 +1825,11 @@ classdef Radiosonde < handle
                 '34247  Kalac, MS';
                 '34467  Volgograd, TB (URWW)';
                 '34731  Rostov-Na-Donu, TB (URRR)';
-                '37011  Tuapse, TB'};
+                '37011  Tuapse, TB';
+                '01004  ENAS';
+                '94998  Macquarie Island';
+                '78016  Bermuda Nvl Stn Kindley (TXKF)';
+                '91938  Tahiti-Faaa (NTAA)'};
             
             all_raob = sort(unique(all_raob));
             
@@ -1844,6 +1848,7 @@ classdef Radiosonde < handle
             % SYNTAX
             %   raob_list = Radiosondes.getRaobList();
             raob_list = struct();
+            raob_list.s01004 = struct('lat',   78.91, 'lon',   11.93, 'name', 'ENAS Ny-Alesund Ii');
             raob_list.s01028 = struct('lat',   74.50, 'lon',   19.00, 'name', 'ENBJ Bjornoya');
             raob_list.s01415 = struct('lat',   58.87, 'lon',    5.67, 'name', 'ENZV Stavanger');
             raob_list.s03005 = struct('lat',   60.13, 'lon',   -1.18, 'name', 'Lerwick');
@@ -2340,6 +2345,7 @@ classdef Radiosonde < handle
             raob_list.s76612 = struct('lat',   20.67, 'lon', -103.38, 'name', 'Guadalajara, Jal.');
             raob_list.s76654 = struct('lat',   19.05, 'lon', -104.32, 'name', 'Manzanillo, Col.');
             raob_list.s76679 = struct('lat',   19.40, 'lon',  -99.20, 'name', 'Aerop. Intl Mexico, D.F.');
+            raob_list.s78016 = struct('lat',   32.37, 'lon',  -64.68, 'name', 'TXKF Bermuda Nvl Stn Kindley');
             raob_list.s78073 = struct('lat',   25.05, 'lon',  -77.46, 'name', 'MYNN Nassau Airport');
             raob_list.s78384 = struct('lat',   19.30, 'lon',  -81.35, 'name', 'MWCR Owen Roberts Arpt');
             raob_list.s78486 = struct('lat',   18.43, 'lon',  -69.88, 'name', 'MDSD Santo Domingo');
@@ -2399,6 +2405,7 @@ classdef Radiosonde < handle
             raob_list.s91610 = struct('lat',    1.35, 'lon',  172.91, 'name', 'NGTA Tarawa');
             raob_list.s91643 = struct('lat',   -8.51, 'lon',  179.21, 'name', 'NGFU Funafuti');
             raob_list.s91765 = struct('lat',  -14.33, 'lon', -170.71, 'name', 'NSTU Pago Pago');
+            raob_list.s91938 = struct('lat',  -17.55, 'lon', -149.61, 'name', 'NTAA Tahiti-Faaa');
             raob_list.s93112 = struct('lat',  -36.78, 'lon',  174.63, 'name', 'NZWP Whenuapai');
             raob_list.s93417 = struct('lat',  -40.90, 'lon',  174.98, 'name', 'NZPP Paraparaumu Aerodrome');
             raob_list.s93844 = struct('lat',  -46.41, 'lon',  168.31, 'name', 'NZNV Invercargill Aerodrome');
@@ -2427,6 +2434,7 @@ classdef Radiosonde < handle
             raob_list.s94975 = struct('lat',  -42.83, 'lon',  147.50, 'name', 'YMHB Hobart Airport');
             raob_list.s94995 = struct('lat',  -31.53, 'lon',  159.06, 'name', 'Lord Howe Island');
             raob_list.s94996 = struct('lat',  -29.03, 'lon',  167.93, 'name', 'YSNF Norfolk Island Aero');
+            raob_list.s94998 = struct('lat',  -54.50, 'lon',  158.95, 'name', 'YMMQ Macquarie Island');
             raob_list.s95527 = struct('lat',  -29.48, 'lon',  149.83, 'name', 'Moree Mo');
             raob_list.s96035 = struct('lat',    3.56, 'lon',   98.68, 'name', 'WIMM Medan');
             raob_list.s96163 = struct('lat',   -0.88, 'lon',  100.35, 'name', 'WIMG Padang');
@@ -2586,13 +2594,14 @@ classdef Radiosonde < handle
                 '12374'; '12425'; '12843'; '12982'; '13275'; '13388'; '14240'; '14430'; '15420'; '15614'; '16045'; '16080'; '16113'; '16245'; '16320'; '16429';
                 '16546'; '16716'; '17030'; '17064'; '17130'; '17196'; '17220'; '17240'; '17351'; '17516'; '22820'; '22845'; '26075'; '26298'; '26702'; '26781';
                 '27038'; '27199'; '27459'; '27594'; '27713'; '27707'; '27730'; '27962'; '27995'; '33317'; '33345'; '34009'; '34122'; '34172'; '34247'; '34467';
-                '34731'; '37011'};
+                '34731'; '37011'; '01004'; '94998'; '78016'; '91938'};
             
             raob_code = sort(unique(raob_code));
             clear rds;
             for i = 1 : numel(raob_code)
                 fprintf(' Checking %03d/%03d:\n', i, numel(raob_code));
                 rds(i) = Radiosonde.fromList(raob_code{i}, GPS_Time.now.addIntSeconds(-86400), GPS_Time.now.addIntSeconds(-43200));
+                %rds(i) = Radiosonde.fromList(raob_code{i}, GPS_Time('2019-01-01'), GPS_Time('2019-01-02'));
             end
             
             clc
