@@ -187,7 +187,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
 
         % DATA SELECTION
         CC = Constellation_Collector('G');              % object containing info on the activated constellations
-        MIN_P_EPOCH = 60;                               % Minimum percentage of epochs to consider a receiver valid
+        MIN_P_EPOCH = 30;                               % Minimum percentage of epochs to consider a receiver valid
         MIN_N_SAT = 2;                                  % Minimum number of satellites needed to process a valid epoch
         CUT_OFF = 10;                                   % Cut-off [degrees]
         ABS_SNR_THR = 0;                                % Signal-to-noise ratio absolute threshold [dB]
@@ -197,7 +197,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         % ADV DATA SELECTION
         FLAG_OUTLIER = true;                            % Flag for enabling outlier detection
         PP_SPP_THR = 10;                                % Threshold on the code point-positioning least squares estimation error [m]
-        PP_MAX_CODE_ERR_THR = 20;                       % Threshold on the maximum residual of code observations [m] (pre-processing)
+        PP_MAX_CODE_ERR_THR = 50;                       % Threshold on the maximum residual of code observations [m] (pre-processing)
         MAX_CODE_ERR_THR = 10;                          % Threshold on the maximum residual of code observations [m]
         MAX_PHASE_ERR_THR = 0.10;                       % Threshold on the maximum residual of phase observations [m]
 
@@ -1133,8 +1133,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                     this.importIniFile(ini_settings_file);
                 elseif (exist(this.getIniPath, 'file') == 2)
                     this.importIniFile(this.getIniPath);
-                else log.addMarkedMessage('Using default settings');
-                    log.newLine();
+                else
+                    Core.getLogger.addMarkedMessage('Using default settings');
+                    Core.getLogger.newLine();
                     this.postImportInit();
                 end
             end
@@ -3012,7 +3013,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   this.importLegacyFile(file_path);
-                                           try                                                               
+            try
                 load(file_path, 'state');
                 this.legacyImport(state);
             catch ex
@@ -3511,13 +3512,13 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.sigma0_r_clock = this.SIGMA0_R_CLOCK;
             
             % Data filtering
-            this.min_p_epoch = 60;
+            this.min_p_epoch = 30;
             this.min_n_sat = 2;
             this.cut_off = 7;
             this.abs_snr_thr = 0;
             this.scaled_snr_thr = 0;
             this.min_arc = 300;
-            this.pp_max_code_err_thr = 10;
+            this.pp_max_code_err_thr = 50;
             this.max_code_err_thr = 10;
             this.max_phase_err_thr = 0.10;
             
@@ -3536,7 +3537,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.flag_amb_pass = 0; % (too much experimental)
             
             % Corrections
-            this.flag_clock_align = Prj_Settings.FLAG_CLOCK_ALIGN;;
+            this.flag_clock_align = Prj_Settings.FLAG_CLOCK_ALIGN;
             this.flag_solid_earth = 1;
             this.flag_pole_tide = 1;
             this.flag_phase_wind = 1;
@@ -3545,7 +3546,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.flag_atm_load = 1;
             this.flag_hoi = 1;
             this.flag_rec_pcv = 1;
-            this.flag_rec_mp = 1;
+            this.flag_rec_mp = 0;
             this.flag_apr_iono = 1;
             
             % Coordinates
@@ -3563,7 +3564,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             
             this.zd_model = 2;              % Use VMF for a-priori
             this.mapping_function = 2;      % Use VMF grids
-            this.mapping_function_gradient = 2;      % Use chen and herring
+            this.mapping_function_gradient = 2;  % Use chen and herring
 
             this.meteo_data = 2;            % Use GPT
             
@@ -3607,13 +3608,13 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.sigma0_r_clock = this.SIGMA0_R_CLOCK;
             
             % Data filtering
-            this.min_p_epoch = 60;
+            this.min_p_epoch = 30;
             this.min_n_sat = 2;
             this.cut_off = 7;
             this.abs_snr_thr = 6;
             this.scaled_snr_thr = 28;
             this.min_arc = 300;
-            this.pp_max_code_err_thr = 10;
+            this.pp_max_code_err_thr = 50;
             this.max_code_err_thr = 10;
             this.max_phase_err_thr = 0.10;
             
@@ -3631,7 +3632,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.flag_amb_pass = 0; % (too much experimental)
             
             % Corrections
-            this.flag_clock_align = Prj_Settings.FLAG_CLOCK_ALIGN;;
+            this.flag_clock_align = Prj_Settings.FLAG_CLOCK_ALIGN;
             this.flag_solid_earth = 1;
             this.flag_pole_tide = 0;
             this.flag_phase_wind = 0;
@@ -3835,7 +3836,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.checkNumericField('dreg_ztd_net',[-2 1e50]);
             this.checkLogicalField('flag_grad_ppp');
             this.checkLogicalField('flag_grad_net');
-            this.checkNumericField('tparam_grad_ppp'),[1 100];
+            this.checkNumericField('tparam_grad_ppp',[1 100]);
             this.checkNumericField('tparam_grad_net',[1 100]);
             this.checkNumericField('rate_grad_ppp');
             this.checkNumericField('rate_grad_net');
@@ -3878,7 +3879,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.checkLogicalField('flag_phpr_sat_clock_net');
             this.checkNumericField('areg_sat_clock_ppp',[-2 1e50]);
             this.checkNumericField('areg_sat_clock_net',[-2 1e50]);
-            this.checkNumericField('dreg_sat_clock_ppp'),[-2 1e50];
+            this.checkNumericField('dreg_sat_clock_ppp',[-2 1e50]);
             this.checkNumericField('dreg_sat_clock_net',[-2 1e50]);
             this.checkLogicalField('flag_rec_ifbias_ppp');
             this.checkLogicalField('flag_rec_ifbias_net');
