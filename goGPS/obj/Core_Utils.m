@@ -2231,6 +2231,9 @@ classdef Core_Utils < handle
                                 end
                             end
                         end
+                    elseif instr(ex.message, '401')
+                        status = false;
+                        log.addError('Unauthorized, please add credentials to credentials.txt');
                     end
                 end
                 if status
@@ -2247,7 +2250,7 @@ classdef Core_Utils < handle
                                 end
                                 delete(compressed_name);
                             catch
-                                this.log.addError(sprintf('Please decompress the %s file before trying to use it in goGPS!!!', compressed_name));
+                                log.addError(sprintf('Please decompress the %s file before trying to use it in goGPS!!!', compressed_name));
                                 status = false;
                             end
                         end
