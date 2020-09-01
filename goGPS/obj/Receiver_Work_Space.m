@@ -4178,7 +4178,11 @@ classdef Receiver_Work_Space < Receiver_Commons
                 this.updateAllTOT();
             end
             if ~isempty(this.sat.tot)
-                time_tx.addSeconds( - zero2nan(this.sat.tot(idx, sat)));                
+                if any(this.dt)
+                    time_tx.addSeconds( - zero2nan(this.sat.tot(idx, sat)) - this.dt(idx));      
+                else
+                    time_tx.addSeconds( - zero2nan(this.sat.tot(idx, sat)));      
+                end
             end
         end
         
@@ -9785,7 +9789,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             end
             ls.setUpCodeStatic( this, sys_list, id_sync, cut_off);
             ls.Astack2Nstack();
-            [x, res, s0] = ls.solve();
+            [x, res, s0] = ls.solve(true);
 
             id_ko = abs(ls.res) > Core.getState.getMaxCodeErrThrPP;
             if nargin < 5 || isempty(num_reweight)
@@ -9830,7 +9834,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 if flag_recompute
                     ls.Astack2Nstack();
-                    [x, res, s0] = ls.solve();
+                    [x, res, s0] = ls.solve(true);
                     log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration)', s0)));
                 else
                     log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration skipped)', s0)));
