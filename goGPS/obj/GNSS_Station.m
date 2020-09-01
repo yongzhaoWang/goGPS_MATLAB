@@ -3901,13 +3901,13 @@ classdef GNSS_Station < handle
                 lon_lim = minMax(lon_tmp) + [-0.05 0.05];
                 lat_lim = minMax(lat_tmp) + [-0.05 0.05];
             else
-                lon_lim = minMax(lon_tmp); lon_lim = lon_lim + [-1 1] * diff(lon_lim) / 6;
-                lat_lim = minMax(lat_tmp); lat_lim = lat_lim + [-1 1] * diff(lat_lim) / 6;
+                lon_lim = minMax(lon_tmp); lon_lim = min(179.999, max(-179.999, lon_lim + [-1 1] * diff(lon_lim) / 6));
+                lat_lim = minMax(lat_tmp); lat_lim = min(89.999, max(-89.999,lat_lim + [-1 1] * diff(lat_lim) / 6));
             end
             lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
             lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
             nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
-            clon = nwse([2 4]) + [-0.001 0.001];
+            clon =  min(180, max(-180, nwse([2 4]) + [-0.001 0.001]));
             clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
 
             m_proj('equidistant','lon',clon,'lat',clat);   % Projection
@@ -7053,6 +7053,7 @@ classdef GNSS_Station < handle
                             % Use the data of the GNSS only -> radiosonde ppressure is not valid
                             zhd_corr = -Atmosphere.getZenithDelayCorrection(coo2, pr2(idt_gnss), coo1);
                         end
+                        pause(0.1);
                         figure(fh);
                         Core_Utils.plotSep(s_time.getMatlabTime, (s_ztd - interp1q(time_corr, zhd_corr, s_time.getMatlabTime)) * 1e2, '.-', 'LineWidth', 2);
 
@@ -7070,7 +7071,8 @@ classdef GNSS_Station < handle
                         m_diff_sta_hcorr(s) = mean(ztd_diff_sta_hcorr, 1, 'omitnan');
                         s_diff_sta_hcorr(s) = std(ztd_diff_sta_hcorr, 1, 'omitnan');
                         log.addMonoMessage(sprintf('%2d)  %6.2f cm    %6.2f cm      %4s  %9.1f   %9.1f   "%s"', s, m_diff_sta_hcorr(s), s_diff_sta_hcorr(s), sta_list(id_rec(s)).getMarkerName4Ch, round(d3d(s) / 1e3), dup(s), rds(s).getName()));
-
+                        
+                        pause(0.1);
                         figure(fh);
                         plot(time_rds.getMatlabTime, ztd_rds, '.k', 'MarkerSize', 30, 'LineWidth', 2);
                         plot(time_rds.getMatlabTime, ztd_rds, '.w', 'MarkerSize', 40, 'LineWidth', 2);
@@ -7101,20 +7103,21 @@ classdef GNSS_Station < handle
                         Core_UI.addBeautifyMenu(fh);             
                         fh.Visible = 'on'; drawnow;
                         
-                        % Histogram
-                        fh = figure('Visible', 'off');
-                        Core_UI.beautifyFig(fh);
-                        fh.Name = sprintf('%03d: Rds Hist %s', fh.Number, rds(s).sta_num); fh.NumberTitle = 'off';                        
-                        fh_list = [fh_list; fh]; %#ok<AGROW>
-                        fig_name = sprintf('Raob_ZTD_%s_validation_hist', rds(s).sta_num);
-                        fh.UserData = struct('fig_name', fig_name);
-                        hist(ztd_diff_sta_hcorr,25);
-                        title('Histogram of ZTD RAOB - GNSS (ZHD corrected)');
-                        xlabel('dZTD [cm]');
-                        Core_UI.beautifyFig(fh);
-                        Core_UI.addExportMenu(fh);             
-                        Core_UI.addBeautifyMenu(fh);             
-                        fh.Visible = 'on'; drawnow;                        
+                        % % Histogram
+                        % pause(0.1);
+                        % fh = figure('Visible', 'off');
+                        % Core_UI.beautifyFig(fh);
+                        % fh.Name = sprintf('%03d: Rds Hist %s', fh.Number, rds(s).sta_num); fh.NumberTitle = 'off';                        
+                        % fh_list = [fh_list; fh]; %#ok<AGROW>
+                        % fig_name = sprintf('Raob_ZTD_%s_validation_hist', rds(s).sta_num);
+                        % fh.UserData = struct('fig_name', fig_name);
+                        % hist(ztd_diff_sta_hcorr,25);
+                        % title('Histogram of ZTD RAOB - GNSS (ZHD corrected)');
+                        % xlabel('dZTD [cm]');
+                        % Core_UI.beautifyFig(fh);
+                        % Core_UI.addExportMenu(fh);             
+                        % Core_UI.addBeautifyMenu(fh);             
+                        % fh.Visible = 'on'; drawnow;                        
                     end                     
                 end
                 
@@ -7185,13 +7188,13 @@ classdef GNSS_Station < handle
                     %col_data = Cmap.getColor(round(data_mean * 10) + n_col, 2 * n_col, 'RdBu');
                     col_data = Cmap.getColor(max(1, round(abs(data_mean) * 10) + 1), n_col + 1, 'linspaced');
                     plot(x, y, 's', ...
-                        'MarkerSize', 32, ...
+                        'MarkerSize', 28, ...
                         'MarkerFaceColor', [0 0 0], ...
                         'MarkerEdgeColor', [0 0 0], ...
                         'UserData', 'RAOB_point');
                     for r = 1 : numel(rds)
                         plot(x(r), y(r), 's', ...
-                            'MarkerSize', 28, ...
+                            'MarkerSize', 24, ...
                             'MarkerFaceColor', col_data(r,:), ...
                             'UserData', 'RAOB_point');
                     end
@@ -7631,19 +7634,20 @@ classdef GNSS_Station < handle
                     lat = tsc.getLat;
                     lon = tsc.getLon;
                     % set map limits
-                    if numel(gnss_list) == 1
+                    
+                    if numel(lon) == 1
                         lon_lim = minMax(lon) + [-0.05 0.05];
                         lat_lim = minMax(lat) + [-0.05 0.05];
                     else
-                        lon_lim = minMax(lon); lon_lim = lon_lim + [-1 1] * diff(lon_lim) / 6;
-                        lat_lim = minMax(lat); lat_lim = lat_lim + [-1 1] * diff(lat_lim) / 6;
+                        lon_lim = minMax(lon); lon_lim = min(179.999, max(-179.999, lon_lim + [-1 1] * diff(lon_lim) / 6));
+                        lat_lim = minMax(lat); lat_lim = min(89.999, max(-89.999,lat_lim + [-1 1] * diff(lat_lim) / 6));
                     end
                     lon_lim = lon_lim + [-1 1] * max(0, (0.5 - diff(minMax(lon_lim))) / 2);
                     lat_lim = lat_lim + [-1 1] * max(0, (0.5 - diff(minMax(lat_lim))) / 2);
                     nwse = [lat_lim(2), lon_lim(1), lat_lim(1), lon_lim(2)];
-                    clon = nwse([2 4]) + [-0.001 0.001];
+                    clon =  min(180, max(-180, nwse([2 4]) + [-0.001 0.001]));
                     clat = max(-90, min(90, nwse([3 1]) + [-0.001 0.001]));
-                    
+            
                     fh = figure('Visible', 'off');
                     fh.Color = [1 1 1];
                     
