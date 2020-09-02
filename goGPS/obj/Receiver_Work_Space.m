@@ -9569,6 +9569,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                     if s0 > 0
                         this.updateAllAvailIndex();
+                        this.updateAllTOT();
                         % estimates dt coarse
                         this.coarseDtEstimation();
                         this.updateAllTOT();
@@ -9618,10 +9619,13 @@ classdef Receiver_Work_Space < Receiver_Commons
                     obs_set.merge(this.getPrefObsSetCh(['C' num2str(f(1))], sys_c));
                 end
             end
-              [synt_obs] = this.getSyntTwin(obs_set);
+                    all_go_id = unique(obs_set.go_id);
+            
+            sat_cache = this.getSatCache(all_go_id,true); 
+            [synt_obs] = this.getSyntTwin(obs_set);
             diff_obs = zero2nan(obs_set.obs) - zero2nan(synt_obs);
             dt = median(diff_obs ,2,'omitnan');
-            this.dt = dt/Core_Utils.V_LIGHT;
+            this.dt = nan2zero(dt/Core_Utils.V_LIGHT);
         end
         
         function s0 = coarsePositioning(this, obs_set)
