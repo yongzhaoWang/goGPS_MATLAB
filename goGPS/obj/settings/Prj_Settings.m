@@ -342,8 +342,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_ZTD_PPP  = true; % estimate ztd in ppp
         FLAG_ZTD_NET  = true; % estimate ztd in net
         
-        TPARAM_ZTD_PPP  = LS_Parametrization.EP_WISE;   % time paramterization of ztd ppp
-        TPARAM_ZTD_NET  = LS_Parametrization.SPLINE_CUB;  % time paramterization of ztd net
+        TPARAM_ZTD_PPP  = 1;   % time paramterization of ztd ppp defult epochwise
+        TPARAM_ZTD_NET  = 3;  % time paramterization of ztd net defult cubic spline
         
         RATE_ZTD_PPP = 900; % time rate ztd ppp
         RATE_ZTD_NET = 900; % time rate ztd net
@@ -357,8 +357,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_GRAD_PPP  = true; % estimate ztd gradient in ppp
         FLAG_GRAD_NET  = true; % estimate ztd gradient in net
         
-        TPARAM_GRAD_PPP  = LS_Parametrization.EP_WISE;  % time paramterization of ztd  gradient ppp
-        TPARAM_GRAD_NET  = LS_Parametrization.SPLINE_CUB;  % time paramterization of ztd gradient net 
+        TPARAM_GRAD_PPP  = 1;  % time paramterization of ztd  gradient ppp
+        TPARAM_GRAD_NET  = 3;  % time paramterization of ztd gradient net 
         
         RATE_GRAD_PPP = 7200; % time rate ztd gradient ppp
         RATE_GRAD_NET  = 7200; % time rate ztd gradient net
@@ -3567,6 +3567,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.mapping_function_gradient = 2;  % Use chen and herring
 
             this.meteo_data = 2;            % Use GPT
+            
+            this.tparam_ztd_ppp  = 1;  % time paramterization of ztd   ppp
+            this.tparam_grad_ppp  = 1;  % time paramterization of ztd  gradient ppp
+
             
             % Regularization
             
