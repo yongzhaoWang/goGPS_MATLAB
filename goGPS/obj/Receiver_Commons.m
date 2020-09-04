@@ -1423,7 +1423,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         core = Core.getCurrentCore;
                         sky = core.sky;
                         if isempty(state.eph_name)
-                            fw = File_Wizard(Core.getCurrentSettings);
+                            fw = File_Wizard();
                             fw.conjureNavFiles(this.time.first, this.time.last);
                         end
                         lim = this.time.first.getCopy;

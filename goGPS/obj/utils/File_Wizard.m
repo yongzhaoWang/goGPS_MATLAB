@@ -52,7 +52,6 @@ classdef File_Wizard < handle
     properties (SetAccess = protected, GetAccess = public)
         date_start; % first epoch of common observations (among all the obs files)
         date_stop;  % last epoch of common observations (among all the obs files)
-        center_name;% center code
         rm;         % resource manager
         sys_c;      % system collector
         current_resource; % current resource being processed 
@@ -62,10 +61,6 @@ classdef File_Wizard < handle
         nrt = false;%near real time flag % continue even if all the files have not been found
     end
     
-    properties (SetAccess = protected, GetAccess = protected)
-        state = Core.getCurrentSettings();     %  Global state, to import custom server and service preferences
-    end
-    
     properties (SetAccess = private, GetAccess = private)
         log = Core.getLogger(); % Handler to the log object
         fnp = File_Name_Processor();
@@ -73,20 +68,14 @@ classdef File_Wizard < handle
     end
     
     methods
-        function this = File_Wizard(state)
+        function this = File_Wizard()
             % Constructor
             %  SYNTAX File_Wizard(<state>)
             % Uses state for getting settings info
             % Modify state to update eph_name and clk_name
-            
-            if (nargin >= 1)
-                this.state = handle(state);
-            else
-                this.state = Core.getState();
-            end
-            this.rm = Remote_Resource_Manager(this.state.getRemoteSourceFile());
-            this.sys_c = this.state.cc.SYS_C(this.state.cc.active_list);
-            this.center_name = this.state.getRemoteCenter;
+            state = Core.getState;
+            this.rm = Remote_Resource_Manager(state.getRemoteSourceFile());
+            this.sys_c = state.getConstellationCollector.getActiveSysChar;            
         end
         
         function [status] = conjureResource(this, resource_name, date_start, date_stop, center_name)
@@ -112,8 +101,9 @@ classdef File_Wizard < handle
                 this.date_start = date_start;
                 this.date_stop = date_stop;
             end
+            state = Core.getState;
             if nargin < 5
-                center_name  = this.center_name;
+                center_name = state.getRemoteCenter;
             end
             this.current_resource = resource_name;
             [file_tree, latency] = this.rm.getFileStr(center_name, resource_name);
@@ -137,7 +127,7 @@ classdef File_Wizard < handle
                 this.log.addWarning('Some files not found locally');
             end
             % check remote
-            if  this.state.isAutomaticDownload && ~status
+            if  state.isAutomaticDownload && ~status
                 if latency(1)~=0 && n_h_passed  < latency(1)
                     this.log.addWarning(this.log.indent(sprintf('Not enough latency for finding all the %s orbits...', resource_name)));
                     status = false;
@@ -160,7 +150,7 @@ classdef File_Wizard < handle
                     end
                 end
             end
-            this.sys_c = this.state.cc.SYS_C(this.state.cc.active_list); % set sys_c again from constellation collector
+            this.sys_c = state.getConstellationCollector.getActiveSysChar; % set sys_c again from constellation collector
         end
         
         function idx = getServerIdx(this, address , port, user, passwd)
@@ -198,6 +188,7 @@ classdef File_Wizard < handle
             ext = '';
             vmf_res = this.vmf_res;
             vmf_source = upper(this.vmf_source); 
+            state = Core.getState;
             if iscell(file_tree) % if is a leaf
                 if strcmp(file_tree{1}, 'null') || file_tree{2}
                     status = true;
@@ -225,7 +216,7 @@ classdef File_Wizard < handle
                                 server = regexp(file_name,'(?<=\?{)\w*(?=})','match','once'); % search for ?{server_name} in paths
                                 file_name = strrep(file_name,['?{' server '}'],'');
                                 [s_ip, port, user, passwd] = this.rm.getServerIp(server);
-                                out_dir = this.state.getFileDir(file_name);
+                                out_dir = state.getFileDir(file_name);
                                 out_dir =  this.fnp.dateKeyRep(out_dir, date_list.getEpoch(date_list.length - i + 1),'0',vmf_res,vmf_source);
                                 if ~(exist(out_dir, 'file') == 7)
                                     mkdir(out_dir);
@@ -254,9 +245,9 @@ classdef File_Wizard < handle
                         this.log.addError(sprintf('File resource "%s" not found: remote_resource.ini seems to be corrupted', file_tree{1}));
                     else
                         f_name = f_struct.filename;
-                        this.state.setFile(f_name, this.current_resource);
+                        state.setFile(f_name, this.current_resource);
                         if strcmp(mode, 'local_check')
-                            f_path = this.fnp.checkPath([this.state.getFileDir(f_name) filesep f_name]);
+                            f_path = this.fnp.checkPath([state.getFileDir(f_name) filesep f_name]);
                             step_s = min(3*3600, this.fnp.getStepSec(f_path)); %supposing a polynomial of degree 12 and SP3 orbit data every 15 min (at worst)
                             dsa = this.date_start.getCopy();
                             dso = this.date_stop.getCopy();
@@ -408,8 +399,9 @@ classdef File_Wizard < handle
             if (GPS_Time.now() - dso) < (24*3600)
                 this.nrt = true;
             end
+            state = Core.getState;
             if nargin < 4
-               center_name = this.state.getRemoteCenter();
+               center_name = state.getRemoteCenter();
             end
             % check if selected center os compatible with selected
             % constellation
@@ -425,19 +417,19 @@ classdef File_Wizard < handle
                     if length(intersect(this.sys_c,sys_c)) == length(this.sys_c)
                         if strcmp(split{2}, center_name)
                             is_ok = true;
-                            this.center_name = center_name;
+                            this.setCurCenter(center_name);
                         end
                     end
                 end
             end
             
             if ~strcmp(center_name, 'none')
-                this.state.setNoResources(false);
+                state.setNoResources(false);
             end
 
             if ~is_ok
                 if strcmp(center_name, 'none')
-                    this.state.setNoResources(true);
+                    state.setNoResources(true);
                     this.log.addWarning('Resource center have not been selected, orbits will not be computed!!!');                    
                 else
                     this.log.addError(['Selected center: ' center_name ' not compatible with selected constellations: ' this.sys_c]);
@@ -447,24 +439,24 @@ classdef File_Wizard < handle
                 
             % Prepare all the files needed for processing
             
-            if ~this.state.isNoResources()
-                %this.state.updateNavFileName();
-                %this.state.updateErpFileName();
+            if ~state.isNoResources()
+                %state.updateNavFileName();
+                %state.updateErpFileName();
                 this.conjureNavFiles(dsa, dso);
-                if this.state.isAutomaticDownload()
+                if state.isAutomaticDownload()
                     this.conjureDCBFiles(dsa, dso);
                     this.conjureCRXFiles(dsa, dso);
                 end
-                if this.state.needIonoMap() || this.state.isIonoKlobuchar()
-                    this.conjureIonoFiles(dsa, dso, this.state.isIonoKlobuchar());
+                if state.needIonoMap() || state.isIonoKlobuchar()
+                    this.conjureIonoFiles(dsa, dso, state.isIonoKlobuchar());
                     if false
                         this.conjureResource('hoic', dsa, dso);
                     end
                 end
-                if this.state.isAtmLoading()
+                if state.isAtmLoading()
                     this.conjureAtmLoadFiles(dsa, dso);
                 end
-                if this.state.isVMF()
+                if state.isVMF()
                     this.conjureVmfFiles(dsa, dso);
                 end
             end
@@ -488,8 +480,9 @@ classdef File_Wizard < handle
             %date_stop.addSeconds(6*3600);
             list_res = {'1x1','2.5x2','5x5'};
             list_source = {'op','ei','fc'};
-            list_preferred_res = list_res(this.state.getPreferredVMFRes());
-            list_preferred_source = list_source(this.state.getPreferredVMFSource());
+            state = Core.getState;
+            list_preferred_res = list_res(state.getPreferredVMFRes());
+            list_preferred_source = list_source(state.getPreferredVMFSource());
             state = Core.getCurrentSettings();
             if state.mapping_function == 2
                 vers = '1';
@@ -537,6 +530,7 @@ classdef File_Wizard < handle
             if ~legacy
                 status = this.conjureResource('bias', date_start, date_stop);
             else
+                state = Core.getState;
                 this.log.addMarkedMessage('Checking DCB files');
                 if date_start.getCalEpoch >= 2013 % use CAS DCB
                     dcb_ok = true;
@@ -548,7 +542,7 @@ classdef File_Wizard < handle
                     dcb_type = 'final';
                     dcb_name = this.source.(archive).par.(ss).center.(provider).dcb.(dcb_type);
                     [~, dcb_file_name, ext] = fileparts(dcb_name);
-                    this.state.setDcbFile([this.state.getDcbDir filesep dcb_file_name]);
+                    state.setDcbFile([state.getDcbDir filesep dcb_file_name]);
                     tmp_date_start = date_start.getCopy;
                     tmp_date_stop = date_stop.getCopy;
                     file_list = fnp.dateKeyRepBatch(dcb_name, tmp_date_start, tmp_date_stop);
@@ -557,7 +551,7 @@ classdef File_Wizard < handle
                     for i = 1 : length(file_list)
                         [~, name, ext] = fileparts(file_list{i});
                         names{end+1} = name;
-                        if exist(fnp.checkPath([this.state.getDcbDir filesep name]), 'file') ~= 2
+                        if exist(fnp.checkPath([state.getDcbDir filesep name]), 'file') ~= 2
                             dcb_ok(i) = false;
                         end
                     end
@@ -575,7 +569,7 @@ classdef File_Wizard < handle
                                     aria_file_list{i} = aria_file_list{i}(1 : end - length(ext));
                                 end
                             end
-                            dcb_ok = Core_Utils.aria2cDownloadUncompress(aria_file_list, f_ext_lst, dcb_ok, [], this.state.getDcbDir());
+                            dcb_ok = Core_Utils.aria2cDownloadUncompress(aria_file_list, f_ext_lst, dcb_ok, [], state.getDcbDir());
                             if any(~dcb_ok)
                                 id_ko = find(dcb_ok == 0);
                                 for i = id_ko'
@@ -583,16 +577,16 @@ classdef File_Wizard < handle
                                 end
                             end
                         catch ex
-                            this.source.(archive).ftpd.download(this.source.(archive).par.(ss).path, file_list, this.state.getDcbDir());
+                            this.source.(archive).ftpd.download(this.source.(archive).par.(ss).path, file_list, state.getDcbDir());
                             for i = 1 : length(file_list)
                                 if not(dcb_ok(i))
                                     [~, name, ext] = fileparts(file_list{i});
                                     if (isunix())
-                                        system(['gzip -fd ' this.state.getDcbDir() filesep name ext]);
+                                        system(['gzip -fd ' state.getDcbDir() filesep name ext]);
                                     else
                                         try
-                                            [status, result] = system(['".\utility\thirdParty\7z1602-extra\7za.exe" -y x ' '"' this.state.getDcbDir() filesep name ext '"' ' -o' '"' this.state.getDcbDir() '"']); %#ok<ASGLU>
-                                            delete([this.state.getDcbDir() filesep name ext]);
+                                            [status, result] = system(['".\utility\thirdParty\7z1602-extra\7za.exe" -y x ' '"' state.getDcbDir() filesep name ext '"' ' -o' '"' state.getDcbDir() '"']); %#ok<ASGLU>
+                                            delete([state.getDcbDir() filesep name ext]);
                                         catch
                                             this.log.addWarning(sprintf(['Please decompress the ' name ext ' file before trying to use it in goGPS.']));
                                             compressed = 1;
@@ -660,7 +654,7 @@ classdef File_Wizard < handle
                         ftp_server = ftp(aiub_ip);
                     catch
                         this.log.addWarning('connection failed.\n');
-                        this.state.setDcbFile({''});
+                        state.setDcbFile({''});
                         return
                     end
                     
@@ -717,7 +711,7 @@ classdef File_Wizard < handle
                                 %cell array with the paths to the downloaded files
                                 entry = {[down_dir, '/', s2]};
                                 file_dcb = [file_dcb; entry]; %#ok<AGROW>
-                                this.state.setDcbFile(file_dcb);
+                                state.setDcbFile(file_dcb);
                             end
                             
                             if (month(m) == 12)
@@ -740,7 +734,7 @@ classdef File_Wizard < handle
             %   this.conjureNavFiles(date_start, date_stop)
             %
             this.log.addMarkedMessage('Checking ephemerides / clocks / ERPs');
-            list_preferred = this.state.getPreferredEph();
+            list_preferred = Core.getState.getPreferredEph();
             for i = 1 : length(list_preferred)
                 status = this.conjureResource(list_preferred{i}, date_start, date_stop);
                 if status || (this.nrt && (strcmp(list_preferred{i},'ultra') || strcmp(list_preferred{i},'broadcast')))
@@ -765,8 +759,10 @@ classdef File_Wizard < handle
             %   this.conjureIonoFiles(date_start, date_stop)
             %
             this.log.addMarkedMessage('Checking ionospheric resources files');
-            list_preferred = this.state.preferred_iono;
-            iono_center = this.state.getRemoteIonoCenter();
+            state = Core.getState;
+            list_preferred = state.preferred_iono;
+            iono_center = state.getRemoteIonoCenter();
+            status = true;
             for i = 1 : length(list_preferred)
                 if strcmp(list_preferred{i}, 'broadcast')
                     status = this.conjureResource(['iono_' list_preferred{i}], date_start, date_stop, iono_center);
@@ -780,11 +776,15 @@ classdef File_Wizard < handle
                     break
                 end
             end
-            if (this.state.iono_model == 2) && (this.state.iono_management == 3 || this.state.flag_apr_iono)
+            if (state.iono_model == 2) && (state.iono_management == 3 || state.flag_apr_iono)
                 status = this.conjureResource(['iono_broadcast'], date_start, date_stop, iono_center);
             end
             if status
-                this.log.addStatusOk('Ionosphere resource files are present ^_^')
+                if isempty(list_preferred)
+                    this.log.addStatusOk('No iono files requested, nothing to do!')
+                else
+                    this.log.addStatusOk('Ionosphere resource files are present ^_^')
+                end
             else
                 this.log.addWarning('Not all iono files found program might misbehave')
             end
@@ -916,7 +916,277 @@ classdef File_Wizard < handle
             end
             log.addStatusOk('CRX files are present ^_^')
         end
+    end
+    
+    methods
+        function center_list = getAvailableCenters(this)
+            % Get all the centers available
+            %
+            % SYNTAX
+            %   center_list = this.getAvailableCenters
+            center_list = this.rm.getCenterList();
+            [extended, ss] = this.rm.getCenterListExtended();
+            center_list = [center_list extended ss];
+        end
         
+        function center_list = getAvailableIonoCenters(this)
+            % Get all the centers available
+            %
+            % SYNTAX
+            %   center_list = this.getAvailableCenters
+            center_list = this.rm.getCenterList(1);
+            extended = this.rm.getCenterListExtended(1);
+            center_list = [center_list extended];
+        end
+        
+        function [cur_center, id_center] = getCurCenter(this)
+            % Get the current orbit center
+            %
+            % SYNTAX
+            %   [cur_center, id_center] = this.getCurCenter();
+            cur_center = Core.getState.getCurCenter();
+            center_list = this.rm.getCenterList();
+            id_center = find(ismember(center_list, cur_center));
+        end
+        
+        function setCurCenter(this, cur_center, preferred_type)
+            % Set the current orbit center
+            %
+            % INPUT
+            %   cur_center is the name (char or cell) of the center           
+            %
+            % SYNTAX
+            %   this.setCurCenter(cur_center, preferred_type);
+            %
+            % SEE ALSO
+            %   getAvailableCenters
+            %   setPreferredOrbit
+            center_list = this.rm.getCenterList();
+            if isnumeric(cur_center)
+                cur_center = center_list(cur_center);
+            else
+                if ischar(cur_center)
+                    cur_center = {cur_center};
+                end
+                if ~ismember(cur_center, center_list)
+                    Core.getLogger.addError(sprintf('Unknown center "%s"', cur_center{1}));
+                    return
+                end
+            end
+            state = Core.getState;
+            state.setCurCenter(cur_center);
+            if nargin == 3
+                this.setPreferredOrbit(preferred_type);
+            else
+                this.setPreferredOrbit(true(4,1));
+            end
+        end
+        
+        function [cur_center, id_center] = getCurIonoCenter(this)
+            % Get the current orbit center
+            %
+            % SYNTAX
+            %   [cur_center, id_center] = this.getCurCenter();
+            cur_center = Core.getState.getCurIonoCenter();
+            center_list = this.rm.getCenterList();
+            id_center = find(ismember(center_list, cur_center));
+        end
+        
+        function setCurIonoCenter(this, cur_center, preferred_type)
+            % Set the current orbit center
+            %
+            % INPUT
+            %   cur_center is the name (char or cell) of the center           
+            %
+            % SYNTAX
+            %   this.setCurCenter(cur_center);
+            %
+            % SEE ALSO
+            %   getAvailableIonoCenters
+            %   setPreferredIono
+            center_list = this.rm.getCenterList(1);
+            if isnumeric(cur_center)
+                cur_center = center_list(cur_center);
+            else
+                if ischar(cur_center)
+                    cur_center = {cur_center};
+                end
+                if ~ismember(cur_center, center_list)
+                    Core.getLogger.addError(sprintf('Unknown iono center "%s"', cur_center{1}));
+                    return
+                end
+            end
+            state = Core.getState;
+            state.setCurIonoCenter(cur_center);
+            if nargin == 3
+                this.setPreferredIono(preferred_type);
+            else
+                this.setPreferredIono(true(4,1));
+            end
+        end
+        
+        function [flag, flag_name] = getPreferredOrbit(this)
+            % Get the preferred orbit sequence:
+            %   1 final
+            %   2 rapid
+            %   3 ultra
+            %   4 broadcast
+            %
+            % OUPUT
+            %   flag is a logical array with 4 values (see above)
+            %   flag_name is a cell array with the name of the preference
+            %
+            % SYNTAX
+            %   flag = this.getPreferredOrbit()
+            flag = Core.getState.getPreferredOrbit;
+            if nargout == 2
+                flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
+                flag_name = flag_name(flag);
+            end
+        end
+        
+        function setPreferredOrbit(this, flag)
+            % Set the preferred orbit sequence:
+            %   1 final
+            %   2 rapid
+            %   3 ultra
+            %   4 broadcast
+            %
+            % INPUT
+            %   flag is a logical array with 4 values (see above)
+            %   or it can be is a cell array with the name of the preference
+            %
+            % SYNTAX
+            %   this.setPreferredOrbit(flag)
+            
+            if ischar(flag)
+                flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
+                flag = ismember(flag_name, {flag});
+            end
+            if iscell(flag)
+                flag = ismember(flag_name, {flag});
+            end
+            if ~islogical(flag)
+                tmp = false(4,1);
+                tmp(flag) = true;
+                flag = tmp;
+            end
+            Core.getState.setPreferredOrbit(flag);
+        end
+        
+        function [flag, flag_name] = getPreferredIono(this)
+            % Get the preferred orbit sequence:
+            %   1 final
+            %   2 predicted1 (one day ahead)
+            %   3 predicted2 (two day ahead)
+            %   4 broadcast
+            %
+            % OUPUT
+            %   flag is a logical array with 4 values (see above)
+            %   flag_name is a cell array with the name of the preference
+            %
+            % SYNTAX
+            %   flag = this.getPreferredIono()
+            flag = Core.getState.getPreferredIono;
+            if nargout == 2
+                flag_name = {'final', 'predicted1', 'predicted2', 'broadcast'};
+                flag_name = flag_name(flag);
+            end
+        end
+        
+        function setPreferredIono(this, flag)
+            % Set the preferred orbit sequence:
+            %   1 final
+            %   2 predicted1 (one day ahead)
+            %   3 predicted2 (two day ahead)
+            %   4 broadcast
+            %
+            % INPUT
+            %   flag is a logical array with 4 values (see above)
+            %   or it can be is a cell array with the name of the preference
+            %
+            % SYNTAX
+            %   this.setPreferredOrbit(flag)
+            
+            if ischar(flag)
+                flag_name = {'final', 'predicted1', 'predicted2', 'broadcast'};
+                flag = ismember(flag_name, {flag});
+            end
+            if iscell(flag)
+                flag = ismember(flag_name, {flag});
+            end
+            if ~islogical(flag)
+                tmp = false(4,1);
+                tmp(flag) = true;
+                flag = tmp;
+            end
+            Core.getState.setPreferredIono(flag);
+        end
+        
+        function downloadResource(this, type, date_start, date_stop)
+            % Download resourcess:
+            %   eph             download ephemeris and clocks
+            %   dcb / bias      download biases (or differential biases)
+            %   crx             download Bernese file with problematic satellits
+            %   atm             download atmospheric loading files
+            %   iono            download ionex (or other ionosphere products)
+            %   iono_brdc       download broadcast Klobuchar parameters
+            %   vmf             download vienna mapping fanctions
+            %
+            % INPUT
+            %   type            type of resource to download [char]
+            %   date_start      date start [GPS_Time]
+            %   date_stop       date stop [GPS_Time]
+            %
+            % SYNTAX
+            %   this.downloadResource(type, date_start, date_stop)
+            
+            if nargin < 3
+                date_start = this.date_start;
+                date_stop = this.date_stop;
+            else
+                if ischar(date_start)
+                    date_start = GPS_Time(date_start);
+                    date_stop = GPS_Time(date_stop);
+                end
+                    
+                this.date_start = date_start.getCopy;
+                if nargin < 4
+                    this.date_stop = date_start.getCopy;
+                    this.date_stop.addIntSeconds(86399); % add 1 day
+                else
+                    this.date_stop = date_stop.getCopy;
+                end
+            end
+            if (GPS_Time.now() - date_stop) < (24*3600)
+                this.nrt = true;
+            end
+
+            if ~iscell(type)
+                type = {type};
+            end
+            Core.getState.setAutomaticDownload(true)
+            for t = 1 : numel(type)
+                cur_type = type{t};
+                switch cur_type
+                    case {'eph'}
+                        this.conjureNavFiles(date_start, date_stop);
+                    case {'dcb', 'bias'}
+                        this.conjureDCBFiles(date_start, date_stop);
+                    case {'crx'}
+                        this.conjureCRXFiles(date_start, date_stop);
+                    case {'atm'}
+                        this.conjureAtmLoadFiles(date_start, date_stop);
+                    case {'iono'}
+                        flag_brdc = Core.getState.isIonoKlobuchar();
+                        this.conjureIonoFiles(date_start, date_stop, flag_brdc);
+                    case {'iono_brdc'}
+                        this.conjureIonoFiles(date_start, date_stop, true);
+                    case {'vmf'}
+                        this.conjureVmfFiles(date_start, date_stop);
+                end
+            end
+        end
     end
     
 end

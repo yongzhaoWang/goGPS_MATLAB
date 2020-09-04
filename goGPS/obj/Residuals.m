@@ -470,7 +470,7 @@ classdef Residuals < Exportable
             core = Core.getCurrentCore;
             sky = core.sky;
             if isempty(core.state.eph_name)
-                fw = File_Wizard(Core.getCurrentSettings);
+                fw = File_Wizard();
                 fw.conjureNavFiles(this.time.first, this.time.last);
             end
             lim = this.time.first.getCopy;

@@ -2451,7 +2451,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             r_man = Remote_Resource_Manager.getInstance();
             
             % Update Iono Preferences
-            available_iono = r_man.getIonoType(state.getRemoteCenter());
+            available_iono = r_man.getIonoType();
             flag_preferred_iono = true(4,1);
             for i = 1 : 4
                 this.ripref{i}.Enable = iif(available_iono(i), 'on', 'off');
@@ -2478,7 +2478,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             state = Core.getCurrentSettings;
             if strcmp(caller.UserData(1:4), 'iono')
                 % Update Iono Preferences
-                available_iono = r_man.getIonoType(state.getRemoteCenter());
+                available_iono = r_man.getIonoType();
                 flag_preferred_iono = true(4,1);
                 for i = 1 : 4
                     flag_preferred_iono(i) = available_iono(i) && logical(this.ripref{i}.Value);
