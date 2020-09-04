@@ -2576,28 +2576,30 @@ classdef Receiver_Work_Space < Receiver_Commons
                 phr_t = phr((e-1) : (e+1), :);
                 n_pres_strm = sum(~isnan(phr_t(2,:)));
                 complete_triple = find(sum(isnan(phr_t)) == 0);
-                %max el choose pivot
-                [~,max_el_id] = max(el(e,complete_triple));
-                
-                sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
-                wl_t = min(wl,wl(complete_triple(max_el_id)));
-                td_phr = diff(sd_phr);
-                [o_idx, cs_idx] = Receiver_Work_Space.outlierCyscleSlipDetect(td_phr, wl_t, ol_thr, cs_thr);
-                if sum(o_idx) == n_pres_strm || sum(cs_idx) == n_pres_strm% pivot might be the outlier or cycle slip choose a new one
-                    [~,idx_el] = sort(el(e,complete_triple),'descend');
-                    for i = 2 : lenght(idx_el)
-                        max_el_id = idx_el(i);
-                        sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
-                        wl_t = min(wl,wl(complete_triple(max_el_id)));
-                        td_phr = diff(sd_phr);
-                        [o_idx, cs_idx] = Receiver_Work_Space.outlierCyscleSlipDetect(td_phr, wl_t, ol_thr, cs_thr);
-                         if ~(sum(o_idx) == n_pres_strm || sum(cs_idx) == n_pres_strm) % we found a good pivot
-                             break
-                         end
+                if ~isempty(complete_triple)
+                    %max el choose pivot
+                    [~,max_el_id] = max(el(e,complete_triple));
+                    
+                    sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
+                    wl_t = min(wl,wl(complete_triple(max_el_id)));
+                    td_phr = diff(sd_phr);
+                    [o_idx, cs_idx] = Receiver_Work_Space.outlierCyscleSlipDetect(td_phr, wl_t, ol_thr, cs_thr);
+                    if sum(o_idx) == n_pres_strm || sum(cs_idx) == n_pres_strm% pivot might be the outlier or cycle slip choose a new one
+                        [~,idx_el] = sort(el(e,complete_triple),'descend');
+                        for i = 2 : lenght(idx_el)
+                            max_el_id = idx_el(i);
+                            sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
+                            wl_t = min(wl,wl(complete_triple(max_el_id)));
+                            td_phr = diff(sd_phr);
+                            [o_idx, cs_idx] = Receiver_Work_Space.outlierCyscleSlipDetect(td_phr, wl_t, ol_thr, cs_thr);
+                            if ~(sum(o_idx) == n_pres_strm || sum(cs_idx) == n_pres_strm) % we found a good pivot
+                                break
+                            end
+                        end
                     end
+                    this.sat.outliers_ph_by_ph(e,o_idx) = true;
+                    this.sat.cycle_slip_ph_by_ph(e,cs_idx) = true;
                 end
-                this.sat.outliers_ph_by_ph(e,o_idx) = true;
-                this.sat.cycle_slip_ph_by_ph(e,cs_idx) = true;
             end
             phr(this.sat.outliers_ph_by_ph) = nan;
             
@@ -2605,47 +2607,51 @@ classdef Receiver_Work_Space < Receiver_Commons
             phr_t = phr(1:2, :);
             n_pres_strm = sum(~isnan(phr_t(1,:)));
             complete_triple = find(sum(isnan(phr_t)) == 0);
-            [~,max_el_id] = max(el(1,complete_triple));
-            sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
-            td_phr = diff(sd_phr);
-            o_idx = abs(td_phr) > ol_thr | (~isnan(sd_phr(1,:)) & isnan(sd_phr(2,:)));
-            if sum(o_idx) == n_pres_strm
-                [~,idx_el] = sort(el(1, complete_triple),'descend');
-                for i = 2 : lenght(idx_el)
-                    max_el_id = idx_el(i);
-                    sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
-                    td_phr = diff(sd_phr);
-                    o_idx = abs(td_phr) > ol_thr | (~isnan(sd_phr(1,:)) & isnan(sd_phr(2,:)));
-                    if ~(sum(o_idx) == n_pres_strm)
-                        break
+            if ~isempty(complete_triple)
+                [~,max_el_id] = max(el(1,complete_triple));
+                sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
+                td_phr = diff(sd_phr);
+                o_idx = abs(td_phr) > ol_thr | (~isnan(sd_phr(1,:)) & isnan(sd_phr(2,:)));
+                if sum(o_idx) == n_pres_strm
+                    [~,idx_el] = sort(el(1, complete_triple),'descend');
+                    for i = 2 : lenght(idx_el)
+                        max_el_id = idx_el(i);
+                        sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
+                        td_phr = diff(sd_phr);
+                        o_idx = abs(td_phr) > ol_thr | (~isnan(sd_phr(1,:)) & isnan(sd_phr(2,:)));
+                        if ~(sum(o_idx) == n_pres_strm)
+                            break
+                        end
                     end
                 end
+                this.sat.outliers_ph_by_ph(1,o_idx) = true;
+                phr(1,o_idx) = nan;
             end
-            this.sat.outliers_ph_by_ph(1,o_idx) = true;
-            phr(1,o_idx) = nan;
             
             % check last epoch
             phr_t = phr((end-1):end, :);
             complete_triple = find(sum(isnan(phr_t)) == 0);
-            [~,max_el_id] = max(el(end,complete_triple));
-            n_pres_strm = sum(~isnan(phr_t(2,:)));
-            sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
-            td_phr = diff(sd_phr);
-            o_idx = abs(td_phr) > ol_thr | (isnan(sd_phr(1,:)) & ~isnan(sd_phr(2,:)));
-            if sum(o_idx) == n_pres_strm
-                [~,idx_el] = sort(el(end, complete_triple),'descend');
-                for i = 2 : lenght(idx_el)
-                    max_el_id = idx_el(i);
-                    sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
-                    td_phr = diff(sd_phr);
-                    o_idx = abs(td_phr) > ol_thr | (isnan(sd_phr(1,:)) & ~isnan(sd_phr(2,:)));
-                    if ~(sum(o_idx) == n_pres_strm)
-                        break
+            if ~isempty(complete_triple)
+                [~,max_el_id] = max(el(end,complete_triple));
+                n_pres_strm = sum(~isnan(phr_t(2,:)));
+                sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
+                td_phr = diff(sd_phr);
+                o_idx = abs(td_phr) > ol_thr | (isnan(sd_phr(1,:)) & ~isnan(sd_phr(2,:)));
+                if sum(o_idx) == n_pres_strm
+                    [~,idx_el] = sort(el(end, complete_triple),'descend');
+                    for i = 2 : lenght(idx_el)
+                        max_el_id = idx_el(i);
+                        sd_phr = phr_t - repmat(phr_t(:,complete_triple(max_el_id)),1,n_strm);
+                        td_phr = diff(sd_phr);
+                        o_idx = abs(td_phr) > ol_thr | (isnan(sd_phr(1,:)) & ~isnan(sd_phr(2,:)));
+                        if ~(sum(o_idx) == n_pres_strm)
+                            break
+                        end
                     end
                 end
+                this.sat.outliers_ph_by_ph(end,o_idx) = true;
+                phr(end,o_idx) = nan;
             end
-            this.sat.outliers_ph_by_ph(end,o_idx) = true;
-            phr(end,o_idx) = nan;
             
             % check start of arc if there is a cycle slip
             this.sat.cycle_slip_ph_by_ph(end,~isnan(phr(1,:))) = true; % first epoch if there is am observation put cs
@@ -9863,13 +9869,13 @@ classdef Receiver_Work_Space < Receiver_Commons
                 % setUPSA
                 
                 % 
-                
+                if sum(this.hasAPriori) ~= 0 %%% if there is an apriori information on the position
+                    s0 = iif(this.hasGoodApriori, 0.1, 5);
+                    this.xyz = Core.getReferenceFrame.getCoo(this.parent.getMarkerName4Ch,this.time.getCentralTime);
+                end
                 % if positioni is not fixed
                 if ~(this.isFixed || this.isFixedPrepro)
-                    if sum(this.hasAPriori) ~= 0 %%% if there is an apriori information on the position
-                        s0 = iif(this.hasGoodApriori, 0.1, 5);
-                        this.xyz = Core.getReferenceFrame.getCoo(this.parent.getMarkerName4Ch,this.time.getCentralTime);
-                    end
+                   
                     if sum(this.hasAPriori) == 0 || isempty(this.xyz) %%% if no apriori information on the position
                         sys_list_c = Core_Utils.getPrefSys(sys_list);
                         
@@ -9907,6 +9913,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         [dpos, s0] = this.codeStaticPositioning([],[],[],3);
                     end
                 else
+                    this.updateAllAvailIndex();
+                    this.updateAllTOT();
+                    this.coarseDtEstimation();
                     this.updateAllAvailIndex();
                     this.updateAllTOT();
                     this.updateAzimuthElevation(all_go_id)
