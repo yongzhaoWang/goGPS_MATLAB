@@ -221,7 +221,11 @@ classdef Remote_Resource_Manager < Ini_Manager
                 str = this.getData(['oc_' center_name], resource_name);
             end
             if isempty(str)
-                this.log.addWarning(sprintf('No resource %s for center %s',resource_name, center_name))
+                str = '';
+                if ~strcmp(center_name, 'default')
+                    str = ', using default';
+                end
+                this.log.addWarning(sprintf('No resource %s for center %s%s',resource_name, center_name, str))
                 file_structure = [];
                 latency = [];
             else
@@ -365,26 +369,28 @@ classdef Remote_Resource_Manager < Ini_Manager
             flag_frub(4) = ~isempty(this.getData(['oc_' center], 'broadcast'));
         end
         
-        function [flag_fp1p2b] = getIonoType(this, center)
+        function [flag_fp1p2b] = getIonoType(this, iono_center)
             % Get the iono type availability
             %
             % SYNTAX
 
             %   [flag_frub] = this.getIonoType(center)  
             state = Core.getCurrentSettings();
-            iono_center = state.getRemoteIonoCenter();
+            if nargin == 1
+                iono_center = state.getRemoteIonoCenter();
+            end
             if isempty(iono_center)
                 iono_center = 'default';
             end
             
             flag_fp1p2b = false(4, 1);
             
-            flag_fp1p2b(1) = ~isempty(this.getData(['ic_' iono_center], 'iono_final'));
-            flag_fp1p2b(2) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted1'));
-            flag_fp1p2b(3) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted2'));
-            flag_fp1p2b(4) = ~isempty(this.getData(['ic_' iono_center], 'iono_broadcast'));
+            flag_fp1p2b(1) = ~isempty(this.getData(['ic_' iono_center], 'iono_final')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_final'), 'empty');
+            flag_fp1p2b(2) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted1')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_predicted1'), 'empty');
+            flag_fp1p2b(3) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted2')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_predicted2'), 'empty');
+            flag_fp1p2b(4) = ~isempty(this.getData(['ic_' iono_center], 'iono_broadcast')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_broadcast'), 'empty');
             
-            if ~any(flag_fp1p2b)
+            if ~any(flag_fp1p2b) && ~strcmp(iono_center, 'none')
                 % Switch to default center
                 flag_fp1p2b(1) = ~isempty(this.getData(['ic_default'], 'iono_final'));
                 flag_fp1p2b(2) = ~isempty(this.getData(['ic_default'], 'iono_predicted1'));
