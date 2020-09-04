@@ -320,11 +320,11 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_COO_PPP  = true; % estimate coordinets in ppp
         FLAG_COO_NET  = true; % estimate coordinates in network
         
-        TPARAM_COO_PPP = LS_Parametrization.CONST; % time paramterization of coordinates ppp
-        TPARAM_COO_NET = LS_Parametrization.CONST; % time paramterization of coordinates net
+        TPARAM_COO_PPP = LS_Parametrization.CONST; % time parametrization of coordinates ppp
+        TPARAM_COO_NET = LS_Parametrization.CONST; % time parametrization of coordinates net
         
-        FPARAM_COO_PPP = LS_Parametrization.ALL_FREQ; % frequenccy paramterization of coordinates ppp
-        FPARAM_COO_NET = LS_Parametrization.ALL_FREQ;  % frequenccy paramterization of coordinates net
+        FPARAM_COO_PPP = LS_Parametrization.ALL_FREQ; % frequenccy parametrization of coordinates ppp
+        FPARAM_COO_NET = LS_Parametrization.ALL_FREQ;  % frequenccy parametrization of coordinates net
         
         RATE_COO_PPP = 0; % time rate coordinates ppp
         RATE_COO_NET = 0;  % time rate coordinates net
@@ -342,8 +342,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_ZTD_PPP  = true; % estimate ztd in ppp
         FLAG_ZTD_NET  = true; % estimate ztd in net
         
-        TPARAM_ZTD_PPP  = 1;   % time paramterization of ztd ppp defult epochwise
-        TPARAM_ZTD_NET  = 3;  % time paramterization of ztd net defult cubic spline
+        TPARAM_ZTD_PPP  = 1;   % time parametrization of ztd ppp defult epochwise
+        TPARAM_ZTD_NET  = 3;  % time parametrization of ztd net defult cubic spline
         
         RATE_ZTD_PPP = 900; % time rate ztd ppp
         RATE_ZTD_NET = 900; % time rate ztd net
@@ -357,8 +357,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_GRAD_PPP  = true; % estimate ztd gradient in ppp
         FLAG_GRAD_NET  = true; % estimate ztd gradient in net
         
-        TPARAM_GRAD_PPP  = 1;  % time paramterization of ztd  gradient ppp
-        TPARAM_GRAD_NET  = 3;  % time paramterization of ztd gradient net 
+        TPARAM_GRAD_PPP  = 1;  % time parametrization of ztd  gradient ppp
+        TPARAM_GRAD_NET  = 3;  % time parametrization of ztd gradient net 
         
         RATE_GRAD_PPP = 7200; % time rate ztd gradient ppp
         RATE_GRAD_NET  = 7200; % time rate ztd gradient net
@@ -367,7 +367,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         AREG_GRAD_NET = 0.02; % absolute regularization  ztd gradient  in network
         
         DREG_GRAD_PPP = 0.001; % differential regularization ztd gradient  in ppp
-        DREG_GRAD_NET = 0.001; % differential  regularization ztd gradient  in network
+        DREG_GRAD_NET = 0.001; % differential regularization ztd gradient  in network
         
         
         FLAG_SREG_ZTD_PPP = false;
@@ -439,8 +439,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_REC_IFBIAS_PPP = false;  % estimate receiver inter frequency bias ppp
         FLAG_REC_IFBIAS_NET = false;  % estimate receiver inter frequency bias net
         
-        TPARAM_REC_IFBIAS_PPP  = LS_Parametrization.SPLINE_CUB;  % time paramterization of receiver inter frequency bias ppp
-        TPARAM_REC_IFBIAS_NET  = LS_Parametrization.SPLINE_CUB;  % time paramterization of receiver inter frequency bias net
+        TPARAM_REC_IFBIAS_PPP  = LS_Parametrization.SPLINE_CUB;  % time parametrization of receiver inter frequency bias ppp
+        TPARAM_REC_IFBIAS_NET  = LS_Parametrization.SPLINE_CUB;  % time parametrization of receiver inter frequency bias net
         
         RATE_REC_IFBIAS_PPP = 3600;  % time rate of receiver inter frequency bias ppp 
         RATE_REC_IFBIAS_NET = 3600;  % time rate of receiver inter frequency bias net
@@ -454,8 +454,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_SAT_IFBIAS_PPP = true;  % estimate satellite inter frequency bias ppp
         FLAG_SAT_IFBIAS_NET = true;  % estimate satellite inter frequency bias net
         
-        TPARAM_SAT_IFBIAS_PPP = LS_Parametrization.SPLINE_CUB;  % time paramterization of satellite inter frequency bias ppp
-        TPARAM_SAT_IFBIAS_NET = LS_Parametrization.SPLINE_CUB;  % time paramterization of satellite inter frequency bias net
+        TPARAM_SAT_IFBIAS_PPP = LS_Parametrization.SPLINE_CUB;  % time parametrization of satellite inter frequency bias ppp
+        TPARAM_SAT_IFBIAS_NET = LS_Parametrization.SPLINE_CUB;  % time parametrization of satellite inter frequency bias net
         
         RATE_SAT_IFBIAS_PPP = 3600;  % time rate of satellite inter frequency bias ppp 
         RATE_SAT_IFBIAS_NET = 3600;  % time rate of satellite inter frequency bias net
@@ -469,8 +469,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_REC_TRKBIAS_PPP = true;  % estimate receiver inter tracking bias ppp
         FLAG_REC_TRKBIAS_NET = true;  % estimate receiver inter tracking bias net
         
-        TPARAM_REC_TRKBIAS_PPP = LS_Parametrization.CONST;  % time paramterization of receiver inter tracking bias ppp
-        TPARAM_REC_TRKBIAS_NET = LS_Parametrization.CONST;  % time paramterization of receiver inter tracking bias net
+        TPARAM_REC_TRKBIAS_PPP = LS_Parametrization.CONST;  % time parametrization of receiver inter tracking bias ppp
+        TPARAM_REC_TRKBIAS_NET = LS_Parametrization.CONST;  % time parametrization of receiver inter tracking bias net
         
         RATE_REC_TRKBIAS_PPP = 0;  % time rate of receiver inter tracking bias ppp 
         RATE_REC_TRKBIAS_NET = 0;  % time rate of receiver inter tracking bias net
@@ -485,8 +485,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_SAT_TRKBIAS_PPP = true; % estimate satellite inter tracking bias ppp
         FLAG_SAT_TRKBIAS_NET = true; % estimate satellite inter tracking bias net
         
-        TPARAM_SAT_TRKBIAS_PPP = LS_Parametrization.CONST;   % time paramterization of satellite inter tracking bias ppp
-        TPARAM_SAT_TRKBIAS_NET = LS_Parametrization.CONST;   % time paramterization of satellite inter tracking bias net
+        TPARAM_SAT_TRKBIAS_PPP = LS_Parametrization.CONST;   % time parametrization of satellite inter tracking bias ppp
+        TPARAM_SAT_TRKBIAS_NET = LS_Parametrization.CONST;   % time parametrization of satellite inter tracking bias net
         
         RATE_SAT_TRKBIAS_PPP = 0;  % time rate of satellite inter tracking bias ppp 
         RATE_SAT_TRKBIAS_NET = 0;  % time rate of satellite inter tracking bias net
@@ -1942,9 +1942,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Preferred order for orbits products:              %s\n', strCell2Str(this.preferred_eph))];
             str = [str sprintf(' Preferred order for iono products:                %s\n', strCell2Str(this.preferred_iono))];
             str = [str sprintf(' Selected orbital center:                          %s\n', strCell2Str(this.selected_orbit_center))];
-            str = [str sprintf(' Selected ionosphere center:                          %s\n', strCell2Str(this.selected_iono_center))];
+            str = [str sprintf(' Selected ionosphere center:                       %s\n', strCell2Str(this.selected_iono_center))];
             str = [str sprintf(' Selected VMF resolution:                          %s\n', strCell2Str(this.preferred_vmf_res))];
-            str = [str sprintf(' Selected VMF source:                          %s\n\n', strCell2Str(this.preferred_vmf_source))];
+            str = [str sprintf(' Selected VMF source:                              %s\n\n', strCell2Str(this.preferred_vmf_source))];
             
             str = [str '---- INPUT: SATELLITE ------------------------------------------------------' 10 10];
             str = [str sprintf(' Directory of Ephemeris files:                     %s\n', fnp.getRelDirPath(this.eph_dir, this.prj_home))];
@@ -2072,8 +2072,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Estimates coordinates in network                  %d\n' ,this.flag_coo_net            )];
             str = [str sprintf(' Time parametrization coordinates PPP              %d\n' ,this.tparam_coo_ppp          )];
             str = [str sprintf(' Time parametrization coordimates network          %d\n' ,this.tparam_coo_net          )];
-            str = [str sprintf(' Frequency paramterization coordinates PPP         %d\n' ,this.fparam_coo_ppp          )];
-            str = [str sprintf(' Frequency paramterization coordinates network     %d\n' ,this.fparam_coo_net          )];
+            str = [str sprintf(' Frequency parametrization coordinates PPP         %d\n' ,this.fparam_coo_ppp          )];
+            str = [str sprintf(' Frequency parametrization coordinates network     %d\n' ,this.fparam_coo_net          )];
             str = [str sprintf(' Rate coordinates PPP                              %d\n' ,this.rate_coo_ppp            )];
             str = [str sprintf(' Rate coordinates network                          %d\n' ,this.rate_coo_net            )];
             str = [str sprintf(' absolute regularization PPP [m] (Hor Vert)     %d %d\n' ,this.areg_coo_ppp        )];
@@ -2093,8 +2093,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Differential regularization ZTD network [m/h^0.5] %d\n' ,this.dreg_ztd_net            )];
             str = [str sprintf(' Estimates ZTD gradients in PPP                    %d\n' ,this.flag_grad_ppp           )];
             str = [str sprintf(' Estimates ZTD gradients in network                %d\n' ,this.flag_grad_net           )];
-            str = [str sprintf(' Time paramterization ZTD gradients in PPP         %d\n' ,this.tparam_grad_ppp         )];
-            str = [str sprintf(' Time paramterization ZTD gradients in network     %d\n' ,this.tparam_grad_net         )];
+            str = [str sprintf(' Time parametrization ZTD gradients in PPP         %d\n' ,this.tparam_grad_ppp         )];
+            str = [str sprintf(' Time parametrization ZTD gradients in network     %d\n' ,this.tparam_grad_net         )];
             str = [str sprintf(' Rate ZTD gardients in PPP                         %d\n' ,this.rate_grad_ppp           )];
             str = [str sprintf(' Rate ZTD gradients in network                     %d\n' ,this.rate_grad_net           )];
             str = [str sprintf(' Absolute regularization ZTD gradient PPP [m]      %g\n' ,this.areg_grad_ppp           )];
@@ -2122,8 +2122,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Differential regularization satellite clock in network [m/sqrt(h)] %g\n' ,this.dreg_sat_clock_net      )];
             str = [str sprintf(' Estimate receiver interfrequency bias in PPP                        %d\n' ,this.flag_rec_ifbias_ppp     )];
             str = [str sprintf(' Estimate receiver interfrequency bias in network                    %d\n' ,this.flag_rec_ifbias_net     )];
-            str = [str sprintf(' Time paramterization receiver interfrequency bias in PPP            %d\n' ,this.tparam_rec_ifbias_ppp   )];
-            str = [str sprintf(' Time paramterization receiver interfrequency bias in network        %d\n' ,this.tparam_rec_ifbias_net   )];
+            str = [str sprintf(' Time parametrization receiver interfrequency bias in PPP            %d\n' ,this.tparam_rec_ifbias_ppp   )];
+            str = [str sprintf(' Time parametrization receiver interfrequency bias in network        %d\n' ,this.tparam_rec_ifbias_net   )];
             str = [str sprintf(' Rate receiver interfrequency bias in PPP                            %d\n' ,this.rate_rec_ifbias_ppp     )];
             str = [str sprintf(' Rate receiver interfrequency bias in network                        %d\n' ,this.rate_rec_ifbias_net     )];
             str = [str sprintf(' Absolute regularization receiver interfrequency bias in PPP [m]     %g\n' ,this.areg_rec_ifbias_ppp     )];
@@ -2132,8 +2132,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Differential regularization receiver interfrequency bias in network [m/sqrt(h)]   %g\n' ,this.dreg_rec_ifbias_net     )];
             str = [str sprintf(' Estimate satellite interfrequency bias in PPP                       %d\n' ,this.flag_sat_ifbias_ppp     )];
             str = [str sprintf(' Estimate satellite interfrequency bias in network                   %d\n' ,this.flag_sat_ifbias_net     )];
-            str = [str sprintf(' Time paramterization satellite interfrequency bias in PPP           %d\n' ,this.tparam_sat_ifbias_ppp   )];
-            str = [str sprintf(' Time paramterization satellite interfrequency bias in network       %d\n' ,this.tparam_sat_ifbias_net   )];
+            str = [str sprintf(' Time parametrization satellite interfrequency bias in PPP           %d\n' ,this.tparam_sat_ifbias_ppp   )];
+            str = [str sprintf(' Time parametrization satellite interfrequency bias in network       %d\n' ,this.tparam_sat_ifbias_net   )];
             str = [str sprintf(' Rate satellite interfrequency bias in PPP                           %d\n' ,this.rate_sat_ifbias_ppp     )];
             str = [str sprintf(' Rate satellite interfrequency bias in network                       %d\n' ,this.rate_sat_ifbias_net     )];
             str = [str sprintf(' Absolute regularization satellite interfrequency bias in PPP [m]    %g\n' ,this.areg_sat_ifbias_ppp     )];
@@ -2142,8 +2142,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Differential regularization satellite interfrequency bias in network [m/sqrt(h)]  %g\n' ,this.dreg_sat_ifbias_net     )];
             str = [str sprintf(' Estimate receiver intertracking bias in PPP                         %d\n' ,this.flag_rec_trkbias_ppp    )];
             str = [str sprintf(' Estimate receiver intertracking bias in network                     %d\n' ,this.flag_rec_trkbias_net    )];
-            str = [str sprintf(' Time paramterization receiver intertracking bias in PPP             %d\n' ,this.tparam_rec_trkbias_ppp  )];
-            str = [str sprintf(' Time paramterization receiver intertracking bias in network         %d\n' ,this.tparam_rec_trkbias_net  )];
+            str = [str sprintf(' Time parametrization receiver intertracking bias in PPP             %d\n' ,this.tparam_rec_trkbias_ppp  )];
+            str = [str sprintf(' Time parametrization receiver intertracking bias in network         %d\n' ,this.tparam_rec_trkbias_net  )];
             str = [str sprintf(' Rate receiver intertracking bias in PPP                             %d\n' ,this.rate_rec_trkbias_ppp    )];
             str = [str sprintf(' Rate receiver intertracking bias in network                         %d\n' ,this.rate_rec_trkbias_net    )];
             str = [str sprintf(' Absolute regularization receiver intertracking bias in PPP [m]      %g\n' ,this.areg_rec_trkbias_ppp    )];
@@ -2152,8 +2152,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Differential regularization receiver intertracking bias  in network [m/sqrt(h)]    %g\n' ,this.dreg_rec_trkbias_net    )];
             str = [str sprintf(' Estimate satellite intertracking bias in PPP                        %d\n' ,this.flag_sat_trkbias_ppp    )];
             str = [str sprintf(' Estimate satellite intertracking bias in network                    %d\n' ,this.flag_sat_trkbias_net    )];
-            str = [str sprintf(' Time paramterization satellite intertracking bias in PPP            %d\n' ,this.tparam_sat_trkbias_ppp  )];
-            str = [str sprintf(' Time paramterization satellite intertracking bias in network        %d\n' ,this.tparam_sat_trkbias_net  )];
+            str = [str sprintf(' Time parametrization satellite intertracking bias in PPP            %d\n' ,this.tparam_sat_trkbias_ppp  )];
+            str = [str sprintf(' Time parametrization satellite intertracking bias in network        %d\n' ,this.tparam_sat_trkbias_net  )];
             str = [str sprintf(' Rate satellite intertracking bias in PPP                            %d\n' ,this.rate_sat_trkbias_ppp    )];
             str = [str sprintf(' Rate satellite intertracking bias in network                        %d\n' ,this.rate_sat_trkbias_net    )];
             str = [str sprintf(' Absolute regularization satellite intertracking bias in PPP [m]     %g\n' ,this.areg_sat_trkbias_ppp    )];
@@ -2334,10 +2334,13 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniStringComment('SELECTED computational center (e.g. default, igs_glo, igs_gps, code, code_mgex, gfz, jaxa', str_cell);
             str_cell = Ini_Manager.toIniString('selected_orbit_center', this.selected_orbit_center, str_cell);
             str_cell = Ini_Manager.toIniString('selected_iono_center', this.selected_iono_center, str_cell);
-            str_cell = Ini_Manager.toIniString('preferred_vmf_res', this.preferred_vmf_res, str_cell);
+            
+            str_cell = Ini_Manager.toIniStringComment('Preferred VMF resolution,', str_cell);
             str_cell = Ini_Manager.toIniStringComment(sprintf('accepted values: %s', Ini_Manager.strCell2Str(this.PREFERRED_VMF_RES)), str_cell);
-            str_cell = Ini_Manager.toIniString('preferred_vmf_source', this.preferred_vmf_source, str_cell);
+            str_cell = Ini_Manager.toIniString('preferred_vmf_res', this.preferred_vmf_res, str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Preferred VMF source,', str_cell);
             str_cell = Ini_Manager.toIniStringComment(sprintf('accepted values: %s', Ini_Manager.strCell2Str(this.PREFERRED_VMF_SOURCE)), str_cell);
+            str_cell = Ini_Manager.toIniString('preferred_vmf_source', this.preferred_vmf_source, str_cell);
 
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
         end
@@ -2738,9 +2741,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniString('tparam_coo_ppp', this.tparam_coo_ppp, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Time parametrization coordimates network', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_coo_net', this.tparam_coo_net, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Frequency paramterization coordinates PPP', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Frequency parametrization coordinates PPP', str_cell);
             str_cell = Ini_Manager.toIniString('fparam_coo_ppp', this.fparam_coo_ppp, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Frequency paramterization coordinates network', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Frequency parametrization coordinates network', str_cell);
             str_cell = Ini_Manager.toIniString('fparam_coo_net', this.fparam_coo_net, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Rate coordinates PPP', str_cell);
             str_cell = Ini_Manager.toIniString('rate_coo_ppp', this.rate_coo_ppp, str_cell);
@@ -2780,9 +2783,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniString('flag_grad_ppp', this.flag_grad_ppp, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Estimates ZTD gradients in network', str_cell);
             str_cell = Ini_Manager.toIniString('flag_grad_net', this.flag_grad_net, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization ZTD gradients in PPP', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization ZTD gradients in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_grad_ppp', this.tparam_grad_ppp, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization ZTD gradients in network', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization ZTD gradients in network', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_grad_net', this.tparam_grad_net, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Rate ZTD gardients in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('rate_grad_ppp', this.rate_grad_ppp, str_cell);
@@ -2838,9 +2841,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniString('flag_rec_ifbias_ppp', this.flag_rec_ifbias_ppp, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Estimate receiver interfrequency bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('flag_rec_ifbias_net', this.flag_rec_ifbias_net, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization receiver interfrequency bias in PPP', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization receiver interfrequency bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_rec_ifbias_ppp', this.tparam_rec_ifbias_ppp, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization receiver interfrequency bias in network', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization receiver interfrequency bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_rec_ifbias_net', this.tparam_rec_ifbias_net, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Rate receiver interfrequency bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('rate_rec_ifbias_ppp', this.rate_rec_ifbias_ppp, str_cell);
@@ -2858,9 +2861,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniString('flag_sat_ifbias_ppp', this.flag_sat_ifbias_ppp, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Estimate satellite interfrequency bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('flag_sat_ifbias_net', this.flag_sat_ifbias_net, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization satellite interfrequency bias in PPP', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization satellite interfrequency bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_sat_ifbias_ppp', this.tparam_sat_ifbias_ppp, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization satellite interfrequency bias in network', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization satellite interfrequency bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_sat_ifbias_net', this.tparam_sat_ifbias_net, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Rate satellite interfrequency bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('rate_sat_ifbias_ppp', this.rate_sat_ifbias_ppp, str_cell);
@@ -2878,9 +2881,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniString('flag_rec_trkbias_ppp', this.flag_rec_trkbias_ppp, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Estimate receiver intertracking bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('flag_rec_trkbias_net', this.flag_rec_trkbias_net, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization receiver intertracking bias in PPP', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization receiver intertracking bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_rec_trkbias_ppp', this.tparam_rec_trkbias_ppp, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization receiver intertracking bias in network', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization receiver intertracking bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_rec_trkbias_net', this.tparam_rec_trkbias_net, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Rate receiver intertracking bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('rate_rec_trkbias_ppp', this.rate_rec_trkbias_ppp, str_cell);
@@ -2898,9 +2901,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniString('flag_sat_trkbias_ppp', this.flag_sat_trkbias_ppp, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Estimate satellite intertracking bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('flag_sat_trkbias_net', this.flag_sat_trkbias_net, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization satellite intertracking bias in PPP', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization satellite intertracking bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_sat_trkbias_ppp', this.tparam_sat_trkbias_ppp, str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Time paramterization satellite intertracking bias in network', str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Time parametrization satellite intertracking bias in network', str_cell);
             str_cell = Ini_Manager.toIniString('tparam_sat_trkbias_net', this.tparam_sat_trkbias_net, str_cell);
             str_cell = Ini_Manager.toIniStringComment('Rate satellite intertracking bias in PPP', str_cell);
             str_cell = Ini_Manager.toIniString('rate_sat_trkbias_ppp', this.rate_sat_trkbias_ppp, str_cell);
@@ -3256,7 +3259,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.checkLogicalField('flag_download');
             
             this.checkCellStringField('preferred_eph', EMPTY_IS_NOT_VALID);
-            this.checkCellStringField('preferred_iono', EMPTY_IS_NOT_VALID);
+            this.checkCellStringField('preferred_iono', EMPTY_IS_VALID);
             this.checkCellStringField('selected_orbit_center', EMPTY_IS_NOT_VALID);
             this.checkCellStringField('selected_iono_center', EMPTY_IS_NOT_VALID);
             this.checkCellStringField('preferred_vmf_res', EMPTY_IS_NOT_VALID);
@@ -3568,8 +3571,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
 
             this.meteo_data = 2;            % Use GPT
             
-            this.tparam_ztd_ppp  = 1;  % time paramterization of ztd   ppp
-            this.tparam_grad_ppp  = 1;  % time paramterization of ztd  gradient ppp
+            this.tparam_ztd_ppp  = 1;  % time parametrization of ztd   ppp
+            this.tparam_grad_ppp  = 1;  % time parametrization of ztd  gradient ppp
 
             
             % Regularization
@@ -3578,8 +3581,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.tropo_spatial_reg_d_distance = 25e3;
             this.tropo_gradient_spatial_reg_sigma = 1e-7;
             this.tropo_gradient_spatial_reg_d_distance = 25e3;
-                        
-                        
+                                    
             % Save Results
             this.flag_out_pwv = 1;
             this.flag_out_zwd = 1;
@@ -3814,7 +3816,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.checkLogicalField('flag_out_res_ph');
             this.checkLogicalField('flag_out_mf');
             
-            % U2 paramterization
+            % U2 parametrization
             this.checkLogicalField('flag_coo_ppp');
             this.checkLogicalField('flag_coo_net');
             this.checkNumericField('tparam_coo_ppp',[1 100]);
@@ -4142,7 +4144,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         end
         
         function dir_path = getFileDir(this, filename)
-            % get file dir (form the resource name                                try                                                                to get the name of the iono)
+            % get file dir (form the resource name, try  to get the name of the iono)
             %
             % SYNTAX
             %   dir = getFileDir(this, filename)
@@ -4816,20 +4818,34 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   this.setCurCenter(center_name);
             
             % Check validity
-            if ~iscell(center_name)
+            if ischar(center_name)
                 center_name = {center_name};
             end
             
             this.selected_orbit_center = center_name;
         end
-        
+                
         function center_name = getCurIonoCenter(this)
-            % Get the current orbit center
+            % Get the current iono center
             %
             % SYNTAX
-            %   center_name = this.getCurCenter();
+            %   center_name = this.getCurIonoCenter();
             center_name = this.selected_iono_center;
         end
+        
+        function setCurIonoCenter(this, center_name)
+            % Set the current iono center
+            %
+            % SYNTAX
+            %   this.setCurIonoCenter(center_name);
+            
+            % Check validity
+            if ischar(center_name)
+                center_name = {center_name};
+            end
+            
+            this.selected_iono_center = center_name;
+        end        
         
         function eph_full_name = getEphFileName(this, date_start, date_stop)
             % Get the full name of the ephemerides files (replacing special keywords)
