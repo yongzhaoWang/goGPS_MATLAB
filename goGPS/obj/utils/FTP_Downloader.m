@@ -121,24 +121,32 @@ classdef FTP_Downloader < handle
 
             % Open the connection with the server
             if (this.checkNet)
-                try
-                    if isempty(this.user)
-                        this.ftp_server = ftp(strcat(this.addr, ':', this.port));
-                    else
-                        this.ftp_server = ftp(strcat(this.addr, ':', this.port), this.user, this.passwd);
-                    end
-                    cd(this.ftp_server);
-                    warning('off')
-                    sf = struct(this.ftp_server);
-                    warning('on')
-                    sf.jobject.enterLocalPassiveMode();
-                catch
-                    this.ftp_server = [];
-                    this.log.addWarning(['Could not connect to: ' this.addr]);
-                end
+                this.reconnect();
             end
         end
-
+        
+        function reconnect(this)
+            % Call this funxction to reconnect to an ftp server
+            % 
+            % SYNTAX
+            %   this.reconnect();
+            try
+                if isempty(this.user)
+                    this.ftp_server = ftp(strcat(this.addr, ':', this.port), 'anonymous', 'info@gogps-project.org');
+                else
+                    this.ftp_server = ftp(strcat(this.addr, ':', this.port), this.user, this.passwd);
+                end
+                cd(this.ftp_server);
+                warning('off')
+                sf = struct(this.ftp_server);
+                warning('on')
+                sf.jobject.enterLocalPassiveMode();
+            catch
+                this.ftp_server = [];
+                this.log.addWarning(['Could not connect to: ' this.addr]);
+            end
+        end
+        
         function delete(this)
             % destructor close the connection with the server
             close(this.ftp_server);
@@ -162,9 +170,16 @@ classdef FTP_Downloader < handle
                     this.f_name_pool{end+1} = {folder , files};
                     idx = length(this.f_name_pool);
                 catch
-                    status = false;
-                    this.log.addWarning(['Could not connect to: ' this.addr]);
-                    return
+                    try
+                        this.reconnect();
+                        files = dir(this.ftp_server, folder);
+                        this.f_name_pool{end+1} = {folder , files};
+                        idx = length(this.f_name_pool);
+                    catch
+                        status = false;
+                        this.log.addWarning(['Could not connect to: ' this.addr]);
+                        return
+                    end
                 end
             end
             folder_s = this.f_name_pool{idx};
@@ -311,7 +326,7 @@ classdef FTP_Downloader < handle
                         cd(this.ftp_server);
                     catch
                         this.log.addWarning('connected with remote FTP has been closed, trying to re-open it');
-                        this.ftp_server = ftp(strcat(this.addr, ':', this.port));
+                        this.reconnect();
                     end
                     
                     warning('off')
@@ -368,7 +383,7 @@ classdef FTP_Downloader < handle
                                         cd(this.ftp_server, remote_dir);
                                         mget(this.ftp_server, file_name, local_dir);
                                         close(this.ftp_server);
-                                        this.ftp_server = ftp(strcat(this.addr, ':', this.port));
+                                        this.reconnect();
                                         if compressed
                                             try
                                                 if (isunix())
