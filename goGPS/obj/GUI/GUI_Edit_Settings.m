@@ -2436,6 +2436,13 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 % read current center
                 [center_list, center_ss] = r_man.getCenterList(1);
                 state.setProperty(caller.UserData, center_list{caller.Value});
+                
+                
+                if strcmp(center_list{caller.Value}, 'cnes')
+                    this.ripref{2}.String = 'Rapid';
+                else
+                    this.ripref{2}.String = 'Predicted 1';                    
+                end
             else
                 state.setProperty(caller.UserData, caller.String(caller.Value));
             end
