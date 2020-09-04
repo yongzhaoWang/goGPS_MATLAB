@@ -254,7 +254,11 @@ classdef Settings_Interface < Exportable
                             log.addWarning(sprintf('The value "%s" of the settings field %s is not valid => using default: "%s"', iif(isempty(field_val), 'empty', field_val), field_name, checked_val));
                         end
                     else
-                        log.addWarning(sprintf('The value "%s" of the settings field %s is not valid!!!', iif(isempty(field_val), 'empty', field_val), field_name));
+                        if empty_is_valid
+                            checked_val = field_val;
+                        else
+                            log.addWarning(sprintf('The value "%s" of the settings field %s is not valid!!!', iif(isempty(field_val), 'empty', field_val), field_name));
+                        end
                     end
                 end
             end
