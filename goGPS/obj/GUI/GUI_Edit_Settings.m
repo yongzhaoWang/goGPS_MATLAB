@@ -1965,10 +1965,16 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             this.ripref = {};
             this.ripref{1} = Core_UI.insertCheckBoxLight(box_v1pref, 'Final', 'iono1', @this.onResourcesPrefChange);
-            this.ripref{2} = Core_UI.insertCheckBoxLight(box_v1pref, 'Predicted 1 day', 'iono2', @this.onResourcesPrefChange);
-            this.ripref{3} = Core_UI.insertCheckBoxLight(box_v1pref, 'Predicted 2 days', 'iono3', @this.onResourcesPrefChange);
-            this.ripref{4} = Core_UI.insertCheckBoxLight(box_v1pref, 'Broadcast', 'iono4', @this.onResourcesPrefChange);
-            box_v1pref.Widths = [250 -1 -1 -1 -1];
+            this.ripref{1}.TooltipString = 'Final ionospheric map';
+            this.ripref{2} = Core_UI.insertCheckBoxLight(box_v1pref, 'Rapid', 'iono2', @this.onResourcesPrefChange);
+            this.ripref{2}.TooltipString = 'Rapid ionospheric map';
+            this.ripref{3} = Core_UI.insertCheckBoxLight(box_v1pref, 'P1', 'iono3', @this.onResourcesPrefChange);
+            this.ripref{3}.TooltipString = 'Ionospheric map predicted one day ahead ';
+            this.ripref{4} = Core_UI.insertCheckBoxLight(box_v1pref, 'P2', 'iono4', @this.onResourcesPrefChange);
+            this.ripref{4}.TooltipString = 'Ionospheric map predicted two day ahead ';
+            this.ripref{5} = Core_UI.insertCheckBoxLight(box_v1pref, 'Broadcast', 'iono5', @this.onResourcesPrefChange);
+            this.ripref{5}.TooltipString = 'Klobuchar ionospheric parameters';
+            box_v1pref.Widths = [250 -1 -1 -1 -1 -1];
                  
             % vmf source
             box_v2pref = uix.HBox( 'Parent', tab_bv, ...
@@ -2436,13 +2442,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 % read current center
                 [center_list, center_ss] = r_man.getCenterList(1);
                 state.setProperty(caller.UserData, center_list{caller.Value});
-                
-                
-                if strcmp(center_list{caller.Value}, 'cnes')
-                    this.ripref{2}.String = 'Rapid';
-                else
-                    this.ripref{2}.String = 'Predicted 1';                    
-                end
             else
                 state.setProperty(caller.UserData, caller.String(caller.Value));
             end
@@ -2452,8 +2451,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             % Update Iono Preferences
             available_iono = r_man.getIonoType();
-            flag_preferred_iono = true(4,1);
-            for i = 1 : 4
+            flag_preferred_iono = true(numel(this.ripref),1);
+            for i = 1 : numel(this.ripref)
                 this.ripref{i}.Enable = iif(available_iono(i), 'on', 'off');
                 flag_preferred_iono(i) = available_iono(i) && logical(this.ripref{i}.Value);
             end
@@ -2479,8 +2478,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             if strcmp(caller.UserData(1:4), 'iono')
                 % Update Iono Preferences
                 available_iono = r_man.getIonoType();
-                flag_preferred_iono = true(4,1);
-                for i = 1 : 4
+                flag_preferred_iono = true(numel(this.ripref),1);
+                for i = 1 : numel(this.ripref)
                     flag_preferred_iono(i) = available_iono(i) && logical(this.ripref{i}.Value);
                 end
                 state.setPreferredIono(flag_preferred_iono)
@@ -2488,7 +2487,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 % Update Orbit Preferences
                 available_orbit = r_man.getOrbitType(state.getRemoteCenter());
                 flag_preferred_orbit = true(4,1);
-                for i = 1 : 4
+                for i = 1 : numel(this.ropref)
                     flag_preferred_orbit(i) = available_orbit(i) && logical(this.ropref{i}.Value);
                 end
                 state.setPreferredOrbit(flag_preferred_orbit)
@@ -2496,7 +2495,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 % Update Orbit Preferences
                 available_orbit = r_man.getVMFSourceType();
                 flag_preferred_orbit = true(3,1);
-                for i = 1 : 3
+                for i = 1 : numel(this.rv2pref)
                     flag_preferred_orbit(i) = available_orbit(i) && logical(this.rv2pref{i}.Value);
                 end
                 state.setPreferredVMFSource(flag_preferred_orbit)
@@ -2793,11 +2792,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             % Update Iono Preferences
             available_iono = r_man.getIonoType(cur_center{1});
-            for i = 1 : 4
+            for i = 1 :  numel(this.ripref)
                 this.ripref{i}.Enable = iif(available_iono(i), 'on', 'off');
             end
             flag_preferred_iono = state.getPreferredIono();            
-            for i = 1 : 4
+            for i = 1 :  numel(this.ripref)
                 if available_iono(i)
                     this.ripref{i}.Value = this.ripref{i}.Value | flag_preferred_iono(i);
                 end

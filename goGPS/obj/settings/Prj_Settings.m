@@ -139,7 +139,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         PREFERRED_EPH = {'final', 'rapid', 'ultra', 'broadcast'}
         SELECTED_ORBIT_CENTER= {'default'}
         SELECTED_IONO_CENTER= {'default'}
-        PREFERRED_IONO = {'final', 'predicted1', 'predicted2', 'broadcast'}
+        PREFERRED_IONO = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'}
         
         PREFERRED_VMF_RES = {'1x1', '2.5x2', '5x5'}
         PREFERRED_VMF_SOURCE = {'operational', 'era-interim', 'forecast'}
@@ -5332,47 +5332,46 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         function setPreferredIono(this, flag)
             % Set the preferred iono sequence:
             %   1 final
-            %   2 predicted 1
-            %   3 predicted 2
-            %   4 broadcast
+            %   2 rapid
+            %   3 predicted 1
+            %   4 predicted 2
+            %   5 broadcast
             %
             % INPUT
-            %   flag is a logical array with 4 values (see above)
+            %   flag is a logical array with 5 values (see above)
             %
             % SYNTAX
             %   this.setPreferredIono(flag)
-            iono = {'final', 'predicted1', 'predicted2', 'broadcast'};
+            iono = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'};
             this.preferred_iono = iono(flag);
         end
         
          function setPreferredVMFRes(this, flag)
-            % Set the preferred iono sequence:
-            %   1 final
-            %   2 predicted 1
-            %   3 predicted 2
-            %   4 broadcast
+            % Set the preferred VMF resolution:
+            %   1   1x1    VMF3
+            %   2 2.5x2    VMF1
+            %   3   5x5    VMF3
             %
             % INPUT
-            %   flag is a logical array with 4 values (see above)
+            %   flag is a logical array with 3 values (see above)
             %
             % SYNTAX
-            %   this.setPreferredIono(flag)
+            %   this.setPreferredVMFRes(flag)
             iono = {'1x1', '2.5x2', '5x5'};
             this.preferred_vmf_res = iono(flag);
          end
         
           function setPreferredVMFSource(this, flag)
-            % Set the preferred iono sequence:
-            %   1 final
-            %   2 predicted 1
-            %   3 predicted 2
-            %   4 broadcast
+            % Set the preferred VMF source:
+            %   1 operational
+            %   2 era-interim
+            %   3 forecast
             %
             % INPUT
-            %   flag is a logical array with 4 values (see above)
+            %   flag is a logical array with 3 values (see above)
             %
             % SYNTAX
-            %   this.setPreferredIono(flag)
+            %   this.setPreferredVMFSource(flag)
             iono = {'operational', 'era-interim', 'forecast'};
             this.preferred_vmf_source = iono(flag);
         end
@@ -6021,38 +6020,39 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         function flag = getPreferredIono(this)
             % Get the preferred iono sequence:
             %   1 final
-            %   2 predicted 1
-            %   3 predicted 2
-            %   4 broadcast
+            %   2 rapid
+            %   3 predicted 1
+            %   4 predicted 2
+            %   5 broadcast
             %
             % OUTPUT
-            %   flag is a logical array with 4 values (see above)
+            %   flag is a logical array with 5 values (see above)
             %
             % SYNTAX
             %   flag = this.getPreferredIono()
-            flag = false(4,1);
+            flag = false(numel(this.preferred_iono),1);
             for i = 1 : numel(this.preferred_iono)
                 switch this.preferred_iono{i}
                     case 'final', flag(1) = true;
-                    case 'predicted1', flag(2) = true;
-                    case 'predicted2', flag(3) = true;
-                    case 'broadcast', flag(4) = true;
+                    case 'rapid', flag(2) = true;
+                    case 'predicted1', flag(3) = true;
+                    case 'predicted2', flag(4) = true;
+                    case 'broadcast', flag(5) = true;
                 end
             end
         end
         
         function flag = getPreferredVMFRes(this)
-            % Get the preferred iono sequence:
-            %   1 final
-            %   2 predicted 1
-            %   3 predicted 2
-            %   4 broadcast
+            % Get the preferred VMF resolution:
+            %   1   1x1    VMF3
+            %   2 2.5x2    VMF1
+            %   3   5x5    VMF3
             %
             % OUTPUT
-            %   flag is a logical array with 4 values (see above)
+            %   flag is a logical array with 3 values (see above)
             %
             % SYNTAX
-            %   flag = this.getPreferredIono()
+            %   flag = this.getPreferredVMFRes()
             flag = false(3,1);
             for i = 1 : numel(this.preferred_vmf_res)
                 switch this.preferred_vmf_res{i}
@@ -6064,11 +6064,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         end
         
         function flag = getPreferredVMFSource(this)
-            % Get the preferred iono sequence:
-            %   1 final
-            %   2 predicted 1
-            %   3 predicted 2
-            %   4 broadcast
+            % Get the preferred VMF source:
+            %   1 operational
+            %   2 era-interim
+            %   3 forecast
             %
             % OUTPUT
             %   flag is a logical array with 4 values (see above)

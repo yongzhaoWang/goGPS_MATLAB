@@ -777,7 +777,7 @@ classdef File_Wizard < handle
                 end
             end
             if (state.iono_model == 2) && (state.iono_management == 3 || state.flag_apr_iono)
-                status = this.conjureResource(['iono_broadcast'], date_start, date_stop, iono_center);
+                status = this.conjureResource('iono_broadcast', date_start, date_stop, iono_center);
             end
             if status
                 if isempty(list_preferred)
@@ -1021,7 +1021,7 @@ classdef File_Wizard < handle
             if nargin == 3
                 this.setPreferredIono(preferred_type);
             else
-                this.setPreferredIono(true(4,1));
+                this.setPreferredIono(true(5,1));
             end
         end
         
@@ -1089,7 +1089,7 @@ classdef File_Wizard < handle
             %   flag = this.getPreferredIono()
             flag = Core.getState.getPreferredIono;
             if nargout == 2
-                flag_name = {'final', 'predicted1', 'predicted2', 'broadcast'};
+                flag_name = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'};
                 flag_name = flag_name(flag);
             end
         end
@@ -1109,14 +1109,14 @@ classdef File_Wizard < handle
             %   this.setPreferredOrbit(flag)
             
             if ischar(flag)
-                flag_name = {'final', 'predicted1', 'predicted2', 'broadcast'};
+                flag_name = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'};
                 flag = ismember(flag_name, {flag});
             end
             if iscell(flag)
                 flag = ismember(flag_name, {flag});
             end
             if ~islogical(flag)
-                tmp = false(4,1);
+                tmp = false(5,1);
                 tmp(flag) = true;
                 flag = tmp;
             end

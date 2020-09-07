@@ -210,13 +210,7 @@ classdef Remote_Resource_Manager < Ini_Manager
             end
             
             if numel(resource_name) > 5 && strcmp(resource_name(1:5), 'iono_')
-                % Search for the iono center for the current orbit provider
-                state = Core.getCurrentSettings();
-                iono_center = state.getRemoteIonoCenter();
-                if isempty(iono_center)
-                    iono_center = 'default';
-                end
-                str = this.getData(['ic_' iono_center], resource_name);
+                str = this.getData(['ic_' center_name], resource_name);
             else
                 str = this.getData(['oc_' center_name], resource_name);
             end
@@ -230,7 +224,11 @@ classdef Remote_Resource_Manager < Ini_Manager
                 latency = [];
             else
                 file_structure = this.parseLogicTree(str);
-                latency = this.getData(['oc_' center_name], [resource_name '_latency']);
+                if numel(resource_name) > 5 && strcmp(resource_name(1:5), 'iono_')
+                    latency = 0; % unkown latency (at the moment it is not present)
+                else
+                    latency = this.getData(['oc_' center_name], [resource_name '_latency']);
+                end
             end
         end
     end
@@ -383,19 +381,21 @@ classdef Remote_Resource_Manager < Ini_Manager
                 iono_center = 'default';
             end
             
-            flag_fp1p2b = false(4, 1);
+            flag_fp1p2b = false(5, 1);
             
             flag_fp1p2b(1) = ~isempty(this.getData(['ic_' iono_center], 'iono_final')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_final'), 'empty');
-            flag_fp1p2b(2) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted1')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_predicted1'), 'empty');
-            flag_fp1p2b(3) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted2')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_predicted2'), 'empty');
-            flag_fp1p2b(4) = ~isempty(this.getData(['ic_' iono_center], 'iono_broadcast')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_broadcast'), 'empty');
+            flag_fp1p2b(2) = ~isempty(this.getData(['ic_' iono_center], 'iono_rapid')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_rapid'), 'empty');
+            flag_fp1p2b(3) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted1')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_predicted1'), 'empty');
+            flag_fp1p2b(4) = ~isempty(this.getData(['ic_' iono_center], 'iono_predicted2')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_predicted2'), 'empty');
+            flag_fp1p2b(5) = ~isempty(this.getData(['ic_' iono_center], 'iono_broadcast')) && ~strcmp(this.getData(['ic_' iono_center], 'iono_broadcast'), 'empty');
             
             if ~any(flag_fp1p2b) && ~strcmp(iono_center, 'none')
                 % Switch to default center
                 flag_fp1p2b(1) = ~isempty(this.getData(['ic_default'], 'iono_final'));
-                flag_fp1p2b(2) = ~isempty(this.getData(['ic_default'], 'iono_predicted1'));
-                flag_fp1p2b(3) = ~isempty(this.getData(['ic_default'], 'iono_predicted2'));
-                flag_fp1p2b(4) = ~isempty(this.getData(['ic_default'], 'iono_broadcast'));
+                flag_fp1p2b(2) = ~isempty(this.getData(['ic_default'], 'iono_rapid'));
+                flag_fp1p2b(3) = ~isempty(this.getData(['ic_default'], 'iono_predicted1'));
+                flag_fp1p2b(4) = ~isempty(this.getData(['ic_default'], 'iono_predicted2'));
+                flag_fp1p2b(5) = ~isempty(this.getData(['ic_default'], 'iono_broadcast'));
             end
         end
         
