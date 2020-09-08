@@ -1207,7 +1207,12 @@ classdef File_Wizard < handle
             if ~iscell(type)
                 type = {type};
             end
-            Core.getState.setAutomaticDownload(true)
+            Core.getState.setAutomaticDownload(true);
+            
+            if numel(type) == 1 && strcmp(type{1}, 'all')
+                type = {'eph', 'bias', 'crx', 'atm', 'iono', 'iono_brdc', 'vmf'};
+            end
+                
             for t = 1 : numel(type)
                 cur_type = type{t};
                 switch cur_type
