@@ -474,6 +474,48 @@ classdef File_Wizard < handle
             
         end
         
+        function setPreferredVMF(this, version, resolution, source)
+            % Set the current VMF to download
+            % 
+            % Available options (validity is not checked):
+            %   VERSION  RESOLUTION  SOURCE
+            %    '1'       '2.5x2'    'op'  (operational)     
+            %    '1'       '2.5x2'    'fc'  (forecast)
+            %    '3'         '5x5'    'op'  (operational)     
+            %    '3'         '5x5'    'ei'  (ERA-Interim)
+            %    '3'         '5x5'    'fc'  (forecast)
+            %    '3'         '1x1'    'op'  (operational)     
+            %    '3'         '1x1'    'ei'  (ERA-Interim)
+            %    '3'         '1x1'    'fc'  (forecast)
+            %
+            % SYNTAX
+            %   this.setPreferredVMF(version, resolution, source)
+            
+            state = Core.getState;
+            if version == '1'
+                % resolution = '2.5x2';
+                state.setMappingFunction(state.MF_VMF1);
+                state.setPreferredVMFRes(2);
+            else
+                if resolution(1) == '5'
+                    state.setPreferredVMFRes(3);
+                    state.setMappingFunction(state.MF_VMF3_5);
+                else
+                    state.setPreferredVMFRes(1);
+                    state.setMappingFunction(state.MF_VMF3_1);
+                end
+            end      
+            
+            switch source(1)
+                case 'o'
+                    state.setPreferredVMFSource(1);
+                case 'e'
+                    state.setPreferredVMFSource(2);
+                case 'f'
+                    state.setPreferredVMFSource(3);
+            end
+        end
+        
         function conjureVmfFiles(this, date_start, date_stop)
             this.log.addMarkedMessage('Checking VMF files');
             date_stop = date_stop.getCopy();

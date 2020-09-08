@@ -268,19 +268,32 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                                                         % - iono_model = 2: Klobuchar model
                                                         % - iono_model = 3: IONEX
                                                         
-        ZD_MODEL  = 2;                                  % A-priori Tropospheric Zenith delay model to be used (1: none, 2: Saastamoinen , 3: Vienna mapping function gridded delays)
+        ZD_MODEL = 2;                                   % A-priori Tropospheric Zenith delay model to be used (1: none, 2: Saastamoinen , 3: Vienna mapping function gridded delays)
                                                         % - zd_model = 1: no model
                                                         % - zd_model = 2: Saastamoinen
-                                                        % - zd_model = 3:  Vienna mapping function gridded delay
+                                                        % - zd_model = 3: Vienna mapping function gridded delay
+       
+        ZDM_NO = 1;
+        ZDM_SAAST = 2;
+        ZDM_VMF = 3
+         
         MAPPING_FUNCTION = 1                            % Mapping function to be used
                                                         % 1 : GMF
                                                         % 2 : VMF gridded
                                                         % 3 : Niell
                                                         % 4 : VMF3 1x1 grifdded
                                                         % 5 : VMF3 5x5 grifdded
+        MF_GMF = 1
+        MF_VMF1 = 2
+        MF_NIEL = 3
+        MF_VMF3_1 = 4
+        MF_VMF3_5 = 5
+                                                        
         MAPPING_FUNCTION_GRADIENT = 1                   % Mapping function to be used
                                                         % 1 : chen and  herring
                                                         % 2 : macmillan
+        MFG_CHEN = 1
+        MFG_MACM = 2
                                                         % ADV ATMOSPHERE
         METEO_DATA = 2;                                 % Meteo data to be used
                                                         % 1: standard atmopshere
@@ -3566,8 +3579,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.flag_free_net_tropo = 0;   % no reference in tropo est 
             
             this.zd_model = 2;              % Use VMF for a-priori
-            this.mapping_function = 2;      % Use VMF grids
-            this.mapping_function_gradient = 2;  % Use chen and herring
+            this.mapping_function = this.MF_VMF1;      % Use VMF grids
+            this.mapping_function_gradient = this.MFG_CHEN;  % Use chen and herring
 
             this.meteo_data = 2;            % Use GPT
             
@@ -3664,8 +3677,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.flag_free_net_tropo = 0;
             
             this.zd_model = 1;              % Use Saastamoinen for a-priori
-            this.mapping_function = 1;      % Use GMF grids
-                        this.mapping_function_gradient = 1;      % Use chen and herrign
+            this.mapping_function = this.MF_GMF;                 % Use GMF grids
+            this.mapping_function_gradient = this.MFG_CHEN;      % Use chen and herrign
             this.meteo_data = 2;            % Use GPT
             
             % Regularization
@@ -5655,7 +5668,23 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   is_vmf = this.isVMF()
-            is_vmf = this.mapping_function == 2 || this.mapping_function == 4 || this.mapping_function == 5 || this.zd_model == 2;
+            is_vmf = this.mapping_function == this.MF_VMF1 || this.mapping_function == this.MF_VMF3_1 || this.mapping_function == this.MF_VMF3_5 || this.zd_model == this.ZDM_VMF;
+        end
+        
+        function setMappingFunction(this, mf)
+            % Set the current mapping function
+            %
+            % INPUT
+            %   mf      mapping function id chose among the following constants:
+            %             MF_GMF = 1
+            %             MF_VMF1 = 2
+            %             MF_NIEL = 3
+            %             MF_VMF3_1 = 4
+            %             MF_VMF3_5 = 5
+            %
+            % SYNTAX
+            %  this. setMappingFunction(mf);
+            this.mapping_function = mf;
         end
         
         function is_seamless = isSeamlessKF(this)
