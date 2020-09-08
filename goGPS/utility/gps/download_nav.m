@@ -55,6 +55,7 @@ compressed = 0;
 
 %IGS FTP server URL
 igs_url = 'cddis.gsfc.nasa.gov';
+igs_mirror = 'igs.bkg.bund.de';
 
 %AIUB FTP server URL
 aiub_url = 'ftp.aiub.unibe.ch';
@@ -73,9 +74,13 @@ end
 
 %identify requested file type
 if (strcmp(filename(1:4),'brdc'))
-    url = igs_url;
-    name = 'IGS';
-    path = '/pub/gps/data/daily/';
+    %url = igs_url;
+    %name = 'IGS';
+    %path = '/pub/gps/data/daily/';
+    %subdir = '/brdc/';
+    url = igs_mirror;
+    name = 'BKG IGS mirror';
+    path = '/IGS/BRDC/';
     subdir = '/brdc/';
 elseif (strcmp(filename(1:4),'brdm'))
     url = igs_url;
@@ -95,9 +100,13 @@ fprintf(['FTP connection to the ' name ' server (ftp://' url '). Please wait...'
 
 %connect to the server
 try
-    ftp_server = ftp(url);
+    ftp_server = ftp(url, 'anonymous', 'info@gogps-project.org');
+    warning('off')
+    sf = struct(ftp_server);
+    warning('on')
+    sf.jobject.enterLocalPassiveMode();
 catch
-    fprintf(' connection failed.\n');
+    fprintf(['Could not connect to: ' url ' \n']);
     return
 end
 

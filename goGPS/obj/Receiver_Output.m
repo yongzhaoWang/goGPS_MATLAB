@@ -344,9 +344,11 @@ classdef Receiver_Output < Receiver_Commons
                 for e = 1: this.time_pos.length
                     c_time = this.time_pos.getEpoch(e);
                     filename = fnp.dateKeyRep(sprintf('%s/station/IGS_solutions/COO/${WWWW}/igs${YY}P${WWWWD}.ssc', data_dir), c_time);
-                    if exist(filename, 'file') ~= 2
-                        remote_file_name = fnp.dateKeyRep('gnss/products/${WWWW}/igs${YY}P${WWWWD}.ssc.Z',c_time);
-                        ftp_dw = FTP_Downloader('cddis.nasa.gov',21);
+                    if exist(filename, 'file') ~= 2                        
+                        remote_file_name = fnp.dateKeyRep('pub/igs/products/${WWWW}/IGS${YY}P${WWWWD}.ssc.Z',c_time);
+                        ftp_dw = FTP_Downloader('igs.ensg.ign.fr',21);
+                        %remote_file_name = fnp.dateKeyRep('gnss/products/${WWWW}/igs${YY}P${WWWWD}.ssc.Z',c_time);
+                        %ftp_dw = FTP_Downloader('cddis.nasa.gov',21);
                         [pathstr, name, ext] = fileparts(filename);
                         ftp_dw.downloadUncompress(remote_file_name, pathstr);
                     end
