@@ -150,6 +150,7 @@ classdef Remote_Resource_Manager < Ini_Manager
             ip_port = this.getData('SERVER', name);
             ip = ip_port{1};
             port = ip_port{2};
+            this.credentials.readFile(); % read every time for updated credentials
             user = this.credentials.getData(name,'username');
             passwd = this.credentials.getData(name,'password');
         end
