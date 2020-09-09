@@ -15,7 +15,7 @@
 %     __ _ ___ / __| _ | __|
 %    / _` / _ \ (_ |  _|__ \
 %    \__, \___/\___|_| |___/
-%    |___/                    v 1.0b7
+%    |___/                    v 1.0b8
 %
 %--------------------------------------------------------------------------
 %  Copyright (C) 2020 Andrea Gatti, Giulio Tagliaferro, Eugenio Realini
@@ -1299,8 +1299,8 @@ classdef Command_Interpreter < handle
                                     if ~is_empty
                                         cmd_list_loop = cmd_list(id_list);
                                         for c = 1 : numel(cmd_list_loop)
-                                            % substitute ï¿½ with the current session
-                                            cmd_list_loop{c} = strrep(cmd_list_loop{c},'ï¿½', num2str(s));
+                                            % substitute ÿ with the current session
+                                            cmd_list_loop{c} = strrep(cmd_list_loop{c},'ÿ', num2str(s));
                                         end
                                         this.exec(core, cmd_list_loop, level(id_list(1)), sss_level(sid + 1));
                                         

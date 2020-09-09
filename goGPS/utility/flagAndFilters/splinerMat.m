@@ -29,7 +29,7 @@ function [y_splined, x_spline, s_weights, y_splined_ext] = splinerMat(x, y, dxs,
 %     __ _ ___ / __| _ | __|
 %    / _` / _ \ (_ |  _|__ \
 %    \__, \___/\___|_| |___/
-%    |___/                    v 1.0b7
+%    |___/                    v 1.0b8
 %
 %--------------------------------------------------------------------------
 %  Copyright (C) 2020 Andrea Gatti, Giulio Tagliaferro, Mirko Reguzzoni
