@@ -2,7 +2,7 @@
 % =========================================================================
 %
 % DESCRIPTION
-%   class to manages the user interface of goGPS
+%   class to manage the user interface of goGPS
 %
 % EXAMPLE
 %   ui = Core_UI.getInstance();

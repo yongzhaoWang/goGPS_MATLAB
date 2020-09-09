@@ -2,7 +2,7 @@
 % =========================================================================
 %
 % DESCRIPTION
-%   class to manages the about window of goGPSz
+%   class to manage the about window of goGPSz
 %
 % EXAMPLE
 %   ui = GUI_Remote_Resources.getInstance();

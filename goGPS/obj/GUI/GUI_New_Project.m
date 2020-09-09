@@ -2,7 +2,7 @@
 % =========================================================================
 %
 % DESCRIPTION
-%   class to manages the new project window of goGPS
+%   class to manage the new project window of goGPS
 %
 % EXAMPLE
 %   ui = Core_UI.getInstance();

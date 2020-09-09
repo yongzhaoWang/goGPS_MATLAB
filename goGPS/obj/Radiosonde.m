@@ -1,5 +1,19 @@
+%   CLASS Radiosonde
+% =========================================================================
+%
+% DESCRIPTION
+%   Class to manage the download and comparison of Radiosondes around the World
+%   This class currently uses data collected from the University of Wyoming at 
+%   - http://weather.uwyo.edu/upperair/sounding.html
+%   
+%   It could be useful in a future to use/add the NOAA raob archives, bigger but every file contains the entire history of the soundings
+%   - https://www.ncdc.noaa.gov/data-access/weather-balloon/integrated-global-radiosonde-archive
+%
+%
+% FOR A LIST OF CONSTANTs and METHODS use doc Radiosonde
+
 classdef Radiosonde < handle
-    
+
     %--- * --. --- --. .--. ... * ---------------------------------------------
     %               ___ ___ ___
     %     __ _ ___ / __| _ | __|

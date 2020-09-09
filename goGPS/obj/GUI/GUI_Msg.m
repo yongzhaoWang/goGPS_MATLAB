@@ -2,7 +2,7 @@
 % =========================================================================
 %
 % DESCRIPTION
-%   class to manages the Main Message Window of goGPS
+%   class to manage the Main Message Window of goGPS
 %
 % EXAMPLE
 %   ui = GUI_Msg.getInstance();

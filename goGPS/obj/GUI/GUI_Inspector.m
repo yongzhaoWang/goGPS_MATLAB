@@ -2,7 +2,7 @@
 % =========================================================================
 %
 % DESCRIPTION
-%   class to manages the inspector window of goGPS
+%   class to manage the inspector window of goGPS
 %
 % EXAMPLE
 %   ui = GUI_Inspector.getInstance();
