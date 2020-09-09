@@ -199,9 +199,9 @@ classdef FTP_Downloader < handle
         end
         
         function [status]  = downloadUncompress(this, filepath, out_dir)
-            %try
-                path = File_Name_Processor.getPath(filepath);
-                fname = File_Name_Processor.getFileName(filepath);
+            path = File_Name_Processor.getPath(filepath);
+            fname = File_Name_Processor.getFileName(filepath);
+            try
                 cd(this.ftp_server, path);
                 this.log.addMessage(this.log.indent(sprintf('downloading %s ...',fname)));
                 if ~(7 ==exist(out_dir,'dir'))
@@ -273,8 +273,10 @@ classdef FTP_Downloader < handle
                         retry = retry + 1;
                     end
                 end
-                %             catch
-%             end
+            catch ex
+                % resource is probably missing
+                status = false;
+            end
         end
 
         function [status, compressed] = download(this, remote_dir, file_name, local_dir, force_overwrite)

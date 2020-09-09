@@ -4822,6 +4822,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   center_name = this.getCurCenter();
             center_name = this.selected_orbit_center;
+            if ~iscell(center_name)
+                center_name = {center_name};
+            end
         end
         
         function setCurCenter(this, center_name)
@@ -4844,6 +4847,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   center_name = this.getCurIonoCenter();
             center_name = this.selected_iono_center;
+            if ~iscell(center_name)
+                center_name = {center_name};
+            end
         end
         
         function setCurIonoCenter(this, center_name)

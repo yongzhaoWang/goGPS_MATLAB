@@ -86,7 +86,7 @@ classdef GUI_Remote_Resources < GUI_Unique_Win
     end
     
     methods (Static, Access = public)
-        function this = getInstance(w_edt)            
+        function this = getInstance(w_edt)
             % Get the persistent instance of the class
             persistent unique_instance_gui_rr__
             

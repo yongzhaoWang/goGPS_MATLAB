@@ -800,7 +800,11 @@ classdef File_Wizard < handle
             % SYNTAX:
             %   this.conjureIonoFiles(date_start, date_stop)
             %
-            this.log.addMarkedMessage('Checking ionospheric resources files');
+            if nargin == 4 && flag_brdc
+                this.log.addMarkedMessage('Checking broadcast ionospheric resources files');
+            else
+                this.log.addMarkedMessage('Checking ionospheric resources files');
+            end
             state = Core.getState;
             list_preferred = state.preferred_iono;
             iono_center = state.getRemoteIonoCenter();

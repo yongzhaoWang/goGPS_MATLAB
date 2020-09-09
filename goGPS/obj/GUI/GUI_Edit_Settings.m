@@ -71,13 +71,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         rpop_up     % Remote resources pup-up
         ropref      % Remote Orbit Preferences
         ripref      % Remote Iono preferences
-        rv1pref     % Remote VMF resolution preferences
         rv2pref     % Remote VMF source preferences
         j_rrini     % ini resources file
         edit_texts  % List of editable text
         edit_texts_array % list of editable text array
         flag_list   % list of all the flags
-        ceckboxes
         
         uip         % User Interface Pointers
     end    
@@ -187,12 +185,18 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 this.go_but.Enable = iif(flag_wait, 'on', 'off');
                 
                 if strcmp(this.win.Visible, 'off')
-                    if isunix && not(ismac())
-                        win.Position(1) = round((win.Parent.ScreenSize(3) - win.Position(3)) / 2);
-                        win.Position(2) = round((win.Parent.ScreenSize(4) - win.Position(4)) / 2);
-                    else
-                        win.OuterPosition(1) = round((win.Parent.ScreenSize(3) - win.OuterPosition(3)) / 2);
-                        win.OuterPosition(2) = round((win.Parent.ScreenSize(4) - win.OuterPosition(4)) / 2);
+                    try
+                        msg_pos = GUI_Msg.getPosition;
+                        win.Position(1) = sum(msg_pos([1 3]));
+                        win.Position(2) = sum(msg_pos([2 4])) - win.Position(4);
+                    catch
+                        if isunix && not(ismac())
+                            win.Position(1) = round((win.Parent.ScreenSize(3) - win.Position(3)) / 2);
+                            win.Position(2) = round((win.Parent.ScreenSize(4) - win.Position(4)) / 2);
+                        else
+                            win.OuterPosition(1) = round((win.Parent.ScreenSize(3) - win.OuterPosition(3)) / 2);
+                            win.OuterPosition(2) = round((win.Parent.ScreenSize(4) - win.OuterPosition(4)) / 2);
+                        end
                     end
                 end
             else
@@ -201,7 +205,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 % Main Window ----------------------------------------------------------------------------------------------
 
                 win = figure( 'Name', sprintf('%s @ %s', state.getPrjName, state.getHomeDir), ...
-                    'Visible', 'on', ...
+                    'Visible', 'off', ...
                     'DockControls', 'off', ...
                     'MenuBar', 'none', ...
                     'ToolBar', 'none', ...
@@ -209,24 +213,35 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     'Renderer', 'opengl', ...
                     'Position', [0 0 1040, 640]);
                 win.UserData.name = this.WIN_NAME;
-                % Center the window
-                if isunix && not(ismac())
-                    win.Position(1) = round((win.Parent.ScreenSize(3) - win.Position(3)) / 2);
-                    win.Position(2) = round((win.Parent.ScreenSize(4) - win.Position(4)) / 2);
-                else
-                    win.OuterPosition(1) = round((win.Parent.ScreenSize(3) - win.OuterPosition(3)) / 2);
-                    win.OuterPosition(2) = round((win.Parent.ScreenSize(4) - win.OuterPosition(4)) / 2);
+                % Center the window on the right of the logger
+                try
+                    msg_pos = GUI_Msg.getPosition;
+                    win.Position(1) = sum(msg_pos([1 3]));
+                    win.Position(2) = sum(msg_pos([2 4])) - win.Position(4);
+                catch
+                    if isunix && not(ismac())
+                        win.Position(1) = round((win.Parent.ScreenSize(3) - win.Position(3)) / 2);
+                        win.Position(2) = round((win.Parent.ScreenSize(4) - win.Position(4)) / 2);
+                    else
+                        win.OuterPosition(1) = round((win.Parent.ScreenSize(3) - win.OuterPosition(3)) / 2);
+                        win.OuterPosition(2) = round((win.Parent.ScreenSize(4) - win.OuterPosition(4)) / 2);
+                    end
                 end
+                win.Visible = 'on';
                 
-                this.win = win;            
+                this.win = win;
 
-                % empty check boxes
-                this.check_boxes = {};
-                this.pop_ups = {};
-                this.edit_texts = {};
-                this.edit_texts_array = {};
-                this.flag_list = {};
-
+                % empty cur_lists
+                this.check_boxes = {}; % List of all the checkboxes
+                this.pop_ups = {};     % List of drop down menu
+                this.rpop_up = {};     % Remote resources pup-up
+                this.ropref = {};      % Remote Orbit Preferences
+                this.ripref = {};      % Remote Iono preferences
+                this.rv2pref = {};     % Remote VMF source preferences
+                this.edit_texts = {};  % List of editable text
+                this.edit_texts_array = {}; % list of editable text array
+                this.flag_list = {};   % list of all the flags
+                
                 try
                     main_bv = uix.VBox('Parent', win, ...
                         'Padding', 5, ...
@@ -237,7 +252,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     open('GUI Layout Toolbox 2.3.4.mltbx');
                     log.newLine();
                     log.addWarning('After installation re-run goGPS');
-                    close(win);
+                    delete(win);
                     return;
                 end
                 top_bh = uix.HBox( 'Parent', main_bv, 'BackgroundColor', Core_UI.DARK_GREY_BG);
@@ -273,11 +288,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     'Padding', 200, ...
                     'BackgroundColor', Core_UI.LIGHT_GREY_BG);
                 this.insertWaitBox(wait_box, 'Building interface...');
-                if isunix && not(ismac)
-                    % On linux I have to repeat this operation or the wait
-                    % box will not be centered
-                    wait_box.Padding = 190;
-                end
+                
+                % On linux I have to repeat this operation or the wait
+                % box will not be centered, let's always do it, it is safer!
+                wait_box.Padding = 190;
+
                 drawnow;
                 delete(wait_box)
                 tab_panel = uix.TabPanel('Parent', panel_g_border, ...
@@ -1963,7 +1978,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 'ForegroundColor', Core_UI.BLACK, ...
                 'FontSize', Core_UI.getFontSize(9));
             
-            this.ripref = {};
             this.ripref{1} = Core_UI.insertCheckBoxLight(box_v1pref, 'Final', 'iono1', @this.onResourcesPrefChange);
             this.ripref{1}.TooltipString = 'Final ionospheric map';
             this.ripref{2} = Core_UI.insertCheckBoxLight(box_v1pref, 'Rapid', 'iono2', @this.onResourcesPrefChange);
@@ -1989,7 +2003,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 'ForegroundColor', Core_UI.BLACK, ...
                 'FontSize', Core_UI.getFontSize(9));
             
-            this.rv2pref = {};
             this.rv2pref{1} = Core_UI.insertCheckBoxLight(box_v2pref, 'Operational', 'vmfs1', @this.onResourcesPrefChange);
             this.rv2pref{2} = Core_UI.insertCheckBoxLight(box_v2pref, 'ERA-Interim', 'vmfs2', @this.onResourcesPrefChange);
             this.rv2pref{3} = Core_UI.insertCheckBoxLight(box_v2pref, 'Forecast', 'vmfs3', @this.onResourcesPrefChange);
@@ -2402,7 +2415,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             Core.getCurrentSettings.setProperty(caller.UserData, value);
             % Update VMF Resolution Preferences
             if strcmpi(caller.UserData,'mapping_function')
-                if (caller.Value == 2 || caller.Value == 4 || caller.Value == 5)
+                if (caller.Value == Prj_Settings.MF_VMF1 || caller.Value == Prj_Settings.MF_VMF3_1 || caller.Value == Prj_Settings.MF_VMF3_5)
                     r_man = Remote_Resource_Manager.getInstance();
                     state = Core.getCurrentSettings();
                     
@@ -2866,13 +2879,19 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         end
         
         function openInspector(this, caller, event)
-            % Create a new project            
+            % Open goGPS Inspector       
             goInspector;
+        end
+        
+        function openDownloader(this, caller, event)
+            % open goGPS Resources Downloader            
+            GUI_Downloader.getInstance;
+            this.close;
         end
         
         function createNewProject(this, caller, event)
             % Create a new project            
-            new = GUI_New_Project(this);
+            GUI_New_Project(this);
         end
         
         function openGetChalmerString(this, caller, event)
@@ -3011,7 +3030,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 
                 core.state.save(Prj_Settings.LAST_SETTINGS);
                 this.ok_go = true;
-                close(this.win);
+                this.close();
             end
         end
         
@@ -3059,7 +3078,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             state.updateObsFileName;
             n_rec = state.getRecCount;
             rec_path = state.getRecPath;
-            str = '';
             t0 = tic;
             
             % Get the maximum number of session to check
@@ -3268,6 +3286,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             uimenu(this.menu.goGPS, ...
                 'Label', 'Open Inspector', ...
                 'Callback', @this.openInspector);
+            uimenu(this.menu.goGPS, ...
+                'Label', 'Open Downloader', ...
+                'Callback', @this.openDownloader);
             this.menu.options = uimenu(this.win, 'Label', 'Options');
             uimenu(this.menu.options, ...
                 'Label', 'Set for PPP troposphere estimation', ...
