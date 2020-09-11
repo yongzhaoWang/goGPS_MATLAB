@@ -1246,8 +1246,8 @@ classdef GUI_Downloader < GUI_Unique_Win
             core = Core.getCurrentCore();
             core.log.addMarkedMessage('Starting download!');
             fw = File_Wizard;
-            [~, exact_lim] = Core.getState.getSessionLimits();
-            fw.downloadResource(this.getDownloadableItems(), exact_lim.first, exact_lim.last);
+            [sss_start, sss_stop] = this.getSessionsLimits();
+            fw.downloadResource(this.getDownloadableItems(),sss_start, sss_stop);
             this.ok_go = true;
         end
         

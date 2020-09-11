@@ -5517,7 +5517,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % Get the id of the current session
             %
             % SYNTAX
-            %   cur_session = this.getCurSession()            
+            %   cur_session = this.getCurSession()
+            if isempty(this.cur_session)
+                this.cur_session = 1;
+            end
             cur_session = this.cur_session;
         end
 
