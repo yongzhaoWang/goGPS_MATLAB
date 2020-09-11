@@ -1026,11 +1026,9 @@ classdef Meteo_Data < handle
             %   md1 = Meteo_Data.getVMS('test', [x y z], station(1).getObsTime, md)
 
             md = Meteo_Data();
-            [phi, lam, h] = cart2geod(xyz(1), xyz(2), xyz(3));
-            [e, n] = cart2plan(xyz(1), xyz(2), xyz(3));
-
-            amsl = h - getOrthometricCorr(phi, lam);
-
+            coo_ref = Coordinates.fromXYZ(xyz);
+            [~, ~, ~, amsl] = coo_ref.getGeodetic();
+            
             n_station = numel(station);
 
             % In a VMS I keep only PR TD HR
@@ -1044,7 +1042,11 @@ classdef Meteo_Data < handle
 
                 % Get the stations location
                 [x, y, z] = station(s).getLocation();
-                [e_obs(s), n_obs(s)] = cart2plan(x, y, z);
+                coo = Coordinates.fromXYZ(x, y, z);
+                enu = coo.getLocal(coo_ref);
+                e_obs(s) = enu(1);
+                n_obs(s) = enu(2); 
+                u_obs(s) = enu(3);
             end
             id_ok = ~isnan(e_obs);
             n_obs = n_obs(id_ok); 
@@ -1053,7 +1055,7 @@ classdef Meteo_Data < handle
 
             [e_mesh, n_mesh] = meshgrid(e_obs, n_obs);
             d_oo = sqrt(abs(e_mesh - e_mesh').^2 + abs(n_mesh - n_mesh').^2); % distance obs obs
-            d_op = sqrt(abs(e_obs - e).^2 + abs(n_obs - n).^2);               % distance obs o prediction point
+            d_op = sqrt(abs(e_obs).^2 + abs(n_obs).^2);               % distance obs o prediction point
 
             % fun for pressure
             fun = @(dist) 0.2 * exp(-(dist/0.8e4)) + exp(-(dist/6e3).^2);
