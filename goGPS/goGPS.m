@@ -76,6 +76,12 @@ function goGPS(ini_settings, use_gui, flag_online)
         else
             use_gui = 1;
         end
+    else
+        if mod(use_gui, 2) == 0
+            Go_Settings.getInstance.setLogMode(false);
+        else
+            Go_Settings.getInstance.setLogMode(true);
+        end
     end
     
     if ischar(use_gui)
@@ -83,8 +89,7 @@ function goGPS(ini_settings, use_gui, flag_online)
     end    
         
     log = Logger.getInstance();
-    log.setColorMode(Go_Settings.getInstance.isLogColorMode);
-    log.disableFileOut();
+    log.disableFileOut();       
     if use_gui && Go_Settings.getInstance.getLogMode() == 1
         log.enableGUIOut();
         log.disableScreenOut();
@@ -93,6 +98,8 @@ function goGPS(ini_settings, use_gui, flag_online)
         log.enableScreenOut();
         log.disableGUIOut();
     end
+    log.setColorMode(Go_Settings.getInstance.isLogColorMode);
+    
     
     % Show coloured header
     cm = log.getColorMode();
