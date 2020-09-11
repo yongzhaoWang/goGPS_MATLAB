@@ -7470,7 +7470,7 @@ classdef GNSS_Station < handle
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             log = Core.getLogger();
             state = Core.getCurrentSettings;
-            fh_list = [];
+            [m_diff, s_diff, fh_list] = deal([]);
             if nargin < 3
                  flag_show = false;
             end
@@ -7489,7 +7489,7 @@ classdef GNSS_Station < handle
             tsc = Tropo_Sinex_Compare();
             tsc.addIGSOfficialStation(igs_list, p_time, flag_download);
             
-            if isempty(tsc.results)
+            if isempty(tsc.results) || isempty(fieldnames(tsc.results))
                 log.addWarning('No IGS valid station found for comparison');
             else
                 % For now disable interpolation, check only IGS stations
