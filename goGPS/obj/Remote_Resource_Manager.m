@@ -220,7 +220,9 @@ classdef Remote_Resource_Manager < Ini_Manager
                 if ~strcmp(center_name, 'default')
                     str = ', using default';
                 end
-                this.log.addWarning(sprintf('No resource %s for center %s%s',resource_name, center_name, str))
+                if numel(resource_name) < 3 || ~strcmp(resource_name(1:3), 'vmf')
+                    this.log.addWarning(sprintf('No resource %s for center %s%s',resource_name, center_name, str))
+                end
                 file_structure = [];
                 latency = [];
             else
