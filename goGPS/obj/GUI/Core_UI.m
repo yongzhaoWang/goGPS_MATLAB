@@ -44,7 +44,7 @@
 classdef Core_UI < Logos
     
     properties (Constant)
-        FONT_SIZE_CONVERSION_LNX = 0.9;
+        FONT_SIZE_CONVERSION_LNX = 0.80;
         FONT_SIZE_CONVERSION_MAC = 1.45;
         FONT_SIZE_CONVERSION_WIN = 1;
         LIGHT_GREY_BG_NOT_SO_LIGHT2 =  0.73 * ones(3, 1);
@@ -561,17 +561,17 @@ classdef Core_UI < Logos
             text_label = findall(gcf,'Tag', 'm_grid_xticklabel');
             for txt = text_label(:)'
                 txt.FontName = FONT;
-                txt.FontSize = iif(txt.FontSize == 12, 13, 15);
+                txt.FontSize = Core_UI.getFontSize(16);
             end
             text_label = findall(gcf,'Tag', 'm_grid_yticklabel');
             for txt = text_label(:)'
                 txt.FontName = FONT;
-                txt.FontSize = iif(txt.FontSize == 12, 13, 15);
+                txt.FontSize = Core_UI.getFontSize(16);
             end
             text_label = findall(gcf,'Tag', 'm_ruler_label');
             for txt = text_label(:)'
                 txt.FontName = FONT;
-                txt.FontSize = iif(txt.FontSize == 12, 13, 15);
+                txt.FontSize = Core_UI.getFontSize(14);
             end
             legend = findall(gcf, 'type', 'legend');
             for lg = legend(:)'

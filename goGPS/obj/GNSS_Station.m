@@ -3854,12 +3854,14 @@ classdef GNSS_Station < handle
             % SYNTAX
             %   sta_list.showMapDtm(new_fig, resolution);
             
+            N_MAX_STA = 50;
             sta_list = sta_list(~sta_list.isEmpty_mr);
             
             flag_labels = true;
             flag_large_points = true;
             point_size = 15;
-            point_color = [14, 25, 41]/256;
+            %point_color = [14, 25, 41]/256;
+            point_color = Core_UI.ORANGE;
             
             if nargin < 2 || isempty(new_fig)
                 new_fig = true;
@@ -3970,10 +3972,10 @@ classdef GNSS_Station < handle
             
             hold on;
             
-            m_grid('box','fancy','tickdir','in', 'fontsize', 16);
+            m_grid('box','fancy','tickdir','in', 'fontsize', Core_UI.getFontSize(11));
             % m_ruler(1.1, [.05 .40], 'tickdir','out','ticklen',[.007 .007], 'fontsize',14);
             drawnow
-            m_ruler([.7 1], -0.05, 'tickdir','out','ticklen',[.007 .007], 'fontsize',14);
+            m_ruler([.7 1], -0.075, 'tickdir','out','ticklen',[.007 .007], 'fontsize',Core_UI.getFontSize(9));
             [x, y] = m_ll2xy(lon, lat);
             
             %point_color = Cmap.get('viridis', numel(x));
@@ -3982,11 +3984,16 @@ classdef GNSS_Station < handle
                 scatter(x(:), y(:), point_size, 1:numel(x), 'filled'); hold on;
                 colormap(point_color);
             else
-                plot(x(:), y(:),'.', 'MarkerSize', point_size, 'Color', point_color); hold on;
+                if numel(sta_list) > N_MAX_STA
+                    plot(x(:), y(:),'.', 'MarkerSize', point_size, 'Color', Core_UI.BLACK); hold on;
+                    plot(x(:), y(:),'.', 'MarkerSize', point_size-3, 'Color', point_color); hold on;
+                else
+                    plot(x(:), y(:),'.', 'MarkerSize', 8, 'Color', Core_UI.BLACK); hold on;
+                end
             end
             if flag_labels
                 % Label BG (in background w.r.t. the point)
-                if numel(sta_list) < 60
+                if numel(sta_list) < N_MAX_STA
                     for r = 1 : numel(sta_list)
                         name = upper(sta_list(r).getMarkerName4Ch());
                         text(x(r), y(r), ['     ' name ' '], ...
@@ -3998,7 +4005,7 @@ classdef GNSS_Station < handle
                 end
             end
             
-            if flag_large_points && numel(sta_list) < 60
+            if flag_large_points && numel(sta_list) < N_MAX_STA
                 for r = 1 : numel(sta_list)
                     plot(x(r), y(r), '.', 'MarkerSize', 45, 'Color', Core_UI.getColor(r, numel(sta_list)), 'UserData', 'GNSS_point');
                 end
@@ -4007,7 +4014,7 @@ classdef GNSS_Station < handle
             end
             
             if flag_labels
-                if numel(sta_list) < 60
+                if numel(sta_list) < N_MAX_STA
                     for r = 1 : numel(sta_list)
                         name = upper(sta_list(r).getMarkerName4Ch());
                         text(x(r), y(r), ['   ' name], ...
@@ -4017,7 +4024,7 @@ classdef GNSS_Station < handle
                     end
                 end
             end
-            Core_UI.addExportMenu(f); Core_UI.addBeautifyMenu(f); Core_UI.beautifyFig(f);
+            Core_UI.addExportMenu(f); Core_UI.addBeautifyMenu(f); Core_UI.beautifyFig(f, 'light');
             f.Visible = 'on'; drawnow;
             title(sprintf('Map of GNSS stations\\fontsize{5} \n'), 'FontSize', 16);
             %xlabel('Longitude [deg]');
@@ -4038,12 +4045,13 @@ classdef GNSS_Station < handle
             %
             % SYNTAX
             %   sta_list.showMapGoogle(new_fig);
-                        
+           
+            N_MAX_STA = 50;
             sta_list = sta_list(~sta_list.isEmpty_mr);
             
             flag_labels = true;
             flag_large_points = true;
-            point_size = 8;
+            point_size = 15;
             point_color = [0, 255, 10]/256;
             
             if nargin < 2 || isempty(new_fig)
@@ -4130,7 +4138,6 @@ classdef GNSS_Station < handle
                     end
                 end
             end
-            
             hold on;
             
             m_grid('box','fancy','tickdir','in', 'fontsize', 16);
@@ -4146,21 +4153,28 @@ classdef GNSS_Station < handle
                 scatter(x(:), y(:), point_size, 1:numel(x), 'filled'); hold on;
                 colormap(point_color);
             else
-                plot(x(:), y(:),'.', 'MarkerSize', point_size, 'Color', point_color); hold on;
+                if numel(sta_list) > N_MAX_STA
+                    plot(x(:), y(:),'.', 'MarkerSize', point_size, 'Color', Core_UI.BLACK); hold on;
+                    plot(x(:), y(:),'.', 'MarkerSize', point_size-3, 'Color', point_color); hold on;
+                else
+                    plot(x(:), y(:),'.', 'MarkerSize', 8, 'Color', Core_UI.BLACK); hold on;
+                end
             end
             if flag_labels
                 % Label BG (in background w.r.t. the point)
-                for r = 1 : numel(sta_list)
-                    name = upper(sta_list(r).getMarkerName4Ch());
-                    txt = text(x(r), y(r), ['   ' name], ...
-                        'FontWeight', 'bold', 'FontSize', 12, 'Color', [1 1 1], ...
-                        'BackgroundColor', [1 1 1], 'EdgeColor', [0.3 0.3 0.3], ...
-                        'Margin', 2, 'LineWidth', 2, ...
-                        'HorizontalAlignment','left');
+                if numel(sta_list) < N_MAX_STA
+                    for r = 1 : numel(sta_list)
+                        name = upper(sta_list(r).getMarkerName4Ch());
+                        txt = text(x(r), y(r), ['   ' name], ...
+                            'FontWeight', 'bold', 'FontSize', 12, 'Color', [1 1 1], ...
+                            'BackgroundColor', [1 1 1], 'EdgeColor', [0.3 0.3 0.3], ...
+                            'Margin', 2, 'LineWidth', 2, ...
+                            'HorizontalAlignment','left');
+                    end
                 end
             end
             
-            if flag_large_points
+            if flag_large_points && numel(sta_list) < N_MAX_STA
                 for r = 1 : numel(sta_list)
                     plot(x(r), y(r), '.', 'MarkerSize', 45, 'Color', Core_UI.getColor(r, numel(sta_list)), 'UserData', 'GNSS_point');
                 end
@@ -4168,17 +4182,19 @@ classdef GNSS_Station < handle
                 plot(x(:), y(:), 'ko', 'MarkerSize', 15, 'LineWidth', 2);
             end
             if flag_labels
-                for r = 1 : numel(sta_list)
-                    name = upper(sta_list(r).getMarkerName4Ch());
-                    t = text(x(r), y(r), ['   ' name], ...
-                        'FontWeight', 'bold', 'FontSize', 12, 'Color', [0 0 0], ...
-                        ...%'FontWeight', 'bold', 'FontSize', 10, 'Color', [0 0 0], ...
-                        ...%'BackgroundColor', [1 1 1], 'EdgeColor', [0.3 0.3 0.3], ...
-                        'Margin', 2, 'LineWidth', 2, ...
-                        'HorizontalAlignment','left');
-                    %t.Units = 'pixels';
-                    %t.Position(1) = t.Position(1) + 20 + 10 * double(numel(sta_list) == 1);
-                    %t.Units = 'data';
+                if numel(sta_list) < N_MAX_STA
+                    for r = 1 : numel(sta_list)
+                        name = upper(sta_list(r).getMarkerName4Ch());
+                        t = text(x(r), y(r), ['   ' name], ...
+                            'FontWeight', 'bold', 'FontSize', 12, 'Color', [0 0 0], ...
+                            ...%'FontWeight', 'bold', 'FontSize', 10, 'Color', [0 0 0], ...
+                            ...%'BackgroundColor', [1 1 1], 'EdgeColor', [0.3 0.3 0.3], ...
+                            'Margin', 2, 'LineWidth', 2, ...
+                            'HorizontalAlignment','left');
+                        %t.Units = 'pixels';
+                        %t.Position(1) = t.Position(1) + 20 + 10 * double(numel(sta_list) == 1);
+                        %t.Units = 'data';
+                    end
                 end
             end
             
