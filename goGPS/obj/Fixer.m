@@ -165,7 +165,7 @@ classdef Fixer < handle
                     % boostrap solution starting from the most probable and
                     % not the one with lower formal errror
                     l_fixed = amb_ok;
-                    [amb_fixed(amb_ok), l_fixed(amb_ok),  VCV_not_fixed] = this.mp_bootstrap(amb_float(amb_ok),(C_amb_amb(amb_ok, amb_ok)));
+                    [amb_fixed(amb_ok), l_fixed(amb_ok),  VCV_not_fixed] = this.mp_bootstrap(amb_float(amb_ok),full(C_amb_amb(amb_ok, amb_ok)));
                     is_fixed = true;
             end
         end
