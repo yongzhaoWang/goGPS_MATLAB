@@ -898,7 +898,7 @@ classdef Meteo_Data < handle
             t_thr = 3000;
             
             q_fun_obs = fun(d_oo) .* repmat(fun(d_op)', size(d_oo,1), 1);
-            q_fun_obs = triu(q_fun_obs) + triu(q_fun_obs,1)';
+            q_fun_obs = triu(q_fun_obs) + triu(q_fun_obs, 1)';
             
             % getting data
             id_data = find(st_type(:, type));
