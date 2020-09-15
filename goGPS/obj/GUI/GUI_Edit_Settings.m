@@ -2054,7 +2054,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ERP local dir', 'erp_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'IONO local dir', 'iono_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'IGRF local dir', 'igrf_dir', @this.onEditChange, [28 130 -1 25]);
-            [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'DCB local dir', 'dcb_dir', @this.onEditChange, [28 130 -1 25]);
+            [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'Biases local dir', 'bias_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'VMF local dir', 'vmf_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ATM local dir', 'atm_load_dir', @this.onEditChange, [28 130 -1 25]);
 
@@ -2580,7 +2580,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             state.erp_dir = '';
             state.iono_dir = '';
             state.igrf_dir = '';
-            state.dcb_dir = '';
+            state.bias_dir = '';
             state.vmf_dir = '';
             state.atm_load_dir = '';
             

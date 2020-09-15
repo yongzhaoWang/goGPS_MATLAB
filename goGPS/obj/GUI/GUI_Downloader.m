@@ -333,7 +333,7 @@ classdef GUI_Downloader < GUI_Unique_Win
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Ephemerides, clocks, ERP', 'chkbox_eph', []); this.check_boxes_dwn{end}.Value = true;
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Ionospheric maps', 'chkbox_iono', []); this.check_boxes_dwn{end}.Value = true;
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Broadcast Ionosphere', 'chkbox_iono_brdc', []); this.check_boxes_dwn{end}.Value = true;
-                this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Biases / DCB', 'chkbox_bias', []); this.check_boxes_dwn{end}.Value = true;
+                this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Biases', 'chkbox_bias', []); this.check_boxes_dwn{end}.Value = true;
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'VMF', 'chkbox_vmf', []); this.check_boxes_dwn{end}.Value = true;
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Athmospeheric loading', 'chkbox_atm', []); this.check_boxes_dwn{end}.Value = true;
                 
@@ -624,7 +624,7 @@ classdef GUI_Downloader < GUI_Unique_Win
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'Clk local dir', 'clk_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ERP local dir', 'erp_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'IONO local dir', 'iono_dir', @this.onEditChange, [28 130 -1 25]);
-            [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'DCB local dir', 'dcb_dir', @this.onEditChange, [28 130 -1 25]);
+            [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'Biases local dir', 'bias_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'VMF local dir', 'vmf_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ATM local dir', 'atm_load_dir', @this.onEditChange, [28 130 -1 25]);
 
@@ -1026,7 +1026,7 @@ classdef GUI_Downloader < GUI_Unique_Win
             state.erp_dir = '';
             state.iono_dir = '';
             state.igrf_dir = '';
-            state.dcb_dir = '';
+            state.bias_dir = '';
             state.vmf_dir = '';
             state.atm_load_dir = '';
             

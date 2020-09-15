@@ -151,7 +151,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         CLK_NAME = ''; % Name of Clock Offset files
         CRX_DIR = [Prj_Settings.DEFAULT_DIR_IN 'satellite' filesep 'CRX' filesep]; % Path to CRX folder containing files of Satellites problems
         CRX_NAME = 'SAT_${YYYY}.CRX';
-        DCB_DIR = [Prj_Settings.DEFAULT_DIR_IN 'satellite' filesep 'DCB' filesep]; % Path to DCB folder containing files of Differential Code Biases
+        BIAS_DIR = [Prj_Settings.DEFAULT_DIR_IN 'satellite' filesep 'BIAS' filesep]; % Path to BIAS folder containing files of Differential Code Biases
         EMS_DIR = [Prj_Settings.DEFAULT_DIR_IN 'satellite' filesep 'SBAS' filesep 'EMS' filesep]; % Path to EMS folder containing files of EGNOS Message Server.
 
         % ANTENNA
@@ -769,9 +769,9 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         % Path to CRX folder containing files of Satellites problems
         crx_dir = Prj_Settings.CRX_DIR;
         crx_name = Prj_Settings.CRX_NAME;
-        % Path to DCB folder containing files of Differential Code Biases
-        dcb_dir = Prj_Settings.DCB_DIR;
-        dcb_name = []; % setted in File_Wizard.ConjureDCB
+        % Path to BIAS folder containing files of Differential Code Biases
+        bias_dir = Prj_Settings.BIAS_DIR;
+        bias_name = []; % setted in File_Wizard.ConjureBias
         % Path to EMS folder containing files of EGNOS Message Server.
         ems_dir = Prj_Settings.EMS_DIR;
 
@@ -1262,7 +1262,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.eph_dir    = fnp.getFullDirPath(state.getData('eph_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('eph_dir')), this.prj_home));
                 this.clk_dir    = fnp.getFullDirPath(state.getData('clk_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('clk_dir')), this.prj_home));
                 this.crx_dir    = fnp.getFullDirPath(state.getData('crx_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('crx_dir')), this.prj_home));
-                this.dcb_dir    = fnp.getFullDirPath(state.getData('dcb_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('dcb_dir')), this.prj_home));
+                this.bias_dir   = fnp.getFullDirPath(state.getData('bias_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('bias_dir')), this.prj_home));
                 this.ems_dir    = fnp.getFullDirPath(state.getData('ems_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('ems_dir')), this.prj_home));
 
                 % ANTENNAS
@@ -1648,7 +1648,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.clk_dir     = state.clk_dir;
                 this.clk_name    = state.clk_name;
                 this.crx_dir     = state.crx_dir;
-                this.dcb_dir     = state.dcb_dir;
+                this.bias_dir    = state.bias_dir;
                 this.ems_dir     = state.ems_dir;
 
                 % ANTENNA
@@ -1965,7 +1965,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str = [str sprintf(' Directory of Satellite clock offsets:             %s\n', fnp.getRelDirPath(this.clk_dir, this.prj_home))];
             str = [str sprintf(' Name of Satellite clock offsets:                  %s\n', this.clk_name)];
             str = [str sprintf(' Directory of CRX (satellite problems):            %s\n', fnp.getRelDirPath(this.crx_dir, this.prj_home))];
-            str = [str sprintf(' Directory of DCB (Differential Code Biases):      %s\n', fnp.getRelDirPath(this.dcb_dir, this.prj_home))];
+            str = [str sprintf(' Directory of Biases:                              %s\n', fnp.getRelDirPath(this.bias_dir, this.prj_home))];
             str = [str sprintf(' Directory of EMS (EGNOS Message Server):          %s\n\n', fnp.getRelDirPath(this.ems_dir, this.prj_home))];
             
             str = [str '---- INPUT: ANTENNAS -------------------------------------------------------' 10 10];
@@ -2380,8 +2380,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             str_cell = Ini_Manager.toIniStringComment('Directory of CRX files (containing satellite problems)', str_cell);
             str_cell = Ini_Manager.toIniString('crx_dir', fnp.getRelDirPath(this.crx_dir, this.prj_home), str_cell);
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
-            str_cell = Ini_Manager.toIniStringComment('Directory of DCB files (Differential Code Biases)', str_cell);
-            str_cell = Ini_Manager.toIniString('dcb_dir', fnp.getRelDirPath(this.dcb_dir, this.prj_home), str_cell);
+            str_cell = Ini_Manager.toIniStringComment('Directory of BIAS files', str_cell);
+            str_cell = Ini_Manager.toIniString('bias_dir', fnp.getRelDirPath(this.bias_dir, this.prj_home), str_cell);
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
             str_cell = Ini_Manager.toIniStringComment('Directory of EMS files (EGNOS Message Server).', str_cell);
             str_cell = Ini_Manager.toIniString('ems_dir', fnp.getRelDirPath(this.ems_dir, this.prj_home), str_cell);
@@ -3310,7 +3310,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.checkPathField('erp_dir', EMPTY_IS_NOT_VALID);
             this.checkStringField('erp_name', EMPTY_IS_VALID);
             this.checkPathField('crx_dir', EMPTY_IS_NOT_VALID);
-            this.checkPathField('dcb_dir', EMPTY_IS_NOT_VALID);
+            this.checkPathField('bias_dir', EMPTY_IS_NOT_VALID);
             this.checkPathField('ems_dir', EMPTY_IS_VALID);
 
             %this.checkNumericField('rec_dyn_mode', [0 numel(this.DYN_MODE)-1]);
@@ -4175,10 +4175,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 dir_path = this.getNavClkDir();
             elseif strcmpi(ext,'.CRX')
                 dir_path = '';
+            elseif strcmpi(ext,'.BIA')
+                dir_path = this.getBiasDir();
             elseif ~isempty(regexp(ext,'\.\d\d[i|I]', 'once')) || ~isempty(regexp(ext,'\.\d\d[n|N]', 'once')) || strcmpi(ext,'.${YY}i') || strcmpi(ext,'.${YY}n') || strcmpi(name(1:4),'IFCz') || strcmpi(name(1:4),'SFCz')
                 dir_path = this.getIonoDir();
-            elseif strcmpi(ext,'.DCB') || (strcmpi(ext,'.BSX')) || (strcmpi(ext,'.BIA'))
-                dir_path = this.getDcbDir();
             elseif strcmpi(ext,'.apl')
                 dir_path = this.getAtmLoadDir();
             elseif instr(name,'VMF') && instr(ext,'.H')
@@ -4366,12 +4366,12 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             cs_thr = this.CS_THR_PRE_PRO;
         end
 
-        function dcb_file = getDcbFile(this)
+        function out = getBiasFile(this)
             % Get the file name of the ERP files
             %
             % SYNTAX
-            %   erp_path = this.getErpPath()
-            dcb_file = this.dcb_name;
+            %   out = this.getBiasFile()
+            out = this.bias_name;
         end
 
         function out = getNavEphDir(this)
@@ -4398,35 +4398,35 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             out = this.erp_dir;
         end
 
-        function out = getDcbDir(this)
-            % Get the path to the DCB files
+        function out = getBiasDir(this)
+            % Get the path to the BIAS files
             %
             % SYNTAX
-            %   dcb_path = this.getDcbPath()
-            out = this.dcb_dir;
+            %   out = this.getBiasDir()
+            out = this.bias_dir;
         end
 
         function out = getIonoDir(this)
-            % Get the path to the DCB files
+            % Get the path to the Iono files
             %
             % SYNTAX
-            %   dcb_path = this.getDcbPath()
+            %   out = this.getIonoDir()
             out = this.iono_dir;
         end
         
         function out = getAtmLoadDir(this)
-            % Get the path to the DCB files
+            % Get the path to the atm loading files
             %
             % SYNTAX
-            %   dcb_path = this.getDcbPath()
+            %   out = this.getAtmLoadDir()
             out = this.atm_load_dir;
         end
         
         function out = getVMFDir(this)
-            % Get the path to the DCB files
+            % Get the path to the VMF files
             %
             % SYNTAX
-            %   dcb_path = this.getDcbPath()
+            %   out = this.getVMFDir()
             out = this.vmf_dir;
         end
 
@@ -4937,12 +4937,12 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         end
         
         function erp_full_name = getBiasFileName(this, date_start, date_stop)
-            % Get the full name of the DCB files (replacing special keywords)
+            % Get the full name of the BIAS files (replacing special keywords)
             %
             % SYNTAX
             %   erp_full_name = getErpFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            file_name = fnp.checkPath(strcat(this.dcb_dir, filesep, this.dcb_name), this.getHomeDir());
+            file_name = fnp.checkPath(strcat(this.bias_dir, filesep, this.bias_name), this.getHomeDir());
 
             if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
                 date_start = date_start.getCopy;
@@ -5063,7 +5063,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             elseif ~isempty(regexpi(ext,'.erp*'))
                 this.setErpFile(filename);
             elseif strcmpi(ext,'.bia') || strcmpi(ext,'.BIA')
-                this.setDcbFile(filename);
+                this.setBiasFile(filename);
             elseif instr(lower(ext),'.clk')
                 this.setNavClkFile(filename);
             elseif strcmpi(ext,'.CRX')
@@ -5071,8 +5071,6 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.setAtmLoadFile(filename);
             elseif (~isempty(regexp(ext,'\.\d\di', 'once')) || strcmpi(ext,'.${YY}i') || strcmpi(ext,'.${YY}p')) || ~isempty(strfind(resouce_name,'iono'))  %#ok<STREMP>
                 this.setIonoFile(filename);
-            elseif strcmpi(ext,'.DCB') || (strcmpi(ext,'.SNX') && strcmpi(name(1:3),'DCB'))
-                this.setDcbFile(filename);
             elseif instr(fname,'VMF')
                 this.setVMFFile(filename);
             end
@@ -5154,11 +5152,11 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.erp_name = erp_name;
         end
 
-        function setDcbFile(this, dcb_name)
+        function setBiasFile(this, bias_name)
             % Set the file name of the clock files
             % SYNTAX
             %   this.getClkFile(erp_name)
-            this.dcb_name = dcb_name;
+            this.bias_name = bias_name;
         end
 
         function setIonoFile(this, iono_file)

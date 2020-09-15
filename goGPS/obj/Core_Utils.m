@@ -2009,7 +2009,7 @@ classdef Core_Utils < handle
             str2 = Core_Utils.num2Code2Char(unique(Core_Utils.code2Char2Num(str2)));
         end
         
-        function f_status_lst = aria2cDownloadUncompress(file_name_lst, f_ext_lst, f_status_lst, date_list, out_dir)
+        function [f_status_lst, aria_err_code] = aria2cDownloadUncompress(file_name_lst, f_ext_lst, f_status_lst, date_list, out_dir)
             % Try to download files using aria2C
             %
             % INPUT
@@ -2023,6 +2023,7 @@ classdef Core_Utils < handle
             %   f_status_lst = Core_Utils.aria2cDownloadUncompress(file_name_lst, f_ext_lst, f_status_lst, <date_list>, <out_dir>)
             %
             
+            aria_err_code = 0;
             log = Core.getLogger();
             fnp = File_Name_Processor();
             rm = Remote_Resource_Manager.getInstance;
@@ -2131,6 +2132,7 @@ classdef Core_Utils < handle
                                             %dos(sprintf('%s -j 20 -c -i %s -d %s', aria2c_path, file_name, old_od));  % do not suppress output
                                         end
                                     catch
+                                        aria_err_code = 1;
                                         log.addError('aria2c is not working, is it installed?');
                                     end
                                 end

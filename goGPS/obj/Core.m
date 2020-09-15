@@ -1153,8 +1153,8 @@ classdef Core < handle
             if err_code.crx ~= 0
                 state.resetPath('crx_dir', new_home, true);
             end
-            if err_code.dcb ~= 0
-                state.resetPath('dcb_dir', new_home, true);
+            if err_code.bias ~= 0
+                state.resetPath('bias_dir', new_home, true);
             end
             if err_code.ems ~= 0
                 state.resetPath('ems_dir', new_home, true);
@@ -1221,7 +1221,7 @@ classdef Core < handle
                 'clk', 0, ...
                 'erp', 0, ...
                 'crx', 0, ...
-                'dcb', 0, ...
+                'bias', 0, ...
                 'ems', 0, ...
                 'geoid', 0, ...
                 'iono', 0, ...
@@ -1277,7 +1277,7 @@ classdef Core < handle
             err_code.clk   = state.checkDir('clk_dir', 'Clock Offset dir', flag_verbose);
             err_code.erp   = state.checkDir('erp_dir', 'Earth Rotation Parameters dir', flag_verbose);
             err_code.crx   = state.checkDir('crx_dir', 'Satellite Manouvers dir', flag_verbose);
-            err_code.dcb   = state.checkDir('dcb_dir', 'Differential Code Biases dir', flag_verbose);
+            err_code.bias   = state.checkDir('bias_dir', 'Biases dir', flag_verbose);
             err_code.ems   = state.checkDir('ems_dir', 'EGNOS Message Center dir', flag_verbose);
             
             %err_code.geoid = state.checkDir('geoid_dir', 'Geoid loading dir', flag_verbose);

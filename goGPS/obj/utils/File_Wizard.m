@@ -208,10 +208,10 @@ classdef File_Wizard < handle
                         f_status_lst = file_tree{4};
                         f_ext_lst = file_tree{5};
                         
-                        f_status_lst = Core_Utils.aria2cDownloadUncompress(file_name_lst, f_ext_lst, f_status_lst, date_list);
+                        [f_status_lst, aria_err_code] = Core_Utils.aria2cDownloadUncompress(file_name_lst, f_ext_lst, f_status_lst, date_list);
                         
                         for i = 1 : length(file_name_lst)
-                            if isempty(f_status_lst) || ~f_status_lst(i)
+                            if isempty(f_status_lst) || ~f_status_lst(i) && aria_err_code % do this only if aria fails
                                 file_name = file_name_lst{i};
                                 server = regexp(file_name,'(?<=\?{)\w*(?=})','match','once'); % search for ?{server_name} in paths
                                 file_name = strrep(file_name,['?{' server '}'],'');
@@ -236,7 +236,12 @@ classdef File_Wizard < handle
                                         status = Core_Utils.downloadHttpTxtResUncompress([s_ip file_name], out_dir, user, passwd) && status;
                                     end
                                 end
+                            else
+                                status = all(f_status_lst);                                
                             end
+                        end
+                        if ~aria_err_code && ~status
+                            Core.getLogger.addWarning(sprintf('Aria was able to download only %d of %d files', sum(f_status_lst), numel(f_status_lst)));
                         end
                     end
                 elseif ~strcmp(mode, 'download')
@@ -444,7 +449,7 @@ classdef File_Wizard < handle
                 %state.updateErpFileName();
                 this.conjureNavFiles(dsa, dso);
                 if state.isAutomaticDownload()
-                    this.conjureDCBFiles(dsa, dso);
+                    this.conjureBiasFiles(dsa, dso);
                     this.conjureCRXFiles(dsa, dso);
                 end
                 if state.needIonoMap() || state.isIonoKlobuchar()
@@ -462,14 +467,16 @@ classdef File_Wizard < handle
             end
         end
         
-        function conjureAtmLoadFiles(this, date_start, date_stop)
+        function err_code = conjureAtmLoadFiles(this, date_start, date_stop)
             this.log.addMarkedMessage('Checking Athmospheric loading files');
             status = this.conjureResource('atm_load',date_start, date_stop);
 
             if status
                 this.log.addStatusOk('Atmospheric loading files are present ^_^');
+                err_code = 0;
             else
                 this.log.addWarning('Not all atmospheric files founds, Atmospheric loading will not be applyied');
+                err_code = 1;
             end
             
         end
@@ -516,14 +523,16 @@ classdef File_Wizard < handle
             end
         end
         
-        function conjureVmfFiles(this, date_start, date_stop)
-            this.log.addMarkedMessage('Checking VMF files');
+        function err_code = conjureVmfFiles(this, date_start, date_stop)
+            log = Core.getLogger;
+            log.addMarkedMessage('Checking VMF files');
+            err_code = 1;
             date_stop = date_stop.getCopy();
-            %date_stop.addSeconds(6*3600);
-            list_res = {'1x1','2.5x2','5x5'};
+            % date_stop.addSeconds(6*3600);
+            % list_res = {'1x1','2.5x2','5x5'};
             list_source = {'op','ei','fc'};
             state = Core.getState;
-            list_preferred_res = list_res(state.getPreferredVMFRes());
+            % list_preferred_res = list_res(state.getPreferredVMFRes());
             list_preferred_source = list_source(state.getPreferredVMFSource());
             state = Core.getCurrentSettings();
             if state.mapping_function == 2
@@ -543,24 +552,32 @@ classdef File_Wizard < handle
                 state.vmf_source = list_preferred_source{j};
                 status = this.conjureResource(['vmf' vers '_' res '_' list_preferred_source{j}], date_start, date_stop);
                 if status
-                    
+                    switch list_preferred_source{j}
+                        case {'op'}
+                            log.addStatusOk('Operational atmospheric loading files are present ^_^');
+                        case {'ei'}
+                            log.addStatusOk('ERA-interim atmospheric loading files are present ^_^');
+                        case {'fc'}
+                            log.addStatusOk('Forecast atmospheric loading files are present ^_^');
+                    end
                     break
                 end
             end
   
             if status
-                this.log.addStatusOk('Vienna Mapping Function files are present ^_^');
+                err_code = 0;
+                log.addStatusOk('Vienna Mapping Function files are present ^_^');
             else
-                this.log.addWarning('Not all vmf files founds');
+                log.addWarning('Not all vmf files founds');
             end
             
         end
         
-        function conjureDCBFiles(this, date_start, date_stop)
-            % Download of CAS .DCB files from the IGN server.
+        function err_code = conjureBiasFiles(this, date_start, date_stop)
+            % Download of BIAS files
             %
             % SYNTAX:
-            %   this.conjureDCBFiles(gps_week, gps_time);
+            %   this.conjureBiasFiles(gps_week, gps_time);
             %
             % INPUT:
             %   date_start = starting GPS_Time
@@ -568,242 +585,60 @@ classdef File_Wizard < handle
             %
             % OUTPUT:
             
-            legacy = false;
-            if ~legacy
-                status = this.conjureResource('bias', date_start, date_stop);
-            else
-                state = Core.getState;
-                this.log.addMarkedMessage('Checking DCB files');
-                if date_start.getCalEpoch >= 2013 % use CAS DCB
-                    dcb_ok = true;
-                    % check if file are present
-                    fnp = File_Name_Processor();
-                    ss = 'mxd';
-                    archive = 'ign';
-                    provider = 'cas';
-                    dcb_type = 'final';
-                    dcb_name = this.source.(archive).par.(ss).center.(provider).dcb.(dcb_type);
-                    [~, dcb_file_name, ext] = fileparts(dcb_name);
-                    state.setDcbFile([state.getDcbDir filesep dcb_file_name]);
-                    tmp_date_start = date_start.getCopy;
-                    tmp_date_stop = date_stop.getCopy;
-                    file_list = fnp.dateKeyRepBatch(dcb_name, tmp_date_start, tmp_date_stop);
-                    names = {};
-                    dcb_ok = true(length(file_list),1);
-                    for i = 1 : length(file_list)
-                        [~, name, ext] = fileparts(file_list{i});
-                        names{end+1} = name;
-                        if exist(fnp.checkPath([state.getDcbDir filesep name]), 'file') ~= 2
-                            dcb_ok(i) = false;
-                        end
-                    end
-                    
-                    if any(~dcb_ok)
-                        aria_try = true;
-                        try % ARIA2C download
-                            aria_file_list = file_list;
-                            f_ext_lst = cell(size(file_list));
-                            for i = 1 : numel(file_list)
-                                aria_file_list{i} = [this.source.(archive).ftpd.getFullAddress this.source.(archive).par.(ss).path file_list{i}];
-                                [~, name, ext] = fileparts(file_list{i});
-                                if strcmpi(ext, '.gz') || strcmpi(ext, '.Z')
-                                    f_ext_lst{i} = ext;
-                                    aria_file_list{i} = aria_file_list{i}(1 : end - length(ext));
-                                end
-                            end
-                            dcb_ok = Core_Utils.aria2cDownloadUncompress(aria_file_list, f_ext_lst, dcb_ok, [], state.getDcbDir());
-                            if any(~dcb_ok)
-                                id_ko = find(dcb_ok == 0);
-                                for i = id_ko'
-                                    this.log.addWarning(sprintf('download of %s from %s failed, file not found or not accessible', [this.source.(archive).ftpd.getFullAddress this.source.(archive).par.(ss).path], names{i}));
-                                end
-                            end
-                        catch ex
-                            this.source.(archive).ftpd.download(this.source.(archive).par.(ss).path, file_list, state.getDcbDir());
-                            for i = 1 : length(file_list)
-                                if not(dcb_ok(i))
-                                    [~, name, ext] = fileparts(file_list{i});
-                                    if (isunix())
-                                        system(['gzip -fd ' state.getDcbDir() filesep name ext]);
-                                    else
-                                        try
-                                            [status, result] = system(['".\utility\thirdParty\7z1602-extra\7za.exe" -y x ' '"' state.getDcbDir() filesep name ext '"' ' -o' '"' state.getDcbDir() '"']); %#ok<ASGLU>
-                                            delete([state.getDcbDir() filesep name ext]);
-                                        catch
-                                            this.log.addWarning(sprintf(['Please decompress the ' name ext ' file before trying to use it in goGPS.']));
-                                            compressed = 1;
-                                        end
-                                    end
-                                end
-                            end
-                        end
-                    else
-                        this.log.addStatusOk('DCB files are present ^_^');
-                    end
-                else % use DCB from CODE
-                    gps_week = double([date_start.getGpsWeek; date_stop.getGpsWeek ]);
-                    gps_time = [date_start.getGpsTime; date_stop.getGpsTime ];
-                    
-                    % Pointer to the global settings:
-                    state = Core.getCurrentSettings();
-                    
-                    file_dcb = {};
-                    compressed = 0;
-                    
-                    %AIUB FTP server IP address
-                    % aiub_ip = '130.92.9.78'; % ftp.aiub.unibe.ch
-                    aiub_ip = 'ftp.aiub.unibe.ch';
-                    
-                    %download directory
-                    down_dir = state.dcb_dir;
-                    
-                    %convert GPS time to time-of-week
-                    gps_tow = weektime2tow(gps_week, gps_time);
-                    
-                    % starting time
-                    date_f = gps2date(gps_week(1), gps_tow(1));
-                    
-                    % ending time
-                    date_l = gps2date(gps_week(end), gps_tow(end));
-                    
-                    % Check / create output folder
-                    if not(exist(down_dir, 'dir'))
-                        mkdir(down_dir);
-                    end
-                    
-                    this.log.addMessage(this.log.indent(sprintf(['FTP connection to the AIUB server (ftp://' aiub_ip '). Please wait...'])));
-                    
-                    year_orig  = date_f(1) : 1 : date_l(1);
-                    if (length(year_orig) < 1)
-                        %fprintf('ERROR: Data range not valid.\n')
-                        return
-                    elseif (length(year_orig) == 1)
-                        month = date_f(2) : 1 : date_l(2);
-                        year = year_orig;
-                    else
-                        month = date_f(2) : 1 : 12;
-                        year  = date_f(1).*ones(size(month));
-                        for y = 2 : length(year_orig)-1
-                            month = [month 1 : 1 : 12];
-                            year = [year (year_orig(y)).*ones(1,12)];
-                        end
-                        month = [month 1 : 1 : date_l(2)];
-                        year  = [year date_l(1).*ones(1,date_l(2))];
-                    end
-                    
-                    %connect to the DCB server
-                    try
-                        ftp_server = ftp(aiub_ip);
-                    catch
-                        this.log.addWarning('connection failed.\n');
-                        state.setDcbFile({''});
-                        return
-                    end
-                    
-                    m = 0;
-                    
-                    for y = 1 : length(year_orig)
-                        
-                        %target directory
-                        s = ['/CODE/', num2str(year_orig(y))];
-                        
-                        cd(ftp_server, '/');
-                        cd(ftp_server, s);
-                        
-                        while(m <= length(month)-1)
-                            
-                            m = m + 1;
-                            
-                            ff = {'P1C1','P1P2'};
-                            
-                            for p = 1 : length(ff)
-                                %target file
-                                s2 = [ff{p} num2str(two_digit_year(year(y)),'%02d') num2str(month(m),'%02d') '.DCB.Z'];
-                                if not(exist([down_dir '/' s2(1:end-2)]) == 2)
-                                    try
-                                        mget(ftp_server,s2,down_dir);
-                                        if (isunix())
-                                            system(['uncompress -f ' down_dir '/' s2]);
-                                        else
-                                            try
-                                                [status, result] = system(['".\utility\thirdParty\7z1602-extra\7za.exe" -y x ' '"' down_dir '/' s2 '"' ' -o' '"' down_dir '"']); %#ok<ASGLU>
-                                                delete([down_dir '/' s2]);
-                                                s2 = s2(1:end-2);
-                                            catch
-                                                this.log.addWarning(sprintf(['Please decompress the ' s2 ' file before trying to use it in goGPS.']));
-                                                compressed = 1;
-                                            end
-                                        end
-                                        this.log.addMessage(this.log.indent(['DCB file downloaded: ' s2 ]));
-                                    catch
-                                        cd(ftp_server, '..');
-                                        s1 = [ff{p} '.DCB'];
-                                        mget(ftp_server,s1,down_dir);
-                                        cd(ftp_server, num2str(year_orig(y)));
-                                        s2 = [s2(1:end-2) '_TMP'];
-                                        [move_success, message] = movefile([down_dir '/' s1], [down_dir '/' s2], 'f');
-                                        if ~move_success
-                                            log.addError(message);
-                                        end
-                                        this.log.addWarning(['Downloaded DCB file: ' s1 ' --> renamed to: ' s2]);
-                                    end
-                                else
-                                    this.log.addMessage(this.log.indent([s2(1:end-2) ' already present\n']));
-                                end
-                                %cell array with the paths to the downloaded files
-                                entry = {[down_dir, '/', s2]};
-                                file_dcb = [file_dcb; entry]; %#ok<AGROW>
-                                state.setDcbFile(file_dcb);
-                            end
-                            
-                            if (month(m) == 12)
-                                break
-                            end
-                        end
-                    end
-                    
-                    close(ftp_server);
-                    
-                    this.log.addStatusOk('Dcb files have been downloded');
-                end
-            end
+            status = this.conjureResource('bias', date_start, date_stop);
+            err_code = ~status;
         end
         
-        function conjureNavFiles(this, date_start, date_stop)
+        function err_code = conjureNavFiles(this, date_start, date_stop)
             % Wrapper of conjureResources for navigational files
             %
             % SYNTAX:
             %   this.conjureNavFiles(date_start, date_stop)
             %
-            this.log.addMarkedMessage('Checking ephemerides / clocks / ERPs');
+            log = Core.getLogger;
+            log.addMarkedMessage('Checking ephemerides / clocks / ERPs');
             list_preferred = Core.getState.getPreferredEph();
+            err_code = 1;
             for i = 1 : length(list_preferred)
                 status = this.conjureResource(list_preferred{i}, date_start, date_stop);
+                err_code(i) = ~status; %#ok<AGROW>
                 if status || (this.nrt && (strcmp(list_preferred{i},'ultra') || strcmp(list_preferred{i},'broadcast')))
                     break
                 end
             end
             if status
-                this.log.addStatusOk('Ephemerides files are present ^_^')
+                switch list_preferred{i}
+                    case {'final'}
+                        log.addStatusOk('Final orbits files are present ^_^');
+                    case {'rapid'}
+                        log.addStatusOk('Rapid orbits files are present ^_^');
+                    case {'ultra'}
+                        log.addStatusOk('Ultra orbits files are present ^_^');
+                    case {'broadcast'}
+                        log.addStatusOk('Broadcast files are present ^_^');
+                end
+                log.addStatusOk('Ephemerides files are present ^_^')
             else
                 if ~this.nrt
-                    this.log.addError('Not all ephemerides files have been found program might misbehave');
+                    log.addError('Not all ephemerides files have been found program might misbehave');
                 else
-                    this.log.addError('Not all ephemerides files have been found');
+                    log.addError('Not all ephemerides files have been found');
                 end
             end
         end               
         
-        function conjureIonoFiles(this, date_start, date_stop, flag_brdc)
+        function err_code = conjureIonoFiles(this, date_start, date_stop, flag_brdc)
             % Wrapper of conjureResources for iono files
             %
             % SYNTAX:
             %   this.conjureIonoFiles(date_start, date_stop)
             %
+            log = Core.getLogger;
+            err_code = 1;
             if nargin == 4 && flag_brdc
-                this.log.addMarkedMessage('Checking broadcast ionospheric resources files');
+                log.addMarkedMessage('Checking broadcast ionospheric resources files');
             else
-                this.log.addMarkedMessage('Checking ionospheric resources files');
+                log.addMarkedMessage('Checking ionospheric resources files');
             end
             state = Core.getState;
             list_preferred = state.preferred_iono;
@@ -819,6 +654,18 @@ classdef File_Wizard < handle
                     end
                 end
                 if status
+                    switch list_preferred{i}
+                        case {'final'}
+                            log.addStatusOk('Final ionospheric maps files are present ^_^');
+                        case {'rapid'}
+                            log.addStatusOk('Rapid ionospheric maps files are present ^_^');
+                        case {'predicted1'}
+                            log.addStatusOk('One day ahead predicted ionospheric maps files are present ^_^');
+                        case {'predicted2'}
+                            log.addStatusOk('Two day ahead predicted ionospheric maps files are present ^_^');
+                        case {'broadcast'}
+                            log.addStatusOk('Broadcast ionospheric parameters files are present');
+                    end
                     break
                 end
             end
@@ -826,18 +673,18 @@ classdef File_Wizard < handle
                 status = this.conjureResource('iono_broadcast', date_start, date_stop, iono_center);
             end
             if status
+                err_code = 0;
                 if isempty(list_preferred)
-                    this.log.addStatusOk('No iono files requested, nothing to do!')
+                    og.addStatusOk('No iono files requested, nothing to do!')
                 else
-                    this.log.addStatusOk('Ionosphere resource files are present ^_^')
+                    log.addStatusOk('Ionosphere resource files are present ^_^')
                 end
             else
-                this.log.addWarning('Not all iono files found program might misbehave')
+                log.addWarning('Not all iono files found program might misbehave')
             end
-            
         end
         
-        function conjureCRXFiles(this, date_start, date_stop)
+        function err_code = conjureCRXFiles(this, date_start, date_stop)
             % SYNTAX:
             %   this.conjureCRXFiles(gps_week, gps_time);
             %
@@ -850,6 +697,7 @@ classdef File_Wizard < handle
             % DESCRIPTION:
             %   Download of .CRX files from the AIUB FTP server.
             
+            err_code = 0;
             log = Core.getLogger;
             this.log.addMarkedMessage('Checking CRX (Satellite problems file)');
             date_start = date_start.getCopy();
@@ -944,9 +792,17 @@ classdef File_Wizard < handle
                             if move_success
                                 [move_success, message] = movefile(fullfile(down_dir, [s2 '.old']), fullfile(down_dir, s2));
                                 if ~move_success
+                                    err_code = 2;
                                     log.addError(message);
+                                    try
+                                        close(ftp_server);
+                                    catch
+                                    end
+                                    return
                                 end
                             end
+                        else
+                            err_code = 1;
                         end
                     end
                     log.addMessage(log.indent(sprintf(['Downloaded CRX file: ' s2 '\n'])));
@@ -1105,17 +961,21 @@ classdef File_Wizard < handle
             % SYNTAX
             %   this.setPreferredOrbit(flag)
             
+            flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
             if ischar(flag)
-                flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
                 flag = ismember(flag_name, {flag});
             end
             if iscell(flag)
-                flag = ismember(flag_name, {flag});
+                flag = ismember(flag_name, flag);
             end
             if ~islogical(flag)
-                tmp = false(4,1);
-                tmp(flag) = true;
-                flag = tmp;
+                if sum(flag == 0 | flag == 1) == 4
+                    flag = logical(flag);
+                else
+                    tmp = false(4,1);
+                    tmp(flag) = true;
+                    flag = tmp;
+                end
             end
             Core.getState.setPreferredOrbit(flag);
         end
@@ -1169,10 +1029,10 @@ classdef File_Wizard < handle
             Core.getState.setPreferredIono(flag);
         end
         
-        function downloadResource(this, type, date_start, date_stop)
+        function err_code = downloadResource(this, type, date_start, date_stop)
             % Download resourcess:
             %   eph             download ephemeris and clocks
-            %   dcb / bias      download biases (or differential biases)
+            %   bias            download biases (or differential biases)
             %   crx             download Bernese file with problematic satellits
             %   atm             download atmospheric loading files
             %   iono            download ionex (or other ionosphere products)
@@ -1216,27 +1076,31 @@ classdef File_Wizard < handle
             if numel(type) == 1 && strcmp(type{1}, 'all')
                 type = {'eph', 'bias', 'crx', 'atm', 'iono', 'iono_brdc', 'vmf'};
             end
-                
+            
+            err_code = {};
             for t = 1 : numel(type)
                 cur_type = type{t};
                 switch cur_type
                     case {'eph'}
-                        this.conjureNavFiles(date_start, date_stop);
-                    case {'dcb', 'bias'}
-                        this.conjureDCBFiles(date_start, date_stop);
+                        err_code{t} = this.conjureNavFiles(date_start, date_stop);
+                    case {'bias'}
+                        err_code{t} = this.conjureBiasFiles(date_start, date_stop);
                     case {'crx'}
-                        this.conjureCRXFiles(date_start, date_stop);
+                        err_code{t} = this.conjureCRXFiles(date_start, date_stop);
                     case {'atm'}
-                        this.conjureAtmLoadFiles(date_start, date_stop);
+                        err_code{t} = this.conjureAtmLoadFiles(date_start, date_stop);
                     case {'iono'}
                         flag_brdc = Core.getState.isIonoKlobuchar();
-                        this.conjureIonoFiles(date_start, date_stop, flag_brdc);
+                        err_code{t} = this.conjureIonoFiles(date_start, date_stop, flag_brdc);
                     case {'iono_brdc'}
-                        this.conjureIonoFiles(date_start, date_stop, true);
+                        err_code{t} = this.conjureIonoFiles(date_start, date_stop, true);
                     case {'vmf'}
-                        this.conjureVmfFiles(date_start, date_stop);
+                        err_code{t} = this.conjureVmfFiles(date_start, date_stop);
                 end
             end
+            if numel(err_code) == 1
+                err_code = err_code{1};
+            end                
         end
     end
     
