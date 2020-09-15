@@ -152,6 +152,7 @@
 /data/old/settings/*
 !/data/old/settings/goGPS_iniDefaultKeywords.ini
 last_settings.ini
+credentials.txt
 /goGPS/bin
 /goGPS/com
 /goGPS/logs
