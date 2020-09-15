@@ -259,6 +259,18 @@ classdef File_Wizard < handle
                             dsa.addIntSeconds(-step_s);
                             dso.addIntSeconds(+step_s);
                             file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
+                            % Manage ultra rapid resources (they overlap 18 hours in the future
+                            try
+                                is_ultra = strcmpi(f_name(1:3), 'IGU') || strcmpi(file_tree{1}(end-4:end), 'ultra');
+                            catch
+                                is_ultra = false;
+                            end
+                            if is_ultra
+                                dso_ur = dso.getCopy; dso_ur.addIntSeconds(-18*3600);
+                                file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
+                            else
+                                file_name_lst_ur = file_name_lst;
+                            end
                             status = true;
                             f_status_lst = false(length(file_name_lst),1); % file list to be saved in tree with flag of downloaded or not
                             for i = 1 : length(file_name_lst)
@@ -275,13 +287,17 @@ classdef File_Wizard < handle
                                         f_status = true;
                                     end
                                 end
-                                        
-                                f_status_lst(i) = f_status;
-                                status = status && f_status;
-                                if f_status
-                                    this.log.addStatusOk(sprintf('%s ready',this.fnp.getFileName(file_name_lst{i})), 20); % logging on 10 (default is 9, if ok do not show this)
+                                 
+                                if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
+                                    f_status_lst(i) = f_status;
+                                    status = status && f_status;
+                                    if f_status
+                                        this.log.addStatusOk(sprintf('%s ready',this.fnp.getFileName(file_name_lst{i})), 20); % logging on 10 (default is 9, if ok do not show this)
+                                    else
+                                        this.log.addWarning(sprintf('%s have not been found locally', this.fnp.getFileName(file_name_lst{i})));
+                                    end
                                 else
-                                    this.log.addWarning(sprintf('%s have not been found locally', this.fnp.getFileName(file_name_lst{i})));
+                                     this.log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
                                 end
                             end
                             if status
@@ -299,6 +315,18 @@ classdef File_Wizard < handle
                                 dsa.addIntSeconds(-step_s);
                                 dso.addIntSeconds(+step_s);
                                 file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
+                                % Manage ultra rapid resources (they overlap 18 hours in the future
+                                try
+                                    is_ultra = strcmpi(f_name(1:3), 'IGU') || strcmpi(file_tree{1}(end-4:end), 'ultra');
+                                catch
+                                    is_ultra = false;
+                                end
+                                if is_ultra
+                                    dso_ur = dso.getCopy; dso_ur.addIntSeconds(-18*3600);
+                                    file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
+                                else
+                                    file_name_lst_ur = file_name_lst;
+                                end
                                 status = true;
                                 f_status_lst = file_tree{4};
                                 f_ext_lst = cell(numel(f_status_lst),1);
@@ -346,8 +374,13 @@ classdef File_Wizard < handle
                                                 else
                                                     this.log.addWarning(sprintf('"http://%s:%s%s" have not been found remotely', s_ip, port, file_name));
                                                 end
-                                                if ~this.nrt
-                                                    break
+                                                if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
+                                                    if ~this.nrt
+                                                        break
+                                                    end
+                                                else
+                                                    this.log.addWarning('File not found but precedent files cover the requested interval');
+                                                    status = true;
                                                 end
                                             end
                                         end
