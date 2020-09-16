@@ -631,7 +631,7 @@ classdef File_Wizard < handle
             log = Core.getLogger;
             log.addMarkedMessage('Checking ephemerides / clocks / ERPs');
             list_preferred = Core.getState.getPreferredEph();
-            err_code = 1;
+            err_code = ones(1, length(list_preferred));
             for i = 1 : length(list_preferred)
                 status = this.conjureResource(list_preferred{i}, date_start, date_stop);
                 err_code(i) = ~status; %#ok<AGROW>
