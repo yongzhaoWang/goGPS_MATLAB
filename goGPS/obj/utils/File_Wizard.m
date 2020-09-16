@@ -455,7 +455,7 @@ classdef File_Wizard < handle
                     if length(intersect(this.sys_c,sys_c)) == length(this.sys_c)
                         if strcmp(split{2}, center_name)
                             is_ok = true;
-                            this.setCurCenter(center_name);
+                            this.setCurCenter(center_name, Core.getState.getPreferredOrbit());
                         end
                     end
                 end

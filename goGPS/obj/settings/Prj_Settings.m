@@ -4156,6 +4156,96 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             end
         end
         
+        function flag = getPreferredOrbit(this)
+            % Get the preferred orbit sequence:
+            %   1 final
+            %   2 rapid
+            %   3 ultra rapid
+            %   4 broadcast
+            %
+            % OUPUT
+            %   flag is a logical array with 4 values (see above)
+            %
+            % SYNTAX
+            %   flag = this.getPreferredOrbit()
+            flag = false(4,1);
+            for i = 1 : numel(this.preferred_eph)
+                switch this.preferred_eph{i}
+                    case 'final', flag(1) = true;
+                    case 'rapid', flag(2) = true;
+                    case 'ultra', flag(3) = true;
+                    case 'broadcast', flag(4) = true;
+                end
+            end            
+        end
+ 
+        function flag = getPreferredIono(this)
+            % Get the preferred iono sequence:
+            %   1 final
+            %   2 rapid
+            %   3 predicted 1
+            %   4 predicted 2
+            %   5 broadcast
+            %
+            % OUTPUT
+            %   flag is a logical array with 5 values (see above)
+            %
+            % SYNTAX
+            %   flag = this.getPreferredIono()
+            flag = false(numel(this.preferred_iono),1);
+            for i = 1 : numel(this.preferred_iono)
+                switch this.preferred_iono{i}
+                    case 'final', flag(1) = true;
+                    case 'rapid', flag(2) = true;
+                    case 'predicted1', flag(3) = true;
+                    case 'predicted2', flag(4) = true;
+                    case 'broadcast', flag(5) = true;
+                end
+            end
+        end
+        
+        function flag = getPreferredVMFRes(this)
+            % Get the preferred VMF resolution:
+            %   1   1x1    VMF3
+            %   2 2.5x2    VMF1
+            %   3   5x5    VMF3
+            %
+            % OUTPUT
+            %   flag is a logical array with 3 values (see above)
+            %
+            % SYNTAX
+            %   flag = this.getPreferredVMFRes()
+            flag = false(3,1);
+            for i = 1 : numel(this.preferred_vmf_res)
+                switch this.preferred_vmf_res{i}
+                    case '1x1', flag(1) = true;
+                    case '2.5x2', flag(2) = true;
+                    case '5x5', flag(3) = true;
+                end
+            end
+        end
+        
+        function flag = getPreferredVMFSource(this)
+            % Get the preferred VMF source:
+            %   1 operational
+            %   2 era-interim
+            %   3 forecast
+            %
+            % OUTPUT
+            %   flag is a logical array with 4 values (see above)
+            %
+            % SYNTAX
+            %   flag = this.getPreferredIono()
+            flag = false(3,1);
+            for i = 1 : numel(this.preferred_vmf_source)
+                switch this.preferred_vmf_source{i}
+                    case 'operational', flag(1) = true;
+                    case 'era-interim', flag(2) = true;
+                    case 'forecast', flag(3) = true;
+                end
+            end
+        end
+        
         function dir_path = getFileDir(this, filename)
             % get file dir (form the resource name, try  to get the name of the iono)
             %
@@ -6029,97 +6119,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   flag = this.isBlockOneArc()
             flag = this.block_one_arc;
         end
-        
-        function flag = getPreferredOrbit(this)
-            % Get the preferred orbit sequence:
-            %   1 final
-            %   2 rapid
-            %   3 ultra rapid
-            %   4 broadcast
-            %
-            % OUPUT
-            %   flag is a logical array with 4 values (see above)
-            %
-            % SYNTAX
-            %   flag = this.getPreferredOrbit()
-            flag = false(4,1);
-            for i = 1 : numel(this.preferred_eph)
-                switch this.preferred_eph{i}
-                    case 'final', flag(1) = true;
-                    case 'rapid', flag(2) = true;
-                    case 'ultra', flag(3) = true;
-                    case 'broadcast', flag(4) = true;
-                end
-            end            
-        end
- 
-        function flag = getPreferredIono(this)
-            % Get the preferred iono sequence:
-            %   1 final
-            %   2 rapid
-            %   3 predicted 1
-            %   4 predicted 2
-            %   5 broadcast
-            %
-            % OUTPUT
-            %   flag is a logical array with 5 values (see above)
-            %
-            % SYNTAX
-            %   flag = this.getPreferredIono()
-            flag = false(numel(this.preferred_iono),1);
-            for i = 1 : numel(this.preferred_iono)
-                switch this.preferred_iono{i}
-                    case 'final', flag(1) = true;
-                    case 'rapid', flag(2) = true;
-                    case 'predicted1', flag(3) = true;
-                    case 'predicted2', flag(4) = true;
-                    case 'broadcast', flag(5) = true;
-                end
-            end
-        end
-        
-        function flag = getPreferredVMFRes(this)
-            % Get the preferred VMF resolution:
-            %   1   1x1    VMF3
-            %   2 2.5x2    VMF1
-            %   3   5x5    VMF3
-            %
-            % OUTPUT
-            %   flag is a logical array with 3 values (see above)
-            %
-            % SYNTAX
-            %   flag = this.getPreferredVMFRes()
-            flag = false(3,1);
-            for i = 1 : numel(this.preferred_vmf_res)
-                switch this.preferred_vmf_res{i}
-                    case '1x1', flag(1) = true;
-                    case '2.5x2', flag(2) = true;
-                    case '5x5', flag(3) = true;
-                end
-            end
-        end
-        
-        function flag = getPreferredVMFSource(this)
-            % Get the preferred VMF source:
-            %   1 operational
-            %   2 era-interim
-            %   3 forecast
-            %
-            % OUTPUT
-            %   flag is a logical array with 4 values (see above)
-            %
-            % SYNTAX
-            %   flag = this.getPreferredIono()
-            flag = false(3,1);
-            for i = 1 : numel(this.preferred_vmf_source)
-                switch this.preferred_vmf_source{i}
-                    case 'operational', flag(1) = true;
-                    case 'era-interim', flag(2) = true;
-                    case 'forecast', flag(3) = true;
-                end
-            end
-        end
-        
+                
         function rate = getTropoOutRate(this)
             % Get the output rate of tropo to be used in PUSHOUT commands
             %
