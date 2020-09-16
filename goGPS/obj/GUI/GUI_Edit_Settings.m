@@ -182,7 +182,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             if ~isempty(old_win)
                 log.addMarkedMessage('Resetting the old Edit Settings Window');
                 win = old_win;
-                this.go_but.Enable = iif(flag_wait, 'on', 'off');
+                this.go_but.Enable = 'off';
                 
                 if strcmp(this.win.Visible, 'off')
                     try
@@ -401,7 +401,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 this.go_but = uicontrol( 'Parent', bottom_bhr, ...
                     'String', 'go!', ...
                     'FontAngle', 'italic', ...
-                    'Enable', iif(flag_wait, 'on', 'off'), ...
+                    'Enable', 'off', ...
                     'Callback', @this.go, ...
                     'FontWeight', 'bold');
                 
@@ -425,7 +425,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             log.setColorMode(false);
             log.addStatusOk(sprintf('goGPS GUI initialization completed in %.2f seconds\n', t_win));
             log.setColorMode(cm);
-            this.bringOnTop();            
+            this.bringOnTop(); 
+            this.go_but.Enable = iif(flag_wait, 'on', 'off')
         end
         
 
