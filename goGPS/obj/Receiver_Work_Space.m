@@ -1868,24 +1868,49 @@ classdef Receiver_Work_Space < Receiver_Commons
             if min_arc > 1
                 log = Core.getLogger;
                 log.addMarkedMessage(sprintf('Removing arcs shorter than %d epochs', 1 + 2 * ceil((min_arc - 1)/2)));
-                
-                [pr, id_pr] = this.getPseudoRanges();
-                idx = ~isnan(pr);
-                idx_s = flagShrink(idx, ceil((min_arc - 1)/2));
-                idx_e = flagExpand(idx_s, ceil((min_arc - 1)/2));
-                el_idx = xor(idx,idx_e);
-                pr(el_idx) = NaN;
-                this.setPseudoRanges(pr, id_pr);
-                log.addMessage(log.indent(sprintf(' - %d code observations have been removed', sum(el_idx(:)))));
-                
+               
+                n_el = 0;
                 [ph, wl, id_ph] = this.getPhases();
-                idx = ~isnan(ph);
-                idx_s = flagShrink(idx, ceil((min_arc - 1)/2));
-                idx_e = flagExpand(idx_s, ceil((min_arc - 1)/2));
-                el_idx = xor(idx,idx_e);
-                ph(el_idx) = NaN;
+                if ~isempty(this.sat.cycle_slip_ph_by_ph)
+                    idx = ~(isnan(ph) | this.sat.cycle_slip_ph_by_ph);
+                    idx_s = flagShrink(idx, ceil((min_arc - 1)/2));
+                    idx_e = flagExpand(idx_s, ceil((min_arc - 1)/2));
+                    el_idx = xor(idx,idx_e);
+                    ph(el_idx) = NaN;
+                    n_el = n_el + sum(el_idx(:));
+                    % check last epoch
+                    n_el = n_el + sum(this.sat.cycle_slip_ph_by_ph(end,:));
+                    ph(end,this.sat.cycle_slip_ph_by_ph(end,:)) = nan;
+                    this.sat.cycle_slip_ph_by_ph(end,this.sat.cycle_slip_ph_by_ph(end,:)) = false;
+                    % remove arc less than min arc
+                    idx_m =  this.sat.cycle_slip_ph_by_ph;
+                    for s = 1: size(ph,2)
+                         c = find(idx_m(:,s))';
+                         for e = c
+                             fa = find(isnan(ph((e+1):end,s)),1,'first');
+                             if fa < min_arc
+                                 ph(e:(e+fa-1),s) = nan;
+                                 n_el = n_el + fa;
+                                 this.sat.cycle_slip_ph_by_ph(e,s) = false;
+                             end
+                         end
+                    end
+                end
                 this.setPhases(ph, wl, id_ph);
-                log.addMessage(log.indent(sprintf(' - %d phase observations have been removed', sum(el_idx(:)))));
+                log.addMessage(log.indent(sprintf(' - %d phase observations have been removed', n_el)));
+                % move cycle slip which epoch have been eliminated
+                if ~isempty(this.sat.cycle_slip_ph_by_ph)
+                    idx_m = isnan(ph) & this.sat.cycle_slip_ph_by_ph;
+                    for s = 1: size(ph,2)
+                        for c = find(idx_m(:,s))'
+                            fa = find(~isnan(ph((c+1):end,s)),1,'first');
+                            this.sat.cycle_slip_ph_by_ph(c,s) = false;
+                            if ~isempty(fa)
+                                this.sat.cycle_slip_ph_by_ph(c+fa,s) = true;
+                            end
+                        end
+                    end
+                end
             end
         end
         
@@ -2659,11 +2684,10 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                 end
                 this.sat.outliers_ph_by_ph(end,o_idx) = true;
-                phr(end,o_idx) = nan;
             end
             
             % check start of arc if there is a cycle slip
-            this.sat.cycle_slip_ph_by_ph(end,~isnan(phr(1,:))) = true; % first epoch if there is am observation put cs
+            this.sat.cycle_slip_ph_by_ph(1,~isnan(phr(1,:))) = true; % first epoch if there is am observation put cs
             max_hole_chk = 121; % if hole bigger than 2 min -> put cycle slip without check
             max_ep_chk = round(max_hole_chk / this.getRate);
             for s = 1 : n_strm
@@ -2734,168 +2758,177 @@ classdef Receiver_Work_Space < Receiver_Commons
         function cycleSlipRepair(this)
             % Cycle slip repair
             %
-            max_window = 300; %maximum windows allowed lef and right (10 min)
-            iono_const = 40.3*10^16/Core_Utils.V_LIGHT^2;
-            
-            
-            [phases, wl,lid] = this.getPhases;
-            s_ph = this.getSyntPhases;
-            ph_r = zero2nan(phases) - zero2nan(s_ph);
-            cycle_slips = this.sat.cycle_slip_ph_by_ph;
-            go_id = this.go_id(lid);
-            el = this.sat.el(:,go_id);
-            n_ep = size(ph_r,1);
-            n_os =  size(cycle_slips,2);
-            ambs = [];
-            for s = 1 : n_os
-                for cs = find(cycle_slips(:,s))'
-                    idx_bf = max(1,cs - round(max_window/this.getRate()));
-                    idx_aft = min(n_ep,cs + round(max_window/this.getRate()));
-                    if any(ph_r(idx_bf:(cs-1),s)) % if there is any observation before
-                        cs_t = cs - idx_bf +1;
-                        ph_temp = ph_r(idx_bf:idx_aft,:); % useful obsrvations
-                        idx_os = isnan(ph_temp(:,s));
-                        ph_temp(idx_os,:) =nan;
-                        el_temp = el(idx_bf:idx_aft,:);
-                        cs_temp = cycle_slips(idx_bf:idx_aft,:);
-                        useful_obs = false(1,size(cycle_slips,2));
-                        useful_obs(s) = true;
-                        for z = 1 : n_os
-                            if z~=s
-                                for zs = find(cs_temp(:,z))'
-                                    if zs < cs_t  % remove observations before
-                                        ph_temp(1:zs,z) = nan;
-                                    else % remove observation after
-                                        ph_temp(zs:end,z) = nan;
-                                    end
-                                end
-                            else
-                                for zs = find(cs_temp(:,z))'
-                                    if zs < cs_t  % remove observations before
-                                        ph_temp(1:zs,z) = nan;
-                                    elseif zs ~= cs_t% remove observation after
-                                        ph_temp(zs:end,z) = nan;
-                                    end
-                                end
-                            end
-                            if any(ph_temp((1:cs_t-1),z)) && any(ph_temp(cs_t:end,z))
-                                useful_obs(z) = true;
-                            end
-                        end
-                        if sum(useful_obs) > 1 % if there is at least an other valid stream
-                            valid_ep = sum(~isnan(ph_temp),2) > 1;
-                            ph_temp(~valid_ep,:) = nan;
-                            if any(valid_ep)
-                                ep2pep = zeros(size(valid_ep)); %epoch to progressive valid epoch
-                                ep2pep(valid_ep) = 1:sum(valid_ep);
-                                s2ps = zeros(1,max(go_id));  %satellite to progressive valid satellite
-                                uvgoid = unique(go_id(useful_obs));
-                                s2ps(uvgoid) = 1 : length(uvgoid);
-                                n_obs = sum(sum(~isnan(ph_temp)));
-                                A = zeros(n_obs,5);
-                                A_idx = zeros(n_obs,5);
-                                y = zeros(n_obs,1);
-                                w = zeros(n_obs,1);
-                                strm =  zeros(n_obs,1);
-                                n_io = zeros(size(ph_temp,1),length(uvgoid));
-                                ni = 1;
-                                if this.isMultiFreq()
-                                    for u = 1 : length(uvgoid)
-                                        idx_v = sum(~isnan(ph_temp(:,go_id == uvgoid(u))),2) > 0;
-                                        n_io(idx_v,u) = ni + (1:sum(idx_v));
-                                        ni = ni + sum(idx_v);
-                                    end
-                                end
-                                n_psiono = sum(max(sum(n_io~=0,1) -1,0)); %number fo iono pseudobservation
-                                A_p_idx = zeros(n_psiono,2);
-                                A_p = [ones(n_psiono,1) -ones(n_psiono,1)];
-                                w_p = zeros(n_psiono,1);
-                                
-                                n_ppo = 1;
-                                for u = 1 : length(uvgoid)
-                                    idx_o = 0 ~= (n_io(:,u));
-                                    if sum(idx_o) > 1
-                                        n_o = sum(idx_o);
-                                        n_io_tmp = n_io(idx_o,u);
-                                        A_p_idx(n_ppo + 1:(n_o-1),1) = n_io_tmp(1:end-1);
-                                        A_p_idx(n_ppo + 1:(n_o-1),2) = n_io_tmp(2:end);
-                                        w_p(n_ppo + 1:(n_o-1)) = 1./(0.01 * diff(find(idx_o))).^2;
-                                        n_ppo = n_ppo + n_o-1;
-                                    end
-                                end
-                                
-                                n_po = 0;
-                                for v = find(useful_obs)
-                                    idx_o = ~isnan(ph_temp(:,v));
-                                    n_o = sum(idx_o);
-                                    y(n_po + (1:n_o)) = ph_temp(idx_o,v);
-                                    strm(n_po + (1:n_o)) = v;
-                                    w(n_po + (1:n_o)) = 1 ./ (0.01 ./ sind(el_temp(idx_o,v))).^2;
-                                    A_idx(n_po + (1:n_o), 1) = ep2pep(idx_o);
-                                    A_idx(n_po + (1:n_o), 2) = s2ps(go_id(v));
-                                    A_idx(n_po + (1:n_o), 3) = s2ps(go_id(v));
-                                    A_idx(n_po + (1:n_o), 4) = n_io(idx_o,uvgoid == go_id(v));
-                                    A(n_po + (1:n_o), 1) = 1;
-                                    A(n_po + (1:n_o), 2) = 1;
-                                    A(n_po + (1:n_o), 3) = find(idx_o);
-                                    A(n_po + (1:n_o), 4) = iono_const*wl(v)^2;
-                                    if v == s
-                                        css = sum(idx_o(1:(cs_t)));
-                                        A(n_po + (css:n_o), 5) = wl(v);
-                                        A_idx(n_po + (css:n_o), 5) = 1;
-                                    end
-                                    n_po = n_po + n_o;
-                                    
-                                end
-                                
-                                n_clk = max(A_idx(:,1));
-                                n_lin1 = max(A_idx(:,2));
-                                n_lin2 = max(A_idx(:,3));
-                                A_idx(:,2) = nan2zero(zero2nan(A_idx(:,2)) + n_clk);
-                                A_idx(:,3) = nan2zero(zero2nan(A_idx(:,3)) + n_clk + n_lin1);
-                                A_idx(:,4) = nan2zero(zero2nan(A_idx(:,4)) + n_clk + n_lin1 + n_lin2);
-                                A_idx(:,5) = nan2zero(zero2nan(A_idx(:,5)) + max(max(A_idx(:,3:4))));
-                                A_p_idx = nan2zero(zero2nan(A_p_idx) + n_clk + n_lin1 + n_lin2);
-                                
-                                num_p = max(A_idx(:,5));
-                                rows = repmat((1:n_obs)',1,5);
-                                A(A_idx == 0) = 0;
-                                A_idx(A_idx == 0) = 1;
-                                As = sparse(rows,A_idx,A,n_obs,num_p);
-                                rows = repmat((1:n_psiono)',1,2);
-                                
-                                A_p(A_p_idx == 0) = 0;
-                                A_p_idx(A_p_idx == 0) = 1;
-                                As = [As; sparse(rows,A_p_idx,A_p,n_psiono,num_p)];
-                                
-                                idx_rm = s2ps(go_id(s)) + [n_clk ( n_clk + n_lin1)];
-                                As(:, idx_rm) = [];
-                                W = spdiags([w; w_p],0,n_obs + n_psiono, n_obs + n_psiono);
-                                
-                                N = As' * W * As;
-                                B = As' * W * [y; zeros(n_psiono,1)];
-                                
-                                Cxx = spinv(N);
-                                x = Cxx*B;
-                                s_amb = Cxx(end,end);
-                                amb = x(end);
-                                a_frac = abs(amb - round(amb));
-                                ambs = [ambs ; amb];
-                                if Fixer.oneDimPMF( amb, sqrt(s_amb)) > 0.8 & a_frac < 0.05
-                                    cycle_slips(cs,s) = false;
-                                    phases(cs:end,s) = phases(cs:end,s) - round(amb)*wl(s);
-                                    ph_r(:,s) =  zero2nan(phases(:,s)) - zero2nan(s_ph(:,s));
-                                end
-                            end
-                        end
-                        
-                        
-                    end
-                end
-            end
-            
-            this.setPhases(phases, wl,lid);
-            this.sat.cycle_slip_ph_by_ph = cycle_slips;
+           max_window = 300; %maximum windows allowed lef and right (10 min)
+           iono_const = 40.3*10^16/Core_Utils.V_LIGHT^2;
+           
+           
+           [phases, wl,lid] = this.getPhases;
+           s_ph = this.getSyntPhases;
+           ph_r = zero2nan(phases) - zero2nan(s_ph);
+           cycle_slips = this.sat.cycle_slip_ph_by_ph;
+           go_id = this.go_id(lid);
+           el = this.sat.el(:,go_id);
+           n_ep = size(ph_r,1);
+           n_os =  size(cycle_slips,2);
+           ambs = [];
+           for s = 1 : n_os
+               for cs = find(cycle_slips(:,s))'
+                   idx_bf = max(1,cs - round(max_window/this.getRate()));
+                   idx_aft = min(n_ep,cs + round(max_window/this.getRate()));
+                   if any(ph_r(idx_bf:(cs-1),s)) % if there is any observation before
+                       cs_t = cs - idx_bf +1;
+                       ph_temp = ph_r(idx_bf:idx_aft,:); % useful obsrvations
+                       idx_os = isnan(ph_temp(:,s));
+                       ph_temp(idx_os,:) =nan;
+                       el_temp = el(idx_bf:idx_aft,:);
+                       cs_temp = cycle_slips(idx_bf:idx_aft,:);
+                       useful_obs = false(1,size(cycle_slips,2));
+                       for z = 1 : n_os
+                           if z~=s
+                               for zs = find(cs_temp(:,z))'
+                                   if zs < cs_t  % remove observations before
+                                       ph_temp(1:(zs-1),z) = nan;
+                                   else % remove observation after
+                                       ph_temp(zs:end,z) = nan;
+                                   end
+                               end
+                           else
+                               for zs = find(cs_temp(:,z))'
+                                   if zs < cs_t  % remove observations before
+                                       ph_temp(1:(zs-1),z) = nan;
+                                   elseif zs ~= cs_t% remove observation after
+                                       ph_temp(zs:end,z) = nan;
+                                   end
+                               end
+                           end
+                           if any(ph_temp((1:cs_t-1),z)) && any(ph_temp(cs_t:end,z))
+                               useful_obs(z) = true;
+                           end
+                       end
+                       if sum(useful_obs) > 1 && useful_obs(s)% if there is at least an other valid stream
+                           valid_ep = sum(~isnan(ph_temp),2) > 1;
+%                            ph_temp(~valid_ep,:) = nan;
+%                            useful_obs(sum(~isnan(ph_temp)) == 0) = false;
+                           if any(valid_ep) %&& sum(useful_obs) > 1
+                               ep2pep = zeros(size(valid_ep)); %epoch to progressive valid epoch
+                               ep2pep(valid_ep) = 1:sum(valid_ep);
+                               s2ps = zeros(1,max(go_id));  %satellite to progressive valid satellite
+                               uvgoid = unique(go_id(useful_obs));
+                               s2ps(uvgoid) = 1 : length(uvgoid);
+                               n_obs = sum(sum(~isnan(ph_temp)));
+                               A = zeros(n_obs,5);
+                               A_idx = zeros(n_obs,5);
+                               y = zeros(n_obs,1);
+                               w = zeros(n_obs,1);
+                               strm =  zeros(n_obs,1);
+                               n_io = zeros(size(ph_temp,1),length(uvgoid));
+                               ni = 0;
+                               if this.isMultiFreq()
+                                   for u = 1 : length(uvgoid)
+                                       idx_v = sum(~isnan(ph_temp(:,go_id == uvgoid(u))),2) > 0;
+                                       n_io(idx_v,u) = ni + (1:sum(idx_v));
+                                       ni = ni + sum(idx_v);
+                                   end
+                               end
+                               n_psiono = sum(max(sum(n_io~=0,1) -1,0)); %number fo iono pseudobservation
+                               A_p_idx = zeros(n_psiono,2);
+                               A_p = [ones(n_psiono,1) -ones(n_psiono,1)];
+                               w_p = zeros(n_psiono,1);
+                               
+                               n_ppo = 0;
+                               for u = 1 : length(uvgoid)
+                                   idx_o = 0 ~= (n_io(:,u));
+                                   if sum(idx_o) > 1
+                                       n_o = sum(idx_o);
+                                       n_io_tmp = n_io(idx_o,u);
+                                       A_p_idx(n_ppo + (1:(n_o-1)),1) = n_io_tmp(1:end-1);
+                                       A_p_idx(n_ppo + (1:(n_o-1)),2) = n_io_tmp(2:end);
+                                       w_p(n_ppo + (1:(n_o-1))) = 1./(0.01 * diff(find(idx_o))).^2;
+                                       n_ppo = n_ppo + n_o-1;
+                                   end
+                               end
+                               
+                               n_po = 0;
+                               for v = find(useful_obs)
+                                   idx_o = ~isnan(ph_temp(:,v));
+                                   n_o = sum(idx_o);
+                                   y(n_po + (1:n_o)) = ph_temp(idx_o,v);
+                                   strm(n_po + (1:n_o)) = v;
+                                   w(n_po + (1:n_o)) = 1 ./ (0.01 ./ sind(el_temp(idx_o,v))).^2;
+                                   A_idx(n_po + (1:n_o), 1) = ep2pep(idx_o);
+                                   A_idx(n_po + (1:n_o), 2) = s2ps(go_id(v));
+                                   A_idx(n_po + (1:n_o), 3) = s2ps(go_id(v));
+                                   A_idx(n_po + (1:n_o), 4) = n_io(idx_o,uvgoid == go_id(v));
+                                   A(n_po + (1:n_o), 1) = 1;
+                                   A(n_po + (1:n_o), 2) = 1;
+                                   A(n_po + (1:n_o), 3) = find(idx_o);
+                                   A(n_po + (1:n_o), 4) = iono_const*wl(v)^2;
+                                   if v == s
+                                       css = sum(idx_o(1:(cs_t)));
+                                       A(n_po + (css:n_o), 5) = wl(v);
+                                       A_idx(n_po + (css:n_o), 5) = 1;
+                                   end
+                                   n_po = n_po + n_o;
+                                   
+                               end
+                               
+                               n_clk = max(A_idx(:,1));
+                               n_lin1 = max(A_idx(:,2));
+                               n_lin2 = max(A_idx(:,3));
+                               A_idx(:,2) = nan2zero(zero2nan(A_idx(:,2)) + n_clk);
+                               A_idx(:,3) = nan2zero(zero2nan(A_idx(:,3)) + n_clk + n_lin1);
+                               A_idx(:,4) = nan2zero(zero2nan(A_idx(:,4)) + n_clk + n_lin1 + n_lin2);
+                               A_idx(:,5) = nan2zero(zero2nan(A_idx(:,5)) + max(max(A_idx(:,3:4))));
+                               A_p_idx = nan2zero(zero2nan(A_p_idx) + n_clk + n_lin1 + n_lin2);
+                               
+                               num_p = max(A_idx(:,5));
+                               rows = repmat((1:n_obs)',1,5);
+                               A(A_idx == 0) = 0;
+                               A_idx(A_idx == 0) = 1;
+                               try
+                               As = sparse(rows,A_idx,A,n_obs,num_p);
+                               catch ex
+                                   keyboard
+                               end
+                               
+                               rows = repmat((1:n_psiono)',1,2);
+                               
+                               A_p(A_p_idx == 0) = 0;
+                               A_p_idx(A_p_idx == 0) = 1;
+                               try
+                               As = [As; sparse(rows,A_p_idx,A_p,n_psiono,num_p)];
+                               catch ex
+                                   keyboard
+                               end
+                               
+                               idx_rm = s2ps(go_id(s)) + [n_clk ( n_clk + n_lin1)]; 
+                               As(:, idx_rm) = [];
+                               W = spdiags([w; w_p],0,n_obs + n_psiono, n_obs + n_psiono);
+                               
+                               N = As' * W * As;
+                               B = As' * W * [y; zeros(n_psiono,1)];
+                               
+                               Cxx = spinv(N);
+                               x = Cxx*B;
+                               s_amb = Cxx(end,end);
+                               amb = x(end);
+                               a_frac = abs(amb - round(amb));
+                               ambs = [ambs ; amb];                             
+                               if Fixer.oneDimPMF( amb, sqrt(s_amb)) > 0.8 & a_frac < 0.05
+                                   cycle_slips(cs,s) = false;
+                                   phases(cs:end,s) = phases(cs:end,s) - round(amb)*wl(s);
+                                   ph_r(:,s) =  zero2nan(phases(:,s)) - zero2nan(s_ph(:,s));
+                               end
+                           end
+                       end
+                       
+                       
+                   end
+               end
+           end
+           
+           this.setPhases(phases, wl,lid);
+           this.sat.cycle_slip_ph_by_ph = cycle_slips;
         end
         
         function tryCycleSlipRepair(this)
