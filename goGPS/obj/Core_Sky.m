@@ -161,7 +161,7 @@ classdef Core_Sky < handle
                 for i = 1:length(clock_f_name)
                     clock_is_present = clock_is_present && (exist(clock_f_name{i}, 'file') == 2);
                 end
-                clock_in_eph = isempty(setdiff(eph_f_name, clock_f_name)) || ~clock_is_present; %%% condition to be tested in differnet cases
+                clock_in_eph = isempty(setdiff(eph_f_name, clock_f_name)) || ~clock_is_present; %%% condition to be tested in different cases
                 if isempty(this.time_ref_coord) || start_date < this.time_ref_coord
                     this.clearOrbit();
                 else
@@ -206,6 +206,7 @@ classdef Core_Sky < handle
                     %     end
                     % end
                 else %% if not sp3 assume is a rinex navigational file
+                    clock_in_eph = true;
                     this.toAPC(); % be sure to be in APC before adding new coordinates
                     this.clearPolyCoeff();
                     this.clearSunMoon();
