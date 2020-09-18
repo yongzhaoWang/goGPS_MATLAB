@@ -5050,7 +5050,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
 
 
         function iono_full_name = getIonoFileName(this, date_start, date_stop)
-            % Get the full name of the ERP files (replacing special keywords)
+            % Get the full name of the Iono files (replacing special keywords)
             %
             % SYNTAX
             %   erp_full_name = getErpFileName(this, date_start, date_stop)
