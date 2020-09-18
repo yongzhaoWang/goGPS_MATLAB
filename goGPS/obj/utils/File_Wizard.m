@@ -288,7 +288,7 @@ classdef File_Wizard < handle
                                     end
                                 end
                                  
-                                if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
+                                %if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
                                     f_status_lst(i) = f_status;
                                     status = status && f_status;
                                     if f_status
@@ -296,9 +296,9 @@ classdef File_Wizard < handle
                                     else
                                         this.log.addWarning(sprintf('%s have not been found locally', this.fnp.getFileName(file_name_lst{i})));
                                     end
-                                else
-                                     this.log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
-                                end
+                                %else
+                                %     this.log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
+                                %end
                             end
                             if status
                                 file_tree{3} = 0;
@@ -994,22 +994,6 @@ classdef File_Wizard < handle
             % SYNTAX
             %   this.setPreferredOrbit(flag)
             
-            flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
-            if ischar(flag)
-                flag = ismember(flag_name, {flag});
-            end
-            if iscell(flag)
-                flag = ismember(flag_name, flag);
-            end
-            if ~islogical(flag)
-                if sum(flag == 0 | flag == 1) == 4
-                    flag = logical(flag);
-                else
-                    tmp = false(4,1);
-                    tmp(flag) = true;
-                    flag = tmp;
-                end
-            end
             Core.getState.setPreferredOrbit(flag);
         end
         
@@ -1047,18 +1031,6 @@ classdef File_Wizard < handle
             % SYNTAX
             %   this.setPreferredOrbit(flag)
             
-            if ischar(flag)
-                flag_name = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'};
-                flag = ismember(flag_name, {flag});
-            end
-            if iscell(flag)
-                flag = ismember(flag_name, {flag});
-            end
-            if ~islogical(flag)
-                tmp = false(5,1);
-                tmp(flag) = true;
-                flag = tmp;
-            end
             Core.getState.setPreferredIono(flag);
         end
         
