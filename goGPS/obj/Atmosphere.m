@@ -48,7 +48,6 @@ classdef Atmosphere < handle
     end
     
     properties  (SetAccess = private, GetAccess = public)
-        state
         geoid
         ionex = struct( ...
             'data',       [], ...    % ionosphere single layer map [n_lat x _nlon x n_time]
@@ -159,7 +158,6 @@ classdef Atmosphere < handle
             %
             % SYNTAX
             %   this = Atmosphere()
-            this.state = Core.getCurrentSettings();
             this.log = Core.getLogger();
         end
     end
@@ -280,7 +278,7 @@ classdef Atmosphere < handle
             dso = dso.getCopy();
             dsa = dsa.getCopy();
             dso.addSeconds(6*3600);
-            fname = this.state.getIonoFileName( dsa, dso);
+            fname = Core.getState.getIonoFileName( dsa, dso);
             for i = 1 : length(fname)
                 this.importIonex(fname{i});
             end
@@ -328,23 +326,24 @@ classdef Atmosphere < handle
             dso = dso.getCopy();
             dsa = dsa.getCopy();
             %dso.addSeconds(6*3600);
-            fname = this.state.getVMFFileName( dsa, dso);
+            state = Core.getState;
+            fname = state.getVMFFileName( dsa, dso);
             % import the coefficeints files
             for i = 1 : length(fname)
                 this.importVMFCoeffFile(fname{i});
             end
-            h_fname = this.state.getVMFHeightFileName();
+            h_fname = state.getVMFHeightFileName();
             fid = fopen(h_fname, 'rt');
-            if strcmpi(this.state.vmf_res,'2.5x2')
+            if strcmpi(state.vmf_res,'2.5x2')
                 fgetl(fid); %skip one line header
                 formatSpec = [repmat([repmat(' %f',1,10) '\n'],1,14) repmat(' %f',1,5)];
                 h_data = cell2mat(textscan(fid,formatSpec,91));
                 h_data(:,end) = [];
-            elseif strcmpi(this.state.vmf_res,'5x5')
+            elseif strcmpi(state.vmf_res,'5x5')
                 formatSpec = '%f';
                 h_data = textscan(fid,formatSpec); h_data = h_data{1,1};
                 h_data = reshape(h_data,72,36)';
-            elseif strcmpi(this.state.vmf_res,'1x1')
+            elseif strcmpi(state.vmf_res,'1x1')
                 formatSpec = '%f';
                 h_data = textscan(fid,formatSpec); h_data = h_data{1,1};
                 h_data = reshape(h_data,360,180)';
@@ -359,10 +358,9 @@ classdef Atmosphere < handle
             %
             % SYNTAX
             %   importTidalAtmLoadHarmonics(this)
-            fname = this.state.getTAtmLoadFileName();
+            fname = Core.getState.getTAtmLoadFileName();
             data = importdata(fname);
             this.atm_load_t.harmonics = permute(reshape(data(:,3:end),360 ,180, 18),[2 1 3])/1e3;
-            
         end
         
         function importAtmLoadCoeffFile(this, filename)
