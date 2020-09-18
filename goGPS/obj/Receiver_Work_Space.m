@@ -4435,7 +4435,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             %   xyz = this.getAPrioriPos()
             
             % The approx coordinates are from
-            % xyz = this.xyz_approx;
+            xyz = this.xyz_approx;
             xyz = median(xyz, 1);
             if ~any(xyz) && ~isempty(this.xyz)
                 xyz = median(this.getPosXYZ, 1);
