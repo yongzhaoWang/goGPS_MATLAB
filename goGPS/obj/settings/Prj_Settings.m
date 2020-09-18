@@ -118,6 +118,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         IGRF_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'IGRF' filesep]; % Path to Geoid folder containing the geoid to be used for the computation of orthometric heighs
         IGRF_NAME = 'igrf12coeff.txt';
 
+        GEOID_DIR_FALLBACK = [Core.getInstallDir() filesep '..' filesep 'data' filesep 'reference' filesep 'geoid' filesep]; % Fallback path to Geoid folder containing the geoid to be used for the computation of orthometric heighs
         GEOID_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'geoid' filesep]; % Path to Geoid folder containing the geoid to be used for the computation of orthometric heighs
         GEOID_NAME = 'geoid_EGM2008_05.mat'; % File name of the Geoid containing the geoid to be used for the computation of orthometric heighs
         IONO_DIR = [Prj_Settings.DEFAULT_DIR_IN 'reference' filesep 'IONO' filesep '${YYYY}' filesep];
@@ -268,14 +269,12 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                                                         % - iono_model = 2: Klobuchar model
                                                         % - iono_model = 3: IONEX
                                                         
-        ZD_MODEL = 2;                                   % A-priori Tropospheric Zenith delay model to be used (1: none, 2: Saastamoinen , 3: Vienna mapping function gridded delays)
-                                                        % - zd_model = 1: no model
-                                                        % - zd_model = 2: Saastamoinen
-                                                        % - zd_model = 3: Vienna mapping function gridded delay
+        ZD_MODEL = 1;                                   % A-priori Tropospheric Zenith delay model to be used (1: none, 2: Saastamoinen , 3: Vienna mapping function gridded delays)
+                                                        % - zd_model = 1: Saastamoinen
+                                                        % - zd_model = 1: Vienna mapping function gridded delay
        
-        ZDM_NO = 1;
-        ZDM_SAAST = 2;
-        ZDM_VMF = 3
+        ZDM_SAAST = 1;
+        ZDM_VMF = 2
          
         MAPPING_FUNCTION = 1                            % Mapping function to be used
                                                         % 1 : GMF
@@ -946,7 +945,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         % - iono_model = 2: Klobuchar model
         % - iono_model = 3: IONEX
 
-        % A-priori Tropospheric model to be used (0: none, 1: Saastamoinen std parameters, 2: Saastamoinen global pararameters)
+        % A-priori Tropospheric model to be used (1: Saastamoinen std parameters, 2: Saastamoinen global pararameters)
         zd_model = Prj_Settings.ZD_MODEL;
         mapping_function = Prj_Settings.MAPPING_FUNCTION;
         mapping_function_gradient = Prj_Settings.MAPPING_FUNCTION_GRADIENT;
@@ -3578,7 +3577,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             
             this.flag_free_net_tropo = 0;   % no reference in tropo est 
             
-            this.zd_model = 2;              % Use VMF for a-priori
+            this.zd_model = this.ZDM_VMF;              % Use VMF for a-priori
             this.mapping_function = this.MF_VMF1;      % Use VMF grids
             this.mapping_function_gradient = this.MFG_CHEN;  % Use chen and herring
 
@@ -3676,7 +3675,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
 
             this.flag_free_net_tropo = 0;
             
-            this.zd_model = 1;              % Use Saastamoinen for a-priori
+            this.zd_model = this.ZDM_SAAST;                      % Use Saastamoinen for a-priori
             this.mapping_function = this.MF_GMF;                 % Use GMF grids
             this.mapping_function_gradient = this.MFG_CHEN;      % Use chen and herrign
             this.meteo_data = 2;            % Use GPT
@@ -4662,6 +4661,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   out = this.getGeoidDir()
             out = File_Name_Processor.checkPath(strcat(this.geoid_dir, filesep), this.getHomeDir());
+            if ~(exist(out, 'dir') == 7) && (exist(this.GEOID_DIR_FALLBACK, 'dir') == 7)
+                out = this.GEOID_DIR_FALLBACK;
+            end
+            
         end
         
         function file_path = getGeoidFile(this)
@@ -4670,6 +4673,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   file_path = this.getGeoidFile()
             file_path = File_Name_Processor.checkPath(strcat(this.geoid_dir, filesep, this.geoid_name), this.getHomeDir());
+            tmp = File_Name_Processor.checkPath(strcat(this.GEOID_DIR_FALLBACK, filesep, this.geoid_name), this.getHomeDir());
+            if ~(exist(file_path, 'file') == 2) && exist(tmp, 'file') == 2
+                file_path = tmp;
+            end
         end
 
         function out_dir = getOutDir(this)
@@ -4812,7 +4819,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %  response = this.isRinexSession()
             response = this.sss_file_based;
         end
-       
+        
         function date = getSessionsStop(this)
             % Get the end of all the sessions
             % not considering buffer
@@ -5186,6 +5193,14 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             end
         end
 
+        function setCrxDir(this, crx_dir)
+            % Set the path of the file containing problematic satellites
+            %
+            % SYNTAX
+            %   this.setCrxDir(crx_dir)
+            this.crx_dir = crx_dir;
+        end
+        
         function setNavPath(this, nav_dir)
             % Set the path to the navigational files
             %
@@ -5432,8 +5447,23 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   this.setPreferredOrbit(flag)
-            eph = {'final', 'rapid', 'ultra', 'broadcast'};
-            this.preferred_eph = eph(flag);
+            flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
+            if ischar(flag)
+                flag = ismember(flag_name, {flag});
+            end
+            if iscell(flag)
+                flag = ismember(flag_name, flag);
+            end
+            if ~islogical(flag)
+                if sum(flag == 0 | flag == 1) == 4
+                    flag = logical(flag);
+                else
+                    tmp = false(4,1);
+                    tmp(flag) = true;
+                    flag = tmp;
+                end
+            end
+            this.preferred_eph = flag_name(flag);
         end
  
         function setPreferredIono(this, flag)
@@ -5449,8 +5479,19 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   this.setPreferredIono(flag)
-            iono = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'};
-            this.preferred_iono = iono(flag);
+            flag_name = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'};
+            if ischar(flag)
+                flag = ismember(flag_name, {flag});
+            end
+            if iscell(flag)
+                flag = ismember(flag_name, {flag});
+            end
+            if ~islogical(flag)
+                tmp = false(5,1);
+                tmp(flag) = true;
+                flag = tmp;
+            end
+            this.preferred_iono = flag_name(flag);
         end
         
          function setPreferredVMFRes(this, flag)
@@ -5541,6 +5582,23 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.cur_ini = fullfile(path_str, [name '.ini']);
         end
 
+        function setRinexSession(this, flag)
+            % set wether the program is using session based on rinex files
+            %
+            % SYNTAX
+            %  this.isRinexSession()
+            this.sss_file_based = flag;
+        end
+        
+        function setMaxErrPP(this, max_thr)
+            % Set the maximum s0 error acceptable on LS pre-processing solution
+            % Quantity in meters
+            %
+            % SYNTAX
+            %   this.setMaxCodeErrThrPP(max_thr)
+            this.pp_spp_thr = max_thr;
+        end
+        
         function updatePrj(this, file_path)
             % Set the file project name / home / file_path from file_path
             %
@@ -5782,6 +5840,14 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %  this. setMappingFunction(mf);
             this.mapping_function = mf;
+        end
+        
+        function setAtmLoading(this, flag)
+            % Set the athmospheric loading correction is enabled
+            %
+            % SYNTAX
+            %   this.setAtmLoading(flag)
+            this.flag_atm_load = flag;
         end
         
         function is_seamless = isSeamlessKF(this)
