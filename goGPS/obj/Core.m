@@ -170,10 +170,14 @@ classdef Core < handle
                     unique_instance_core__ = this;
 
                     if ~skip_init
-                        if nargin == 3 && ~isempty(ini) && exist(ini, 'file')
+                        if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
                             this.init(force_clean, ini);
                         else
                             this.init(force_clean);
+                        end
+                    else
+                        if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
+                            this.state = Prj_Settings(ini);
                         end
                     end
                     this.is_gred = exist('GReD_Utility', 'class') == 8;
@@ -186,6 +190,10 @@ classdef Core < handle
                             this.init(force_clean, ini);
                         else
                             this.init(force_clean);
+                        end
+                    else
+                        if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
+                            this.state = Prj_Settings(ini);
                         end
                     end
                 end
@@ -553,12 +561,13 @@ classdef Core < handle
             % SYNTAX
             %   state = Core.getCurrentSettings(<ini_settings_file>)
             
-            core = Core.getInstance(false, true);
+            if nargin == 1 && ~isempty(ini_settings_file)
+                core = Core.getInstance(false, true, ini_settings_file);
+            else
+                core = Core.getInstance(false, true);
+            end
             if isempty(core.state)
                 core.state = Prj_Settings();
-            end
-            if nargin == 1 && ~isempty(ini_settings_file)
-                core.state.importIniFile(ini_settings_file);
             end
             % Return the handler to the object containing the current settings
             state = handle(core.state);
@@ -950,7 +959,6 @@ classdef Core < handle
             if nargin < 3 || isempty(flag_preload)
                 flag_preload = false;
             end
-            
             
             session = session_number;
             if ~flag_preload
