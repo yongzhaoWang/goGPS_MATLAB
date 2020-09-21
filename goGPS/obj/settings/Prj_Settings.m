@@ -1219,24 +1219,24 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 
                 this.rec_dyn_mode = state.getData('rec_dyn_mode');
 
-                this.crd_dir    = fnp.getFullDirPath(state.getData('crd_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('crd_dir')), this.prj_home));
+                this.crd_dir    = fnp.getFullDirPath(state.getData('crd_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('crd_dir')), this.prj_home), this.prj_home));
                 this.crd_name   = fnp.checkPath(state.getData('crd_name'), this.getHomeDir());
-                this.met_dir    = fnp.getFullDirPath(state.getData('met_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('met_dir')), this.prj_home));
+                this.met_dir    = fnp.getFullDirPath(state.getData('met_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('met_dir')), this.prj_home), this.prj_home));
                 this.met_name   = fnp.checkPath(state.getData('met_name'), this.getHomeDir());
                 this.met_full_name = {};
-                this.ocean_dir  = fnp.getFullDirPath(state.getData('ocean_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('ocean_dir')), this.prj_home));
+                this.ocean_dir  = fnp.getFullDirPath(state.getData('ocean_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('ocean_dir')), this.prj_home), this.prj_home));
                 this.ocean_name = fnp.checkPath(state.getData('ocean_name'), this.getHomeDir());
 
                 % REFERENCE
                 %this.remote_res_conf_dir = fnp.getFullDirPath(settings.getData('remote_res_conf_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('remote_res_conf_dir')), this.prj_home));
-                this.igrf_dir   = fnp.getFullDirPath(state.getData('igrf_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('igrf_dir')), this.prj_home));
+                this.igrf_dir   = fnp.getFullDirPath(state.getData('igrf_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('igrf_dir')), this.prj_home), this.prj_home));
                 this.igrf_name  = fnp.checkPath(state.getData('igrf_name'), this.getHomeDir());
-                this.erp_dir    = fnp.getFullDirPath(state.getData('erp_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('erp_dir')), this.prj_home));
-                this.geoid_dir  = fnp.getFullDirPath(state.getData('geoid_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('geoid_dir')), this.prj_home));
+                this.erp_dir    = fnp.getFullDirPath(state.getData('erp_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('erp_dir')), this.prj_home), this.prj_home));
+                this.geoid_dir  = fnp.getFullDirPath(state.getData('geoid_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('geoid_dir')), this.prj_home), this.prj_home));
                 this.geoid_name = fnp.checkPath(state.getData('geoid_name'), this.getHomeDir());
-                this.iono_dir   = fnp.getFullDirPath(state.getData('iono_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('iono_dir')), this.prj_home));
-                this.atm_load_dir   = fnp.getFullDirPath(state.getData('atm_load_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('atm_load_dir')), this.prj_home));
-                this.vmf_dir   = fnp.getFullDirPath(state.getData('vmf_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('vmf_dir')), this.prj_home));
+                this.iono_dir   = fnp.getFullDirPath(state.getData('iono_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('iono_dir')), this.prj_home), this.prj_home));
+                this.atm_load_dir   = fnp.getFullDirPath(state.getData('atm_load_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('atm_load_dir')), this.prj_home), this.prj_home));
+                this.vmf_dir   = fnp.getFullDirPath(state.getData('vmf_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('vmf_dir')), this.prj_home), this.prj_home));
 
                 % COMPUTATION CENTERS
                 this.flag_download = state.getData('flag_download');
@@ -1258,11 +1258,11 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                     this.selected_iono_center = 'default';
                 end
                 % SATELLITES
-                this.eph_dir    = fnp.getFullDirPath(state.getData('eph_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('eph_dir')), this.prj_home));
-                this.clk_dir    = fnp.getFullDirPath(state.getData('clk_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('clk_dir')), this.prj_home));
-                this.crx_dir    = fnp.getFullDirPath(state.getData('crx_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('crx_dir')), this.prj_home));
-                this.bias_dir   = fnp.getFullDirPath(state.getData('bias_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('bias_dir')), this.prj_home));
-                this.ems_dir    = fnp.getFullDirPath(state.getData('ems_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('ems_dir')), this.prj_home));
+                this.eph_dir    = fnp.getFullDirPath(state.getData('eph_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('eph_dir')), this.prj_home), this.prj_home));
+                this.clk_dir    = fnp.getFullDirPath(state.getData('clk_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('clk_dir')), this.prj_home), this.prj_home));
+                this.crx_dir    = fnp.getFullDirPath(state.getData('crx_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('crx_dir')), this.prj_home), this.prj_home));
+                this.bias_dir   = fnp.getFullDirPath(state.getData('bias_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('bias_dir')), this.prj_home), this.prj_home));
+                this.ems_dir    = fnp.getFullDirPath(state.getData('ems_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('ems_dir')), this.prj_home), this.prj_home));
 
                 % ANTENNAS
                 this.atx_dir    = fnp.getFullDirPath(state.getData('atx_dir'), this.prj_home, pwd);
@@ -1280,7 +1280,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.mp_n_min = state.getData('mp_n_min');
                 
                 % OUTPUT
-                this.out_dir = fnp.getFullDirPath(state.getData('out_dir'), this.prj_home, [], fnp.getFullDirPath(this.(upper('out_dir')), this.prj_home));
+                this.out_dir = fnp.getFullDirPath(state.getData('out_dir'), this.prj_home, [], fnp.getFullDirPath(fnp.checkPath(this.(upper('out_dir')), this.prj_home), this.prj_home));
                 if ~exist(this.out_dir, 'dir')
                     % fallback of fallback
                     this.out_dir = fnp.getFullDirPath(state.getData('out_dir'), this.prj_home);
