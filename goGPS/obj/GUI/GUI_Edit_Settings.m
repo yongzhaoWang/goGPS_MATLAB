@@ -318,37 +318,29 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 
                 % Main Panel > tab1 settings
                 this.j_settings = this.insertTabAdvanced(tab_panel);
-
+                
                 % Main Panel > tab2 remote resource ini
-                enable_rri = true;
-                if enable_rri
-                    this.insertTabRemoteResource(tab_panel)
-                end
-               
+                this.insertTabRemoteResource(tab_panel)
+                
                 % Main Panel > tab3 data sources
                 this.insertTabDataSources(tab_panel);            
-
+                
                 % Main Panel > tab4 CRD of the stations
                 this.insertTabRecSpecificParameters(tab_panel);
-
+                
                 % Main Panel > tab5 regularization
                 this.insertTabProcessing(tab_panel);
-
+                
                 % Main Panel > tab6 data sources
                 this.j_cmd = this.insertTabCommands(tab_panel);
-
+                
                 % Main Panel > tab7 processing options
                 this.insertTabOutput(tab_panel);
                 
                 % Tabs settings --------------------------------------------------------------------------------------------
 
-                if enable_rri
-                    tab_panel.TabTitles = {'Advanced', 'Resources', 'Data sources', 'Rec. Info', 'Processing', 'Commands', 'Output'};
-                    tab_panel.Selection = 6;
-                else
-                    tab_panel.TabTitles = {'Settings', 'Data sources', 'Rec. Info', 'Processing', 'Commands', 'Output'};
-                    tab_panel.Selection = 5;
-                end
+                tab_panel.TabTitles = {'Advanced', 'Resources', 'Data sources', 'Rec. Info', 'Processing', 'Commands', 'Output'};
+                tab_panel.Selection = 6;
                 
                 % Botton Panel ---------------------------------------------------------------------------------------------
                 
@@ -2033,6 +2025,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             % Resource tree
             bottom_box = uix.VBox( 'Parent', tab_bv, ...
                 'BackgroundColor', Core_UI.LIGHT_GREY_BG);
+            tab_bv.Heights = [15 2 18 22 18 22 18 18 -1];
             
             rr_box = uix.VBox( 'Parent', bottom_box, ...
                 'BackgroundColor', Core_UI.LIGHT_GREY_BG);
@@ -2077,9 +2070,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'Biases local dir', 'bias_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'VMF local dir', 'vmf_dir', @this.onEditChange, [28 130 -1 25]);
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(dir_box, 'ATM local dir', 'atm_load_dir', @this.onEditChange, [28 130 -1 25]);
-
-            
-            tab_bv.Heights = [15 2 18 22 18 22 18 18 -1];
+                         
             this.uip.tab_rr = tab;            
         end
                 
@@ -2661,11 +2652,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                         color_bg = Core_UI.LIGHT_GREY_BG_NOT_SO_LIGHT;
                         switch(tab.Tag)
                             case {'DSE'}
-                                tic;
                                 this.insertDataSelection(tab, color_bg);                                
                                 this.updateCCFromState();
                                 this.updateEditFromState();
-                                toc;
                             case {'ATM'}
                                 this.insertTabAtmosphere(tab, color_bg);
                                 this.updatePopUpsState();
