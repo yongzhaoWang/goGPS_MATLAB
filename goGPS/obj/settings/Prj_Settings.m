@@ -1877,7 +1877,6 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 this.dreg_sat_trkbias_net    = state.dreg_sat_trkbias_net;
             end
             
-            this.check(); % check after import
             this.eph_full_name = '';
             this.clk_full_name = '';
             this.erp_full_name = '';
@@ -3016,7 +3015,6 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             log = Core.getLogger();
             if (exist(file_path, 'file') == 2)
                 this.importIniFile@Settings_Interface(file_path);
-                this.postImportInit();
                 log.addStatusOk(sprintf('File "%s" found, settings imported!', file_path));
             else
                 log.addWarning(sprintf('File "%s" not found, settings not imported!', file_path));

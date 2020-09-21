@@ -54,6 +54,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         menu        % Handle of the menu
         go_but      % Handle to goButton
         
+        is_gui_ready = false;
+        
         info_g      % Info group
         rec_tbl     % Receiver table
         session_panel % panel of the session definition 
@@ -158,7 +160,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             t0 = tic();
             state = Core.getCurrentSettings;
             this.ok_go = false;
-
+            this.is_gui_ready = false;
+            
             log = Core.getLogger;
 
             % Get the old goGPS window
@@ -411,22 +414,27 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 set(win, 'CloseRequestFcn', @this.close);                
             end
             
-            this.updateUI();
+            
             this.updateRecList();
-                        
+            this.is_gui_ready = true;
+                            
             this.win.Visible = 'on';
             % the update of the command list is repeated here because at
             % least on linux the handle to the java container is not valid
             % till visibility is on
             this.updateCmdList();
 
+            % Now that the GUI it is ready I can perform the update of the UI:
+            this.updateUI();
+            
             t_win = toc(t0);
             cm = log.getColorMode();
             log.setColorMode(false);
             log.addStatusOk(sprintf('goGPS GUI initialization completed in %.2f seconds\n', t_win));
             log.setColorMode(cm);
-            this.bringOnTop(); 
-            this.go_but.Enable = iif(flag_wait, 'on', 'off')
+            this.bringOnTop();             
+            
+            this.go_but.Enable = iif(flag_wait, 'on', 'off');
         end
         
 
@@ -2223,7 +2231,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             j_ini = com.mathworks.widgets.SyntaxTextPane;
             codeType = j_ini.M_MIME_TYPE;  % j_settings.contentType='text/m-MATLAB'
             j_ini.setContentType(codeType);
-            str = strrep(strCell2Str(Core.getCurrentSettings.export(), 10),'#','%');
+            % str = strrep(strCell2Str(Core.getCurrentSettings.export(), 10),'#','%');
+            % <= This will be performed at the end of GUI initialization
+            str = "Loading ini settings...";
             j_ini.setText(str);
             % Create the ScrollPanel containing the widget
             j_scroll_settings = com.mathworks.mwswing.MJScrollPane(j_ini);
@@ -2338,11 +2348,13 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 state.setSessionStop(sss_stop);
             end
             if status_change
-                this.updateINI();
-                this.updateRecList();
-                this.updateSessionSummary()
-                this.updateSessionGUI();
-                this.checkFlag();
+                if this.is_gui_ready
+                    this.updateINI();
+                    this.updateRecList();
+                    this.updateSessionSummary()
+                    this.updateSessionGUI();
+                    this.checkFlag();
+                end
             end
         end       
         
@@ -2591,7 +2603,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         end
         
         function onTabChange(this, caller, event)
-            if event.NewValue == 1
+            if event.NewValue == 1 && this.is_gui_ready
                 state = Core.getCurrentSettings;
                 if ~isempty(this.j_settings)
                     try
@@ -2630,9 +2642,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         end
         
         function updateINI(this)
-            if ~isempty(this.win) && isvalid(this.win)
+            if ~isempty(this.win) && isvalid(this.win) && this.is_gui_ready
                 state = Core.getCurrentSettings;
-                this.win.Name = sprintf('%s @ %s', state.getPrjName, state.getHomeDir);                
+                this.win.Name = sprintf('%s @ %s', state.getPrjName, state.getHomeDir);
                 try
                     str = strrep(strCell2Str(state.export(), 10),'#','%');
                     if ~strcmp(str, char(this.j_settings.getText()))
@@ -2651,7 +2663,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         end
         
         function updateCmdList(this)
-            if ~isempty(this.win) && isvalid(this.win)
+            if ~isempty(this.win) && isvalid(this.win) && this.is_gui_ready
                 if this.j_cmd.isValid
                     str = strrep(strCell2Str(Core.getCurrentSettings.exportCmdList(), 10),'#','%');
                     if ~strcmp(str, char(this.j_cmd.getText()))
@@ -3059,8 +3071,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             %
             % SYNTAX:
             %   this.updateRecList
-            persistent last_check
-
+            persistent last_check unique_dir dir_list
+            
             if nargin < 2 || isnan(flag_force)
                 flag_force = false;
             end
@@ -3091,10 +3103,10 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             % If I need to check a lot of files use as a method to check
             % dir list, otherwise use existent cache
-            persistent unique_dir dir_list 
+            % persistent unique_dir dir_list
             
             if (tot_rec < 1100) || flag_force
-                % If last check is older than 30 minutes ago force_check                
+                % If last check is older than 30 minutes ago force_check
                 % if flag_force is passed to the function it means that a check is not requested because cache hould exist
                 % but if the cache does not exist it is better to force its creation
                 if (nargin == 2) && (isempty(last_check) || (now - last_check) > (1800 / 86400))
@@ -3167,7 +3179,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                         name = '    ';
                     end
                     
-
+                    
                     
                     n_ok = 0; n_ko = 0;
                     if ~isempty(available_files) && (~isempty(tmp_files) || (max_sss * n_rec > 366))
@@ -3225,6 +3237,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         
         function updateSessionSummary(this)
             if ~isempty(this.session_summary.start)
+
                 state = Core.getCurrentSettings;
                 [~,doy_st] = state.sss_date_start.getDOY;
                 week_st =  state.sss_date_start.getGpsWeek;
@@ -3255,6 +3268,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         
         function updateSessionGUI(this)
             % enable disable fields
+            
             ui_tspan = findobj(this.win, 'Tag', 'sss_duration');
             ui_buffer = findobj(this.win, 'Tag', 'sss_buffer');
             ui_smooth_tropo = findobj(this.win, 'Tag', 'sss_smooth');

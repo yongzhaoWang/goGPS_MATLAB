@@ -555,6 +555,16 @@ classdef Core < handle
             state = Core.getCurrentSettings;
         end
         
+        function flag = isNew()
+            % If the state have not been created, 
+            % the core is not yet initialized
+            %
+            % SYNTAX
+            %   is_new = Core.isNew()
+            core = Core.getInstance(false, true);
+            flag = isempty(core.state);
+        end
+        
         function state = getCurrentSettings(ini_settings_file)
             % Get the persistent settings
             %
