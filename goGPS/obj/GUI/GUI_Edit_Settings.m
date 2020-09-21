@@ -485,7 +485,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             cmd_bg = Core_UI.LIGHT_GREY_BG;
             tab = uix.HBox('Parent', container, ...
                 'Padding', 5, ...
-                'BackgroundColor', cmd_bg);
+                'BackgroundColor', cmd_bg, ...
+                'Tag', 'CMD');
              
             v_left = uix.VBox('Parent', tab, ...
                 'Padding', 0, ...
@@ -575,7 +576,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             data_selection_bg = Core_UI.LIGHT_GREY_BG;
             tab = uix.VBox('Parent', container, ...
                 'Padding', 5, ...
-                'BackgroundColor', data_selection_bg);
+                'BackgroundColor', data_selection_bg, ...
+                'Tag', 'DS');
             
             % --------------------------------------------------------
             
@@ -751,7 +753,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             tab = uix.VBox('Parent', container, ...
                 'Padding', 5, ...
                 'Spacing', 10, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'OUT');
             [~, this.edit_texts{end + 1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(tab, 'Out directory', 'out_dir', @this.onEditChange, [25 100 -1 25]);
             [~, this.edit_texts{end+1}] = Core_UI.insertEditBox(tab, 'Output rate of the tropospheric parameters', 'trp_out_rate', 's', @this.onEditChange, [280 100 5 50], color_bg);
             this.edit_texts{end}.TooltipString = 'Insert zero to export the date at the original processing rate';
@@ -796,7 +799,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         function insertTabRecSpecificParameters(this, container)
             tab = uix.VBox('Parent', container, ...
                 'Padding', 5, ...
-                'BackgroundColor', Core_UI.LIGHT_GREY_BG);            
+                'BackgroundColor', Core_UI.LIGHT_GREY_BG, ...
+                'Tag', 'RS');            
             
             %%% Rec
             box = Core_UI.insertPanelLight(tab, 'Station Specific Parameters');
@@ -1215,37 +1219,44 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 'TabWidth', 110, ...
                 'Padding', 5, ...
                 'BackgroundColor', color_bg, ...
-                'SelectionChangedFcn', @this.onTabChange);
+                'SelectionChangedFcn', @this.onTabChange, ...
+                'Tag', 'PRO');
             
             % Insert tabs
             tab_sat = uix.VBox('Parent', tab_panel, ...
                 'Padding', 2, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'DSE');
             tab_atm = uix.VBox('Parent', tab_panel, ...
                 'Padding', 2, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'ATM');
             tab_prepro = uix.VBox('Parent', tab_panel, ...
                 'Padding', 2, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'PP');
             tab_generic = uix.VBox('Parent', tab_panel, ...
                 'Padding', 2, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'GO');
             tab_ppp = uix.VBox('Parent', tab_panel, ...
                 'Padding', 2, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'PPP');
             tab_net = uix.VBox('Parent', tab_panel, ...
                 'Padding', 2, ...
-                'BackgroundColor', color_bg);
+                'BackgroundColor', color_bg, ...
+                'Tag', 'NET');
             tab_panel.TabTitles = {'Data selection', 'Atmosphere', 'Pre-Processing', 'Generic Options', 'PPP Parameters', 'NET Parameters'};
             
-            this.insertDataSelection(tab_sat, color_bg);
-            this.insertTabAtmosphere(tab_atm, color_bg)
+            %this.insertDataSelection(tab_sat, color_bg);
+            %this.insertTabAtmosphere(tab_atm, color_bg);
 
-            this.insertTabPrePro(tab_prepro, color_bg);            
+            %this.insertTabPrePro(tab_prepro, color_bg);            
 
-            this.insertGenericOpt(tab_generic, color_bg);
-            this.insertPPP(tab_ppp, color_bg);
-            this.insertNET(tab_net, color_bg);
+            %this.insertGenericOpt(tab_generic, color_bg);
+            %this.insertPPP(tab_ppp, color_bg);
+            %this.insertNET(tab_net, color_bg);
                         
             this.uip.tab_reg = tab_panel;
         end
@@ -1914,7 +1925,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         end
                 
         function insertTabRemoteResource(this, container)
-            tab = uix.VBox('Parent', container);
+            tab = uix.VBox('Parent', container, 'Tag', 'RR');
             
             state = Core.getCurrentSettings;
             tab_bv = uix.VBox( 'Parent', tab, ...
@@ -2217,7 +2228,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         end
         
         function j_ini = insertTabAdvanced(this, container)
-            tab = uix.VBox('Parent', container);
+            tab = uix.VBox('Parent', container, 'Tag', 'ADV');
             
             com_box = Core_UI.insertPanelLight(tab, 'Parallelism');
             [~, this.edit_texts{end+1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(com_box, 'Communication dir', 'com_dir', @this.onEditChange, [25 160 -1 25]);
@@ -2602,20 +2613,86 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             this.updateUI();
         end
         
-        function onTabChange(this, caller, event)
-            if event.NewValue == 1 && this.is_gui_ready
-                state = Core.getCurrentSettings;
-                if ~isempty(this.j_settings)
-                    try
-                        str = strrep(strCell2Str(state.export(), 10),'#','%');
-                        this.j_settings.setText(str);
-                    catch ex
-                        Core.getLogger.addWarning(sprintf('I cannot update j_settings\n%s', ex.message));
+        function onTabChange(this, caller, event)  
+            if this.is_gui_ready
+                % If Advanced tab is activated
+                try
+                    is_adv_tab = strcmp(caller.Children(end + 1 - event.NewValue).Tag, 'ADV');
+                catch
+                    is_adv_tab = false;
+                end
+                
+                % If Processing tab is activated
+                try
+                    pro_tab = caller.Children(end + 1 - event.NewValue);
+                    is_pro_tab = strcmp(pro_tab.Tag, 'PRO');
+                    if ~is_pro_tab
+                        % try to see if the changed tab is a children of pro_tab
+                        pro_tab = pro_tab.Parent;
+                        is_pro_tab = strcmp(pro_tab.Tag, 'PRO');
+                        if is_pro_tab
+                            pro_tab.Selection = event.NewValue;
+                        end
                     end
-                else
-                    % Check is always needed
-                    state.check()
-                    % Core.getLogger.addWarning('Warning invalid config can not updating j_settings');
+                catch
+                    is_pro_tab = false;
+                end
+                
+                if is_adv_tab
+                    if is_adv_tab
+                        state = Core.getCurrentSettings;
+                        if ~isempty(this.j_settings)
+                            try
+                                str = strrep(strCell2Str(state.export(), 10),'#','%');
+                                this.j_settings.setText(str);
+                            catch ex
+                                Core.getLogger.addWarning(sprintf('I cannot update j_settings\n%s', ex.message));
+                            end
+                        else
+                            % Check is always needed
+                            state.check()
+                            % Core.getLogger.addWarning('Warning invalid config can not updating j_settings');
+                        end
+                    end
+                elseif is_pro_tab
+                    tab = pro_tab.Children(end + 1 - pro_tab.Selection);
+                    if isempty(tab.Children)
+                        
+                        color_bg = Core_UI.LIGHT_GREY_BG_NOT_SO_LIGHT;
+                        switch(tab.Tag)
+                            case {'DSE'}
+                                tic;
+                                this.insertDataSelection(tab, color_bg);                                
+                                this.updateCCFromState();
+                                this.updateEditFromState();
+                                toc;
+                            case {'ATM'}
+                                this.insertTabAtmosphere(tab, color_bg);
+                                this.updatePopUpsState();
+                                this.updateEditFromState();
+                            case {'PP'}
+                                this.insertTabPrePro(tab, color_bg);
+                                this.updateEditFromState();
+                            case {'GO'}
+                                this.insertGenericOpt(tab, color_bg);
+                                this.updatePopUpsState();
+                                this.updateCheckBoxFromState();
+                                this.updateEditFromState();
+                                this.updateEditArraysFromState();
+                            case {'PPP'}
+                                this.insertPPP(tab, color_bg);
+                                this.updatePopUpsState();
+                                this.updateCheckBoxFromState();
+                                this.updateEditFromState();
+                                this.updateEditArraysFromState();
+                            case {'NET'}
+                                this.insertNET(tab, color_bg);
+                                this.updatePopUpsState();
+                                this.updateCheckBoxFromState();
+                                this.updateEditFromState();
+                                this.updateEditArraysFromState();
+                        end
+                    end
                 end
             end
         end
