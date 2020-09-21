@@ -226,6 +226,16 @@ classdef Network < handle
                         parametrization.rec_y(4) = state.fparam_coo_net;
                         parametrization.rec_z(4) = state.fparam_coo_net;
                     end
+                    orbit_relaxation = false;
+                    if orbit_relaxation
+                        param_selection = [param_selection;
+                            LS_Manipulator_new.PAR_SAT_X;
+                            LS_Manipulator_new.PAR_SAT_Y;
+                            LS_Manipulator_new.PAR_SAT_Z;
+                            ];
+                     
+                    end
+                    
                     %if this.state.flag_iono_net
                     param_selection = [param_selection;
                         ls.PAR_IONO;];
@@ -384,6 +394,15 @@ classdef Network < handle
                         ls.free_tropo = true;
                     end
                     
+                    if orbit_relaxation
+                        ls.absValRegularization(ls.PAR_SAT_X, 0.5);
+                        ls.absValRegularization(ls.PAR_SAT_Y, 0.5);
+                        ls.absValRegularization(ls.PAR_SAT_Z, 0.5);
+                        ls.timeRegularization(ls.PAR_SAT_X, 0.01);
+                        ls.timeRegularization(ls.PAR_SAT_Y, 0.01);
+                        ls.timeRegularization(ls.PAR_SAT_Z, 0.01);
+                    end
+                    
                     this.is_tropo_decorrel = this.state.isReferenceTropoEnabled;
                     this.is_coo_decorrel = free_net;
                     
@@ -453,8 +472,8 @@ classdef Network < handle
                         
                     end
                     this.common_time = ls.unique_time;
-                    %ls.solve(Core.getState.net_amb_fix_approach >1);
                     ls.solve(false);
+                    %ls.solve(false);
                     %                 idx_fix = ls.class_par == ls.PAR_AMB;
                     %                 idx_fix(idx_fix) = abs(fracFNI(ls.x(idx_fix))) < 1e-9; % fixed ambiguoty
                     %                 ls.removeEstParam(idx_fix);
@@ -601,7 +620,7 @@ classdef Network < handle
                 idx_clk = ls.class_par == LS_Manipulator_new.PAR_REC_CLK & idx_rec;
                 clk = ls.x(idx_clk);
                 time_clk = ls.time_par(idx_clk);
-                [~,idx_time_clk] = ismember(time_clk, this.common_time.getNominalTime.getRefTime(ls.time_min.getMatlabTime));
+                [~,idx_time_clk] = ismember(round(time_clk), round(this.common_time.getNominalTime.getRefTime(ls.time_min.getMatlabTime)));
                 this.clock(idx_time_clk,i) = nan2zero(this.clock(idx_time_clk,i)) + clk;
                 state = this.state;
                 if this.state.flag_ztd_net
@@ -783,8 +802,10 @@ classdef Network < handle
             cc = Core.getConstellationCollector();
             % --- push back the results in the receivers
             for i = 1 : n_rec
-                this.rec_list(i).work.xyz = this.coo(i,:);
-                this.rec_list(i).work.xyz_vcv = this.coo_vcv(i,:);
+                if sum(ls.param_class == ls.PAR_REC_X | ls.param_class == ls.PAR_REC_Y  | ls.param_class == ls.PAR_REC_Z )>0
+                    this.rec_list(i).work.xyz = this.coo(i,:);
+                    this.rec_list(i).work.xyz_vcv = this.coo_vcv(i,:);
+                end
                 idx_res_av = ~isnan(this.clock(:, i));
                 [idx_is, idx_pos] = ismembertol(this.common_time.getEpoch(idx_res_av).getGpsTime(), this.rec_list(i).work.time.getGpsTime, 0.002, 'DataScale', 1);
                 idx_pos = idx_pos(idx_pos > 0);
@@ -879,46 +900,11 @@ classdef Network < handle
                 obs_code_pr = reshape(cell2mat(ls.unique_obs_codes(obs_id))',4,length(obs_id))';
                 prn_pr = cc.prn(sat);
 
-                this.rec_list(i).work.sat.res.import(3, res_time, [res_ph res_pr], [prn_ph; prn_pr], [obs_code_ph; obs_code_pr], Coordinates.fromXYZ(this.coo(i,:), this.common_time.getCentralTime));
+                this.rec_list(i).work.sat.res.import(3, res_time, [res_ph res_pr], [prn_ph; prn_pr], [obs_code_ph; obs_code_pr], Coordinates.fromXYZ(this.rec_list(i).work.getMedianPosXYZ, this.common_time.getCentralTime));
 
             end
-            if sum(ls.param_class == LS_Manipulator_new.PAR_SAT_EB) > 0 && false
-                cs = Core.getCoreSky();
-                n_sat = max(ls.sat_par);
-                for s = 1 : n_sat
-                    idx_eb = find(ls.class_par == LS_Manipulator_new.PAR_SAT_EB & ls.sat_par == s);
-                    for ii = idx_eb'
-                        if sum(ls.class_par == LS_Manipulator_new.PAR_SAT_EBFR) > 0
-                            wl_id = ls.wl_id_par(ii);
-                            eb_fr_id = find(ls.class_par == LS_Manipulator_new.PAR_SAT_EBFR & ls.wl_id_par == wl_id & ls.sat_par == s);
-                            o_code = ls.unique_obs_codes{ls.obs_codes_id_par(ii)};
-                            data = ls.x(eb_fr_id) + ls.x(ii);
-                            time_data = ls.getTimePar(eb_fr_id);
-                            time_data_min = time_data.minimum;
-                            ref_time = time_data.getRefTime(time_data_min.getMatlabTime);
-                            % time_apr has to be sampled regualarly
-                            time_data_final = 0 : time_data.getRate : (time_data.maximum - time_data_min);
-                            [~,iii] = ismembertol(ref_time,time_data_final, 1e-7);
-                            iii = Core_Utils.ordinal2logical(iii,length(time_data_final));
-                            data_final = zeros(size(time_data_final));
-                            data_final(iii) = data;
-                            not_fill = find(~iii);
-                            iii = find(iii);
-                            for nn = not_fill'
-                                [~,i_dist ]= min(abs(nn - iii));
-                                data_final(nn) = data_final(iii(i_dist));
-                            end
-                            prm  = ls.ls_parametrization.getParametrization(LS_Manipulator_new.PAR_SAT_EBFR);
-                            cs.tracking_bias{s}{ii} = Electronic_Bias(o_code, data_final, time_data_final, prm);
-                        else
-                            o_code = ls.unique_obs_codes{ls.obs_codes_id_par(ii)};
-                            data = ls.x(ii);
-                            cs.tracking_bias{s}{ii} = Electronic_Bias(o_code, data);
-                        end
-                    end
-                end
-            end
-            %this.pushBackEphemeris(ls);
+            
+            this.pushBackEphemeris(ls);
             %this.pushBackIono(ls);
         end
 
@@ -967,28 +953,28 @@ classdef Network < handle
                 idx_sat_z_s = idx_sat_z & ls.sat_par == ls.unique_sat_goid(s);
                 if sum(idx_sat_x_s) > 0
                     xs = ls.x(idx_sat_x_s);
-                    tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
-                    tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
-                    [~,tropo_idx] = ismember(tropo_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
-                    valid_ep = tropo_idx ~=0 & tropo_idx <= (length(xs)-3);
-                    spline_base = Core_Utils.spline(tropo_dt(valid_ep),3);
-                    xcoord =sum(spline_base .* xs(repmat(tropo_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(tropo_idx(valid_ep)), 1)), 2);
+                    x_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
+                    x_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
+                    [~,x_idx] = ismember(x_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
+                    valid_ep = x_idx ~=0 & x_idx <= (length(xs)-3);
+                    spline_base = Core_Utils.spline(x_dt(valid_ep),3);
+                    xcoord =sum(spline_base .* xs(repmat(x_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(x_idx(valid_ep)), 1)), 2);
                     
-                    xs = ls.x(idx_sat_y_s);
-                    tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
-                    tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
-                    [~,tropo_idx] = ismember(tropo_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
-                    valid_ep = tropo_idx ~=0 & tropo_idx <= (length(xs)-3);
-                    spline_base = Core_Utils.spline(tropo_dt(valid_ep),3);
-                    ycoord =sum(spline_base .* xs(repmat(tropo_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(tropo_idx(valid_ep)), 1)), 2);
+                    ys = ls.x(idx_sat_y_s);
+                    y_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
+                    y_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
+                    [~,y_idx] = ismember(y_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
+                    valid_ep = y_idx ~=0 & y_idx <= (length(ys)-3);
+                    spline_base = Core_Utils.spline(y_dt(valid_ep),3);
+                    ycoord =sum(spline_base .* ys(repmat(y_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(y_idx(valid_ep)), 1)), 2);
                     
-                    xs = ls.x(idx_sat_z_s);
-                    tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
-                    tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
-                    [~,tropo_idx] = ismember(tropo_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
-                    valid_ep = tropo_idx ~=0 & tropo_idx <= (length(xs)-3);
-                    spline_base = Core_Utils.spline(tropo_dt(valid_ep),3);
-                    zcoord =sum(spline_base .* xs(repmat(tropo_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(tropo_idx(valid_ep)), 1)), 2);
+                    zs = ls.x(idx_sat_z_s);
+                    z_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
+                    z_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
+                    [~,z_idx] = ismember(z_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
+                    valid_ep = z_idx ~=0 & z_idx <= (length(zs)-3);
+                    spline_base = Core_Utils.spline(z_dt(valid_ep),3);
+                    zcoord =sum(spline_base .* zs(repmat(z_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(z_idx(valid_ep)), 1)), 2);
                     
                     coord(valid_ep,s,1) = coord(valid_ep,s,1) + xcoord;
                     coord(valid_ep,s,2) = coord(valid_ep,s,2) + ycoord;
@@ -996,7 +982,48 @@ classdef Network < handle
 
                 end
             end
-            cs.coordFit(this.common_time, coord, ls.unique_sat_goid);           
+            cs.coordFit(this.common_time, coord, ls.unique_sat_goid);  
+            
+            % piush back bias
+            if sum(ls.param_class == LS_Manipulator_new.PAR_SAT_EB) > 0
+                cs = Core.getCoreSky();
+                n_sat = max(ls.sat_par);
+                for s = 1 : n_sat
+                    idx_eb = find(ls.class_par == LS_Manipulator_new.PAR_SAT_EB & ls.sat_par == s);
+                    for ip = 1 : length(idx_eb)
+                        ii = idx_eb(ip);
+                        if sum(ls.class_par == LS_Manipulator_new.PAR_SAT_EBFR) > 0
+                            wl_id = ls.wl_id_par(ii);
+                            eb_fr_id = find(ls.class_par == LS_Manipulator_new.PAR_SAT_EBFR & ls.wl_id_par == wl_id & ls.sat_par == s);
+                            o_code = ls.unique_obs_codes{ls.obs_codes_id_par(ii)};
+                            data = ls.x(eb_fr_id) + ls.x(ii);
+                            time_data = ls.getTimePar(eb_fr_id);
+                            time_data_min = time_data.minimum;
+                            ref_time = time_data.getRefTime(time_data_min.getMatlabTime);
+                            % time_apr has to be sampled regualarly
+                            time_data_final = 0 : time_data.getRate : (time_data.maximum - time_data_min);
+                            [~,iii] = ismembertol(ref_time,time_data_final, 1e-7);
+                            iii = Core_Utils.ordinal2logical(iii,length(time_data_final));
+                            data_final = zeros(size(time_data_final));
+                            gps_time_data_final = time_data_min.getCopy();
+                            gps_time_data_final.addSeconds(time_data_final);
+                            data_final(iii) = data;
+                            not_fill = find(~iii);
+                            iii = find(iii);
+                            for nn = not_fill'
+                                [~,i_dist ]= min(abs(nn - iii));
+                                data_final(nn) = data_final(iii(i_dist));
+                            end
+                            prm  = ls.ls_parametrization.getParametrization(LS_Manipulator_new.PAR_SAT_EBFR);
+                            cs.tracking_bias{s}{ip} = Electronic_Bias(o_code, data_final, gps_time_data_final, prm(1));
+                        else
+                            o_code = ls.unique_obs_codes{ls.obs_codes_id_par(ii)};
+                            data = ls.x(ii);
+                            cs.tracking_bias{s}{ip} = Electronic_Bias(o_code, data);
+                        end
+                    end
+                end
+            end
         end
         
         function pushBackSubCooInReceiver(this, time, rate)

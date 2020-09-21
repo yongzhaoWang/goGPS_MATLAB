@@ -1904,8 +1904,9 @@ classdef LS_Manipulator_new < handle
             % ------- fix the ambiguities
             c_p = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
             idx_amb = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) == this.PAR_AMB;
+              svd_strat = true;
             if sum(this.param_class == this.PAR_AMB) > 0 && fix && any(idx_amb)
-                svd_strat = true;
+              
                 if svd_strat
                     % svd startegy
                     % reduce all other paramter than ambiguoties
@@ -2009,16 +2010,29 @@ classdef LS_Manipulator_new < handle
                     x_reduced = result(:,1);
                     this.coo_vcv = result([idx_x; idx_y; idx_z] ,2 : end);
                 else
-                    [U,D,V] = svds(N,sum(size(N,1)));
-                    d = diag(D);
-                    tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                    [~,idx_min] = min(diff(log10(d(d<tol))));
-                    last_valid = find(d < tol,1,'first') + idx_min -1;
-                    keep_id = 1:sum(size(N,1)) <= last_valid;
-                    real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
-                    clearvars U V D
-                    pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
-                    x_reduced = pinvB * B;
+                    if svd_strat
+                        [U,D,V] = svds(N,sum(size(N,1)));
+                        d = diag(D);
+                        tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                        [~,idx_min] = min(diff(log10(d(d<tol))));
+                        last_valid = find(d < tol,1,'first') + idx_min -1;
+                        keep_id = 1:sum(size(N,1)) <= last_valid;
+                        real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
+                        clearvars U V D
+                        pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
+                        x_reduced = pinvB * B;
+                    else
+                        [L,D,P] = ldl(N);
+                        [d,idx_sort] = sort(diag(D),'descend');
+                        d(d<0) = d(find(d>0,1,'last'));
+                        tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                        [~,idx_min] = min(diff(log10(d(d<tol))));
+                        last_valid = find(d < tol,1,'first') + idx_min -1;
+                        keep_id = (1:sum(size(N,1)))' <= last_valid;
+                        keep_id(idx_sort) = keep_id;
+                        x_reduced = Core_Utils.solveLDL(L,D,B,P,keep_id);
+                        
+                    end
                     clearvars pinvB
                 end
             end

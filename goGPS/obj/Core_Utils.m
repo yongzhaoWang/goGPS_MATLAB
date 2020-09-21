@@ -3174,7 +3174,7 @@ classdef Core_Utils < handle
         end
         
         
-        function x = solveLDL(L,D,b)
+        function x = solveLDLo(L,D,b)
             % solve system where normal matrix has beeen ldl decomposed
             % NOTE : A = L*D*L' (sparse matrices)
             %
@@ -3183,6 +3183,20 @@ classdef Core_Utils < handle
             y = L\b;
             y = y./diag(D);
             x = L'\y;
+        end
+        
+        function x = solveLDL(L,D,b,P,keep_id)
+            x = zeros(size(b));
+            
+            L_red = L(keep_id,keep_id);
+            d = diag(D);
+            d_red = d(keep_id);
+            
+            id_est_amb = (P*keep_id)>0;
+            
+            P_red = P(id_est_amb,keep_id);
+            
+            x(id_est_amb) = P_red * (L_red' \((1./d_red).*(L_red\(P_red' *b(id_est_amb)))));
         end
         
         function sys_list = getPrefSys(sys_list)

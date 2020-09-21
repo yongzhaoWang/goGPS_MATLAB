@@ -1562,6 +1562,24 @@ classdef Core_Sky < handle
             end
         end
         
+        function bias = getBias(this, go_id, o_code, gps_time)
+            log = Core.getLogger();
+            cc = Core.getConstellationCollector;
+            if length(this.tracking_bias) >= go_id
+                for b = 1 : length(this.tracking_bias{go_id})
+                    if strcmpi(this.tracking_bias{go_id}{b}.o_code, o_code)
+                        bias = this.tracking_bias{go_id}{b}.getBias(gps_time);
+                        return
+                    end
+                end
+                bias = zeros(gps_time.length,1);
+                log.addWarning(sprintf('No bias correction present for obs %s sat %s',o_code,cc.getAntennaId(go_id)));
+            else
+                bias = nan(gps_time.length,1);
+                log.addWarning(sprintf('No bias correction present for obs %s sat %s',o_code,cc.getAntennaId(go_id)));
+            end
+        end
+        
         function [dts] = clockInterpolate(this, gps_time, sat_go_id)
             % SYNTAX:
             %   [dts] = clockInterpolate(time, sat);
@@ -1984,7 +2002,7 @@ classdef Core_Sky < handle
                     end
                 end
             end
-            W_poly(W_poly < 1) = nan; % If the polynomial is not stable, do not compute the orbit
+            %W_poly(W_poly < 1) = nan; % If the polynomial is not stable, do not compute the orbit
             X_sat = X_sat ./ repmat(W_poly, 1, n_sat, 3);
             V_sat = V_sat ./ repmat(W_poly, 1, n_sat, 3);
             
