@@ -41,7 +41,7 @@ classdef Receiver_Work_Space < Receiver_Commons
     properties (Constant)
         NEW_ISP = true;
         NEW_OUT_DET = true;
-        CS_REPAIR = false;
+        CS_REPAIR = true;
     end
     
     % ==================================================================================================================================================
