@@ -904,7 +904,7 @@ classdef Network < handle
 
             end
             
-            this.pushBackEphemeris(ls);
+            %this.pushBackEphemeris(ls);
             %this.pushBackIono(ls);
         end
 
