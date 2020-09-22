@@ -1035,6 +1035,36 @@ classdef File_Wizard < handle
         end
         
         function err_code = downloadResource(this, type, date_start, date_stop)
+            % Get resourcess:
+            %   eph             download ephemeris and clocks
+            %   bias            download biases (or differential biases)
+            %   crx             download Bernese file with problematic satellits
+            %   atm             download atmospheric loading files
+            %   iono            download ionex (or other ionosphere products)
+            %   iono_brdc       download broadcast Klobuchar parameters
+            %   vmf             download vienna mapping fanctions
+            %
+            % INPUT
+            %   type            type of resource to download [char]
+            %   date_start      date start [GPS_Time]
+            %   date_stop       date stop [GPS_Time]
+            %
+            % SYNTAX
+            %   this.downloadResource(type, date_start, date_stop)
+            old_val = Core.getState.isAutomaticDownload;
+            Core.getState.setAutomaticDownload(true);
+            switch nargin
+                case 2
+                    err_code = getResource(this, type);
+                case 3
+                    err_code = getResource(this, type, date_start);
+                case 4
+                    err_code = getResource(this, type, date_start, date_stop);
+            end
+            Core.getState.setAutomaticDownload(old_val);
+        end
+        
+        function err_code = getResource(this, type, date_start, date_stop)
             % Download resourcess:
             %   eph             download ephemeris and clocks
             %   bias            download biases (or differential biases)
@@ -1076,7 +1106,6 @@ classdef File_Wizard < handle
             if ~iscell(type)
                 type = {type};
             end
-            Core.getState.setAutomaticDownload(true);
             
             if numel(type) == 1 && strcmp(type{1}, 'all')
                 type = {'eph', 'bias', 'crx', 'atm', 'iono', 'iono_brdc', 'vmf'};
