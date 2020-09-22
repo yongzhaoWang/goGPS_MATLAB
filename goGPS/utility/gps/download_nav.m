@@ -116,26 +116,29 @@ fprintf('\n');
 s = [path num2str(four_digit_year(str2num(filename(end-2:end-1)))) subdir];
 
 cd(ftp_server, '/');
-cd(ftp_server, s);
-
-filename = [filename '.Z'];
-
 try
-    mget(ftp_server,filename,down_dir);
-    if (isunix())
-        system(['uncompress -f ' down_dir filesep filename]);
-    else
-        try
-            [status, result] = system(['".\utility\thirdParty\7z1602-extra\7za.exe" -y x ' '"' down_dir filename '"' ' -o' '"' down_dir '"']); %#ok<ASGLU>
-            delete([down_dir filename]);
-            filename = filename(1:end-2);
-        catch
-            fprintf(['Please decompress the ' filename ' file before trying to use it in goGPS.\n']);
-            compressed = 1;
+    cd(ftp_server, s); % If the folder does not exist go to the catch branch of try
+    
+    filename = [filename '.Z'];
+    
+    try
+        mget(ftp_server,filename,down_dir);
+        if (isunix())
+            system(['uncompress -f ' down_dir filesep filename]);
+        else
+            try
+                [status, result] = system(['".\utility\thirdParty\7z1602-extra\7za.exe" -y x ' '"' down_dir filename '"' ' -o' '"' down_dir '"']); %#ok<ASGLU>
+                delete([down_dir filename]);
+                filename = filename(1:end-2);
+            catch
+                fprintf(['Please decompress the ' filename ' file before trying to use it in goGPS.\n']);
+                compressed = 1;
+            end
         end
+        fprintf(['Downloaded ' filename(1:4) ' file: ' filename '\n']);
+        download_successful = 1;
+    catch
     end
-    fprintf(['Downloaded ' filename(1:4) ' file: ' filename '\n']);
-    download_successful = 1;
 catch
 end
 
