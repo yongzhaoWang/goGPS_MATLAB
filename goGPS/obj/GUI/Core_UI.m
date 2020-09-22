@@ -44,7 +44,7 @@
 classdef Core_UI < Logos
     
     properties (Constant)
-        FONT_SIZE_CONVERSION_LNX = 0.80;
+        FONT_SIZE_CONVERSION_LNX = 0.85;
         FONT_SIZE_CONVERSION_MAC = 1.45;
         FONT_SIZE_CONVERSION_WIN = 1;
         LIGHT_GREY_BG_NOT_SO_LIGHT2 =  0.73 * ones(3, 1);
