@@ -4189,7 +4189,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   flag = this.getPreferredIono()
-            flag = false(numel(this.preferred_iono),1);
+            flag = false(5, 1);
             for i = 1 : numel(this.preferred_iono)
                 switch this.preferred_iono{i}
                     case 'final', flag(1) = true;
