@@ -391,8 +391,8 @@ classdef LS_Manipulator < Exportable
                 % Sometime code observations may contain unreasonable values -> remove them
                 if obs_type == 'C'
                     % very coarse outlier detection based on diff obs
-                    mean_diff_obs = mean(mean(abs(diff_obs),'omitnan'),'omitnan');
-                    diff_obs(abs(diff_obs) > 50 * mean_diff_obs) = 0;
+                    mean_diff_obs = median(noZero(median(noZero(abs(diff_obs)))));
+                    obs_set.obs(abs(diff_obs) > 1e3 * mean_diff_obs) = 0;
                 end
                 idx_empty_ep = sum(diff_obs ~= 0,2) <= 1;
                 obs_set.remEpochs(idx_empty_ep);
