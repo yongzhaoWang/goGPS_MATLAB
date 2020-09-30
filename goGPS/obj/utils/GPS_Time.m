@@ -1196,7 +1196,7 @@ classdef GPS_Time < Exportable & handle
             % get Reference Time, precision up to the ps precision
             %
             % SYNTAX
-            %   [gps_week, gps_sow, gps_dow] = this. getGpsWeek()
+            %   [gps_week, gps_sow, gps_dow] = this.getGpsWeek()
             if this.isUTC
                 gps_time = this.getCopy();
                 gps_time.toGps();
@@ -1309,7 +1309,7 @@ classdef GPS_Time < Exportable & handle
             % get Reference Time, precision up to the ps precision
             %
             % SYNTAX
-            %   [year, doy] = getDOY(this)
+            %   [year, doy, sod] = getDOY(this)
             if this.isUTC
                 time = this.getCopy();
                 time.toGps();
@@ -1322,7 +1322,7 @@ classdef GPS_Time < Exportable & handle
             % deal with loss of presition (keep 9 decimal digits)
             time = round((mat_time - datenummx(year,1,1))* 1e9) / 1e9;
             doy = floor(time) + 1; % days from the beginning of the year
-            sod = floor((time - doy +1) * 86400); % days from the beginning of the year
+            sod = ((time - doy +1) * 86400); % seconds from the beginning of the year
         end
         
         function [year, month, day, hour, minute, second] = getCalEpoch(this, idx)
@@ -1893,6 +1893,37 @@ classdef GPS_Time < Exportable & handle
             this = GPS_Time(mat_time, true);
         end
         
+        function str = toInfo(time)
+            % Show all the time info of the first epoch of time
+            %
+            % INPUT
+            %   time    time can be a GPS_Time or a string or a matlab time
+            %           < default value = now >
+            %
+            % SYNTAX
+            %   str = GPS_Time.toInfo(<time>)
+            %
+            % EXAMPLE 
+            %   str = GPS_Time.toInfo('2020/01/01 00:00');
+            %   str = GPS_Time.toInfo(); 
+            
+            if nargin == 0
+                time = GPS_Time.now;
+            end
+            if ~isa(time, 'GPS_Time')
+                time = GPS_Time(time);
+            end                
+            time = time.first; 
+            str = time.toString;
+            [year, doy, sod] = time.getDOY;
+            [gps_week, gps_sow, gps_dow] = time.getGpsWeek();
+            
+            str = sprintf('-----------------------\n GPS Time:\n %s\n %s\n\n YEAR DOY SOD\n %4d %3d %6.3f\n\n WEEK DOW SOW\n %4d %03d %6.3f\n-----------------------\n', ...
+                str(1:10), str(12:end), ...
+                year, doy, sod, ...
+                gps_week, gps_dow, gps_sow);
+       end
+            
         function time_zone = getLocalTimeOffset()
             % get local time zone offset (in hours)
             %
