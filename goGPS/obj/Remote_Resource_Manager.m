@@ -84,8 +84,15 @@ classdef Remote_Resource_Manager < Ini_Manager
             this.readFile();
             credentials_path = [Core.getInstallDir filesep 'credentials.txt'];
             if exist(credentials_path, 'file') == 0
-                Core.getLogger.addError('The credentials.txt file is missing.\nTo remove this error please create "credentials.txt" in goGPS folder you can start from "credentials.example.txt"');
-                this.credentials = Ini_Manager();
+                Core.getLogger.addError('The "credentials.txt" file is missing.\nIt will be created as empty from "credentials.example.txt" in goGPS folder');
+                try
+                    credentials_default_path = [Core.getInstallDir filesep 'credentials.example.txt'];
+                    copyfile(credentials_default_path, credentials_path);
+                    this.credentials = Ini_Manager(credentials_path);
+                    this.credentials.readFile();
+                catch
+                    this.credentials = Ini_Manager();
+                end
             else
                 this.credentials = Ini_Manager(credentials_path);            
                 this.credentials.readFile();
