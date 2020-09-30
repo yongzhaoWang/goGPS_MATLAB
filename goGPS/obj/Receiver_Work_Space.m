@@ -2566,11 +2566,11 @@ classdef Receiver_Work_Space < Receiver_Commons
             log.addMessage(log.indent(sprintf(' - %d phase observations marked as outlier', n_out)));
         end
         
-        function detectOutlierMarkCycleSlipNew(this, flag_rem_dt)
-            
-            if nargin < 2 || isempty(flag_rem_dt)
-                flag_rem_dt = true;
-            end
+        function detectOutlierMarkCycleSlipNew(this)
+            % detectOutlierMarkCycleSlip
+            %
+            % SYNTAX
+            %   this.detectOutlierMarkCycleSlipNew        
             
             log = Core.getLogger;
             cc = Core.getState.getConstellationCollector;
@@ -2721,12 +2721,12 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
             end
             
-            if this.isMultiFreq % if the receiver is multifrequency there is the oppotunity to check again the cycle slip using geometry free and melbourne wubbena comniations
-                % NOTE: with multifrequency and multi tarcking datat
-                % numeros combinations are possible the code try to find a
-                % "best" combination on th base of the wavelength of the
-                % signal and ont the best tracking.
-                % A better approch capable to deal with all the information
+            if this.isMultiFreq % if the receiver is multifrequency there is the opportunity to check again the cycle slip using geometry free and Melbourne-Wubbena combinations
+                % NOTE: with multi-frequency and multi-tracking data
+                % numerous combinations are possible, this code try to find the
+                % "best" combination on the base of the wavelength of the
+                % signal and on the best tracking.
+                % A better approach capable to deal with all the information
                 % at once should be found
                 [ph,wl,lid_ph] = this.getPhases;
                 id_ph = find(lid_ph);
@@ -2773,8 +2773,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                                         id_2 = id_sat_ph(id_fr_sat(id_not_cs(1)));
                                         jmp = mean(ph(ce:cs_aft,id_1) - ph(ce:cs_aft,id_2) ,'omitnan') - mean(ph(cs_bf:(ce-1),id_1) - ph(cs_bf:(ce-1),id_2),'omitnan');
                                         i_jmp = round(jmp/wl_sat(id_fr_sat(1)));
-                                        if abs(jmp/wl_sat(id_fr_sat(1)) - i_jmp) < 0.05% very rough test for significance
-                                            this.sat.cycle_slip_ph_by_ph(ce,id_1) = false;% remove cycle slip
+                                        if abs(jmp/wl_sat(id_fr_sat(1)) - i_jmp) < 0.05 % very rough test for significance 95% of confidence
+                                            this.sat.cycle_slip_ph_by_ph(ce,id_1) = false; % remove cycle slip
                                             if i_jmp ~= 0
                                                 ph(ce:end,id_1) = ph(ce:end,id_1) - i_jmp*wl_sat(id_fr_sat(1));
                                             end
@@ -2786,9 +2786,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         ph_sat_cs = this.sat.cycle_slip_ph_by_ph(:,id_sat_ph);
                         lid_cs_ep = sum(ph_sat_cs,2) > 0; % epoch with a cycle slip
                         id_cs_ep = find(lid_cs_ep);
-                        %2) check the geometry free and the melbourne
-                        % wubbena if one of the two detect a cycle slip then
-                        % is really a cycle slip otherwise remove it
+                        % 2) check the geometry free and the Melbourne-Wubbena
+                        % if one of the two detect a cycle slip then
+                        % it is really a cycle slip otherwise remove it
                         for ce = id_cs_ep'
                             fr_jmp = false(size(u_fr_ph));
                             for f  = 1 : length(u_fr_ph)
@@ -2797,10 +2797,10 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 fr_jmp(f) = sum(cs_same_f) > 0;
                             end
                             % for each cycle slip
-                            if sum(ph_sat_cs(ce, :) | isnan(ph(ce,id_sat_ph))) ~= length(ph_sat_cs(ce, :)) % if not everything jumps
+                            if sum(ph_sat_cs(ce, :) | isnan(ph(ce,id_sat_ph))) ~= length(ph_sat_cs(ce, :)) % if not everything jump
                                 for cs = find(ph_sat_cs(ce, :))
                                     if ce > 10 && sum(isnan(ph((ce-10):(ce-1),id_sat_ph(cs)))) < 9 % check if is the start of an arc
-                                        %find a pivot -> use the one with the
+                                        % find a pivot -> use the one with the
                                         % wavelength closer to the cycle slip
                                         idx_n_jmp = find(~ph_sat_cs(ce, :));
                                         wl_n_jmp = wl(id_sat_ph(idx_n_jmp));
@@ -2864,8 +2864,6 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 this.sat.outliers_ph_by_ph(id_ko, :) = ~isnan(ph(id_ko, :));
             end
-            
-
         end
                 
         function repairCycleSlipRough(this)
