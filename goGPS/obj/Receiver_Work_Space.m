@@ -9823,7 +9823,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 this.sat.az  = zeros(this.time.length, cc.getMaxNumSat());
                 this.sat.el  = zeros(this.time.length, cc.getMaxNumSat());
                 this.sat.solid_earth_corr  = zeros(this.time.length, cc.getMaxNumSat());
-                log.addMessage(log.indent('Applying satellites Differential Code Biases (DCB)'))
+                log.addMessage(log.indent('Applying satellites code biases'))
                 % if not applied apply group delay
                 this.applyGroupDelay();
                 log.addMessage(log.indent('Applying satellites clock errors and eccentricity dependent relativistic correction'))

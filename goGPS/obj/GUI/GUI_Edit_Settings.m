@@ -1972,10 +1972,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             box_opref.Widths = [250 -1 -1 -1 -1];
             
             try
-                r_man = Remote_Resource_Manager.getInstance(state.getRemoteSourceFile());
                 [tmp, this.rpop_up{end+1}] = Core_UI.insertPopUpLight(tab_bv, 'Iono Center', r_man.getCenterListExtended(1), 'selected_iono_center', @this.onResourcesPopUpChange, [200 -1]);                
             catch
-                str = sprintf('[!!] Resource file missing:\n"%s"\nnot found\n\ngoGPS may not work properly', state.getRemoteSourceFile);
+                % The exception should be managed in the previous popup insert 'Orbit Center'
             end
             
             box_v1pref = uix.HBox( 'Parent', tab_bv, ...

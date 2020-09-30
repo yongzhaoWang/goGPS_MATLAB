@@ -49,10 +49,6 @@ classdef Remote_Resource_Manager < Ini_Manager
         credentials; 
     end
     
-    properties (Access = private)
-        log
-    end
-    
     % =========================================================================
     %  INIT
     % =========================================================================
@@ -86,9 +82,14 @@ classdef Remote_Resource_Manager < Ini_Manager
             end            
             
             this.readFile();
-            this.credentials = Ini_Manager([Core.getInstallDir filesep 'credentials.txt']);
-            this.credentials.readFile();
-            this.log = Core.getLogger();
+            credentials_path = [Core.getInstallDir filesep 'credentials.txt'];
+            if exist(credentials_path, 'file') == 0
+                Core.getLogger.addError('The credentials.txt file is missing.\nTo remove this error please create "credentials.txt" in goGPS folder you can start from "credentials.example.txt"');
+                this.credentials = Ini_Manager();
+            else
+                this.credentials = Ini_Manager(credentials_path);            
+                this.credentials.readFile();
+            end
         end
     end
 
@@ -221,7 +222,7 @@ classdef Remote_Resource_Manager < Ini_Manager
                     str = ', using default';
                 end
                 if numel(resource_name) < 3 || ~strcmp(resource_name(1:3), 'vmf')
-                    this.log.addWarning(sprintf('No resource %s for center %s%s',resource_name, center_name, str))
+                    Core.getLogger.addWarning(sprintf('No resource %s for center %s%s',resource_name, center_name, str))
                 end
                 file_structure = [];
                 latency = [];
@@ -583,7 +584,7 @@ classdef Remote_Resource_Manager < Ini_Manager
                                 index = [index; i];
                             else
                                 if status ~= str(i)
-                                    this.log.addWarning('| and & can not exist at the same level, check parenthesis')
+                                    Core.getLogger.addWarning('| and & can not exist at the same level, check parenthesis')
                                     status = 0;
                                     return
                                 else
