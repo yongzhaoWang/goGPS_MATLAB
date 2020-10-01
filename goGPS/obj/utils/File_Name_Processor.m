@@ -188,8 +188,9 @@ classdef File_Name_Processor < handle
             if (step_sec > 0)
                 file_name_lst = {};
                 date_list = date_start.getCopy();
-                date0 = GPS_Time((floor(((date_start.getMatlabTime() - GPS_Time.GPS_ZERO) * 86400) / step_sec) * step_sec) / 86400 + GPS_Time.GPS_ZERO);
-                date1 = GPS_Time((floor(((date_stop.getMatlabTime() - GPS_Time.GPS_ZERO) * 86400) / step_sec) * step_sec) / 86400 + GPS_Time.GPS_ZERO);
+                date0 = GPS_Time((floor(((date_start.getNominalTime(0.5).getMatlabTime() - GPS_Time.GPS_ZERO) * 86400) / step_sec) * step_sec) / 86400 + GPS_Time.GPS_ZERO);
+                date0 = date0.getNominalTime(60);
+                date1 = date_stop.getNominalTime(1);
                 
                 date_list.toUnixTime(); % keep an higher precision
                 
@@ -209,6 +210,7 @@ classdef File_Name_Processor < handle
                         i = i + 1;
                     end
                     date0.addIntSeconds(step_sec);
+                    date0 = date0.getNominalTime(60);
                     if (date0.getMatlabTime() <= date1.getMatlabTime())
                         date_list.append(date0);
                     end
