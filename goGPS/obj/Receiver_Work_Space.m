@@ -2699,14 +2699,18 @@ classdef Receiver_Work_Space < Receiver_Commons
                     this.sat.cycle_slip_ph_by_ph(arc_start(1),s) = true;
                     for a = 2 : length(arc_start)
                         as = arc_start(a);
-                        chk_obs = phr(max(1,as - max_ep_chk):(as-1));
+                        chk_obs = phr(max(1,as - max_ep_chk):(as-1),s);
                         if any(chk_obs) % hole bigger than max treshold
                             last_valid_ep = as - length(chk_obs) + find(~isnan(chk_obs),1,'last') -1;
                             pivot_candidate = find(~isnan(phr(last_valid_ep,:)) & ~isnan(phr(as,:)) & ~this.sat.cycle_slip_ph_by_ph(as,:));
-                            if isempty(pivot_candidate)
+                            if ~isempty(pivot_candidate)
                                 [~,max_el_id] = max(el(as,pivot_candidate));
                                 pv = pivot_candidate(max_el_id);
+                                try
                                 sens = diff(phr([last_valid_ep as],s) - phr([last_valid_ep as],pv));
+                                catch
+                                    keyboard
+                                end
                                 if abs(sens) > cs_thr * min(wl(s),wl(pv))
                                     this.sat.cycle_slip_ph_by_ph(as,s) = true;
                                 end
