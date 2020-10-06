@@ -41,7 +41,7 @@ classdef Receiver_Work_Space < Receiver_Commons
     properties (Constant)
         NEW_ISP = true;
         NEW_OUT_DET = true;
-        CS_REPAIR = true;
+        CS_REPAIR = false;
     end
     
     % ==================================================================================================================================================
@@ -2621,7 +2621,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     wl_t = min(wl,wl(complete_triple(max_el_id)));
                     td_phr = diff(sd_phr);
                     [o_idx, cs_idx] = Receiver_Work_Space.outlierCyscleSlipDetect(td_phr, wl_t, ol_thr, cs_thr);
-                    if median(abs(noNaN(td_phr(:)))) > 0.05 || sum(o_idx | cs_idx) == n_pres_strm % pivot might be the outlier or cycle slip choose a new one
+                    if median(abs(noNaN(td_phr(:)))) > 0.1 || sum(o_idx | cs_idx) == n_pres_strm % pivot might be the outlier or cycle slip choose a new one
                         [~,idx_el] = sort(el(e,complete_triple),'descend');
                         for i = 2 : length(idx_el)
                             max_el_id = idx_el(i);
@@ -10951,14 +10951,15 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 this.smoothAndApplyDt(0, false, false,0);
                                 this.shiftToNominal;
                                 this.getSatCache([], true);
-                                if this.state.isCombineTrk
-                                    this.combinePhTrackings();
-                                end
                                 if this.NEW_OUT_DET
                                     this.detectOutlierMarkCycleSlipNew();
                                 else
                                     this.detectOutlierMarkCycleSlip();
                                 end
+                                if this.state.isCombineTrk
+                                    this.combinePhTrackings();
+                                end
+                                
                                 if this.CS_REPAIR
                                     this.cycleSlipRepair();
                                 end
