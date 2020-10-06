@@ -10936,7 +10936,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 
                                 this.remUnderSnrThr([], this.state.getScaledSnrThr());
                                 if this.NEW_OUT_DET
-                                    %this.detectOutlierMarkCycleSlipNew();
+                                    this.detectOutlierMarkCycleSlipNew();
                                 else
                                     this.detectOutlierMarkCycleSlip();
                                 end
@@ -10951,15 +10951,15 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 this.smoothAndApplyDt(0, false, false,0);
                                 this.shiftToNominal;
                                 this.getSatCache([], true);
-                                if this.NEW_OUT_DET
+                               
+                                if this.state.isCombineTrk
+                                    this.combinePhTrackings();
+                                end
+                                 if this.NEW_OUT_DET
                                     this.detectOutlierMarkCycleSlipNew();
                                 else
                                     this.detectOutlierMarkCycleSlip();
                                 end
-                                if this.state.isCombineTrk
-                                    this.combinePhTrackings();
-                                end
-                                
                                 if this.CS_REPAIR
                                     this.cycleSlipRepair();
                                 end
