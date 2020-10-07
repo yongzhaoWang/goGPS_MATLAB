@@ -194,6 +194,44 @@ classdef Tropo_Mat_Reader
             end
         end
         
+        function showAllBestTropo(sta_list, tropo_par)
+            if nargin == 1
+                tropo_par = 'ztd';
+            end
+            lgn = {};
+            min_time = inf;
+            max_time = -inf;
+            min_data = inf;
+            max_data = -inf;
+            if numel(sta_list) > 0
+                f = figure('Visible', 'off'); f.Name = sprintf('%03d: %s %s ', f.Number, upper(tropo_par)); f.NumberTitle = 'off';
+            end
+            for i = 1 : numel(sta_list)
+                this = sta_list(i);
+                if not(isempty(this.data_set))
+                    [time_utc, tropo_opt, tropo_std] = this.getBestTropo(lower(tropo_par));
+                    min_time = min(min_time, min(time_utc));
+                    max_time = max(max_time, max(time_utc));
+                    min_data = min(min_data, min(tropo_opt));
+                    max_data = max(max_data, max(tropo_opt));
+                    lgn = [lgn {this.marker}];
+                    plotSep(time_utc, tropo_opt*1e2, '.-', 'Color', Core_UI.getColor(i, numel(sta_list))); hold on;
+                end
+            end
+            if numel(sta_list) > 0
+                legend(lgn, 'Location', 'NorthEastOutside');
+                axis tight
+                grid minor;
+                xlim([min_time, max_time]);
+                setTimeTicks();
+                ylim([min_data max_data]*1e2 + [-1 1]);
+                title(upper(tropo_par));
+                Core_UI.beautifyFig(f, 'light');
+                Core_UI.addBeautifyMenu(f);
+                f.Visible = 'on';
+            end
+        end
+        
         function [time_utc, tropo_opt, tropo_std] = showAllTropoPar(this, tropo_par, color)
             % Show Tropo parameter
             %
