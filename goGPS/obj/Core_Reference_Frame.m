@@ -464,7 +464,7 @@ classdef Core_Reference_Frame < handle
             str = sprintf('%s#               [m]           [m]            [m]       [m/y]    [m/y]     [m/y]         [m]       [m]  yyyy-mm-dd HH:MM:SS.s yyyy-mm-dd HH:MM:SS.s\n', str);
             str = sprintf('%s#--------------------------------------------------------------------------------------------------------------------------------------------------\n', str);
             for i = 1 : size(this.xyz, 1)
-                str = sprintf('%s%4s %+13.5f %+13.5f %+13.5f %1d %+9.5f %+9.5f %+9.5f  %+9.5f %+9.5f  %s %s\n', str, this.station_code{i}, this.xyz(i, 1), this.xyz(i, 2), this.xyz(i, 3), this.flag(i), this.vxvyvz(i, 1), this.vxvyvz(i, 2), this.vxvyvz(i, 3),  this.std_pup(i, 1),  this.std_pup(i, 2),  this.start_validity_epoch.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS.s'), this.end_validity_epoch.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS.s'));
+                str = sprintf('%s%4s %+14.5f %+14.5f %+14.5f %1d %+9.5f %+9.5f %+9.5f  %+9.5f %+9.5f  %s %s\n', str, this.station_code{i}, this.xyz(i, 1), this.xyz(i, 2), this.xyz(i, 3), this.flag(i), this.vxvyvz(i, 1), this.vxvyvz(i, 2), this.vxvyvz(i, 3),  this.std_pup(i, 1),  this.std_pup(i, 2),  this.start_validity_epoch.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS.s'), this.end_validity_epoch.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS.s'));
             end
         end
         
