@@ -90,7 +90,7 @@ classdef Logger < handle
     end
 
     methods (Static)
-        function this = getInstance(std_out)                        
+        function this = getInstance(std_out)
             % Concrete implementation.  See Singleton superclass.
             persistent unique_instance_logger__
             if isempty(unique_instance_logger__)

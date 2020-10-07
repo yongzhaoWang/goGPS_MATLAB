@@ -461,7 +461,7 @@ classdef Residuals < Exportable
     %%  AUXILLIARY
     % =========================================================================
     methods
-        function [az, el, sat_coo, sat_name, go_id] = getAzimuthElevation(this)
+        function [az, el, sat_coo, sat_name, go_id] = getAzimuthElevation(this, id_ok)
             % Get azimuth and elevation of each satellite stored in residuals
             %
             %
@@ -473,14 +473,19 @@ classdef Residuals < Exportable
                 fw = File_Wizard();
                 fw.conjureNavFiles(this.time.first, this.time.last);
             end
-            lim = this.time.first.getCopy;
+            if nargin == 2
+                time = this.time.getEpoch(id_ok);
+            else
+                time = this.time;
+            end
+            lim = time.first.getCopy;
             lim.append(this.time.last);
             flag_no_clock = true;
             core.initSkySession(lim, flag_no_clock);
             cc = core.getConstellationCollector;
             go_id = unique(cc.getIndex(this.obs_code(:,1), this.prn));
             sat_name = cc.getSatName(go_id);
-            [az, el, sat_coo] = sky.getAzimuthElevation(this.rec_coo, this.time, go_id);
+            [az, el, sat_coo] = sky.getAzimuthElevation(this.rec_coo, time, go_id);
         end
     end
     
@@ -488,7 +493,7 @@ classdef Residuals < Exportable
     %%  MULTIPATH
     % =========================================================================
     methods
-        function ant_mp = computeMultiPath(this, marker_name, l_max, flag_reg, is_ph, mode)
+        function ant_mp = computeMultiPath(this, marker_name, l_max, flag_reg, is_ph, mode, time_lim)
             % Get multi path maps in different modes
             %
             % z_map  Zernike
@@ -601,7 +606,13 @@ classdef Residuals < Exportable
                 
                 cc = Core.getConstellationCollector();
                 log.addMarkedMessage(sprintf('Computing azimuth and elevation for "%s"', marker_name));
-                [az, el, ~, ~, go_id] = this.getAzimuthElevation();
+                if nargin == 7 && ~isempty(time_lim)
+                    id_span = this.time.getNominalTime(1) >= time_lim.first & this.time.getNominalTime(1) <= time_lim.last;
+                    [az, el, ~, ~, go_id] = this.getAzimuthElevation(id_span);
+                else
+                    id_span = true(this.time.length, 1);
+                    [az, el, ~, ~, go_id] = this.getAzimuthElevation();
+                end
                 sys_c_list = cc.getAvailableSys;
                 
                 log = Core.getLogger;
@@ -627,7 +638,7 @@ classdef Residuals < Exportable
                             
                             data_found = false;
                             
-                            res = zero2nan(this.value(:, id));
+                            res = zero2nan(this.value(id_span, id));
                             res_go_id = cc.getIndex(obs_code(id, 1), this.prn(id));
                             
                             % Get all the data to interpolate
@@ -722,36 +733,39 @@ classdef Residuals < Exportable
                                     r_map = 0;
                                 else
                                     
+                                    step = 2 + flag_reg*1;
                                     % Perform the first of 3 Zernike steps
                                     Zernike.setMode(0); % Set Zernike engine to recursive
                                     if l_max(1) > 0
-                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (1/4)', 2 + flag_reg*1, l_max(1)), 9));
+                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (1/4)', step, l_max(1)), 9));
                                         Zernike.setModeMF(0);
                                         el2radius = Zernike.getElFun;
                                         [z_par, l, m] = Zernike.analysisAllBlock(l_max(1), m_max(1), az_all, el2radius(el_all), res_work, 1e-5);
                                         [z_map1, az_grid, el_grid] = Zernike.synthesisGrid(l, m, z_par, grid_step);
                                         z_map1((el_grid * 180/pi) < Core.getState.getCutOff, :) = 0; % remove cutoff;
                                         res_work = res_work - Core_Utils.hgrid2scatter(az_all, el_all, z_map1, false, 'spline');
+                                        step = step + 1;
                                     else
                                         z_map1 = 0;
                                     end
                                     
                                     Zernike.setMode(0); % Set Zernike engine to recursive
                                     if l_max(2) > 0
-                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (1/4)', 2 + flag_reg*1, l_max(1)), 9));
+                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (2/4)', step, l_max(1)), 9));
                                         Zernike.setModeMF(1);
                                         el2radius = Zernike.getElFun;
                                         [z_par, l, m] = Zernike.analysisAllBlock(l_max(2), m_max(2), az_all, el2radius(el_all), res_work, 1e-5);
                                         [z_map2, az_grid, el_grid] = Zernike.synthesisGrid(l, m, z_par, grid_step);
                                         z_map2((el_grid * 180/pi) < Core.getState.getCutOff, :) = 0; % remove cutoff;
                                         res_work = res_work - Core_Utils.hgrid2scatter(az_all, el_all, z_map2, false, 'spline');
+                                        step = step + 1;
                                     else
                                         z_map2 = 0;
                                     end
                                     
                                     % Perform the second of 3 Zernike steps
                                     if l_max(3) > 0
-                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (2/4)', 2 + flag_reg*1, l_max(2)), 9));
+                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (3/4)', step, l_max(2)), 9));
                                         Zernike.setModeMF(2);
                                         Zernike.setCutOff(0); % This mapping function is more unstable at low elevations => use polar regularization
                                                                                
@@ -760,25 +774,28 @@ classdef Residuals < Exportable
                                         [z_map3, az_grid, el_grid] = Zernike.synthesisGrid(l, m, z_par, grid_step);
                                         z_map3((el_grid * 180/pi) < Core.getState.getCutOff, :) = 0; % remove cutoff;
                                         res_work = res_work - Core_Utils.hgrid2scatter(az_all, el_all, z_map3, false, 'spline');
+                                        step = step + 1;
                                     else
                                         z_map3 = 0;
                                     end
                                     
                                     % Perform the third of 3 Zernike steps
                                     if l_max(4) > 0
-                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (3/4)', 2 + flag_reg*1, l_max(3)), 9));
+                                        log.addMessage(log.indent(sprintf('%d. Zernike coef. estimation (l_max = %d) (4/4)', step, l_max(3)), 9));
                                         Zernike.setModeMF(3);
                                         Zernike.setCutOff(0); % This mapping function is more unstable at low elevations => use polar regularization
                                         [z_par, l, m] = Zernike.analysisAllBlock(l_max(4), m_max(4), az_all, el2radius(el_all), res_work, 1e-5);
                                         [z_map4, az_grid, el_grid] = Zernike.synthesisGrid(l, m, z_par, grid_step);
                                         z_map4((el_grid * 180/pi) < Core.getState.getCutOff, :) = 0; % remove cutoff;
                                         res_work = res_work - Core_Utils.hgrid2scatter(az_all, el_all, z_map4, false, 'spline');
+                                        step = step + 1;
                                     else
                                         z_map4 = 0;
                                     end
                                     
                                     % Generate maps
-                                    log.addMessage(log.indent(sprintf('%d. Compute mitigation grids', 4 + flag_reg*1), 9));
+                                    log.addMessage(log.indent(sprintf('%d. Compute mitigation grids', step), 9));
+                                    step = step + 1;
                                     z_map = z_map1 + z_map2 + z_map3 + z_map4; % z_map  Zernike only
                                     
                                     if ~ltype_of_grids(2) % r_map  Zernike + (the methods specified on mode)
@@ -811,6 +828,7 @@ classdef Residuals < Exportable
                                         res_work = res_work - Core_Utils.hgrid2scatter(az_all(1 : n_obs), el_all(1 : n_obs), Core_Utils.resize2(z_map, out_size));
                                        
                                         % Compute low-res grid - STEP 1
+                                        log.addMessage(log.indent(sprintf('  - Zernike + LoRes Congruent %g x %gf', out_step1(1), out_step1(end)), 9));
                                         [r_map1, n_data_map, az_grid, el_grid] = Core_Utils.hemiGridder(az_all(1 : n_obs), el_all(1 : n_obs), res_work, grid_step1, out_step1, flag_congruent, n_min);
                                                                                 
                                         % Resize it to the final grid size
@@ -820,6 +838,7 @@ classdef Residuals < Exportable
 
                                         % Compute high-res grid - STEP 2 -- this is not CONGRUENT! 
                                         % note that high latitude cells are usually under n_min thr
+                                        log.addMessage(log.indent(sprintf('  - Zernike + HiRes %g x %g', out_step2(1), out_step2(end)), 9));
                                         [r_map2, n_data_map, az_grid, el_grid] = Core_Utils.hemiGridder(az_all(1 : n_obs), el_all(1 : n_obs), res_work, grid_step2, grid_step2, false, 7);
                                         r_map = Core_Utils.resize2(z_map, out_size) + r_map + Core_Utils.resize2(r_map2, out_size);
                                     end
@@ -827,21 +846,25 @@ classdef Residuals < Exportable
                                                                 
                                 % Compute normal and congruent maps as comparison (no regularization)
                                 if ltype_of_grids(3) % g_map  Simple Gridding of size
+                                    log.addMessage(log.indent(sprintf('  - Regular grid %g x %g', state.mp_regular_up_nxm(1), state.mp_regular_up_nxm(end)), 9));
                                     g_map = Core_Utils.hemiGridder(az_all, el_all, res_all, state.mp_regular_up_nxm , grid_step, false, n_min);
                                 else
                                     g_map = 0;
                                 end
                                 if ltype_of_grids(4) % c_map  Congruent cells gridding of size [stk_grid_step]
+                                    log.addMessage(log.indent(sprintf('  - Congruent grid %g x %g', state.mp_congruent_up_nxm(1), state.mp_congruent_up_nxm(end)), 9));
                                     c_map = Core_Utils.hemiGridder(az_all, el_all, res_all, state.mp_congruent_up_nxm, grid_step, true, n_min);
                                 else
                                     c_map = 0;
                                 end
                                 if ltype_of_grids(5) % g1_map Simple Gridding of size [1x1]
+                                    log.addMessage(log.indent(sprintf('  - Regular grid %g x %g', state.mp_regular_nxm(1), state.mp_regular_nxm(end)), 9));
                                     g1_map = Core_Utils.hemiGridder(az_all(res_all ~= 0), el_all(res_all ~= 0), res_all(res_all ~= 0), state.mp_regular_nxm, [], false, n_min);
                                 else
                                     g1_map = 0;
                                 end
                                 if ltype_of_grids(6) % c1_map Congruent cells gridding of size [1x1]
+                                    log.addMessage(log.indent(sprintf('  - Congruent grid %g x %g', state.mp_congruent_nxm(1), state.mp_congruent_nxm(end)), 9));
                                     c1_map = Core_Utils.hemiGridder(az_all(res_all ~= 0), el_all(res_all ~= 0), res_all(res_all ~= 0), state.mp_congruent_nxm, state.mp_congruent_nxm, true, n_min);
                                 else
                                     c1_map = 0;
@@ -948,7 +971,7 @@ classdef Residuals < Exportable
                     end
                 end
                 % Get the time limit of the map solution
-                ant_mp.time_lim = this.time.getEpoch([1 this.time.length]);
+                ant_mp.time_lim = this.time.getEpoch(minMax(find(id_span)));
             end
         end
     end

@@ -2058,7 +2058,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             end
         end
                                 
-        function ant_mp = computeMultiPath(this, l_max)
+        function ant_mp = computeMultiPath(this, l_max, day_span)
             % Get Zernike multi pth coefficients
             %
             % INPUT
@@ -2070,7 +2070,21 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             if nargin < 2
                 l_max = []; % managed within the function in res
             end            
-            ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, l_max);
+            if nargin == 3
+                % day_span contains offset and length of the period to be used to compute the MP maps
+                if numel(day_span) == 1 % if only len is defined, set offset to zero
+                    offset = 0;
+                else
+                    offset = day_span(2);
+                end
+                len = day_span(1);  
+                stop = ceil(this.sat.res.time.last.getMatlabTime) + offset;
+                start = stop - len;
+                time_lim = GPS_Time([start stop]');
+                ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, l_max, [], [], [], time_lim);
+            else
+                ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, l_max);
+            end
         end                
         
         function fh_list = showAniZtdSlant(this, time_start, time_stop, show_map, write_video)

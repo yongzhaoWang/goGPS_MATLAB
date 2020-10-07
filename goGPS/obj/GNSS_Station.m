@@ -512,16 +512,24 @@ classdef GNSS_Station < handle
     %% METHODS ADVANCED
     % ==================================================================================================================================================
     methods
-        function updateMultiPath(sta_list)
+        function updateMultiPath(sta_list, day_span)
             sta_list = sta_list(~sta_list.isEmpty);
             log = Core.getLogger();
             for rec = sta_list(:)'
                 log.addMarkedMessage(sprintf('Updating multipath corrections for "%s"', rec.getMarkerName4Ch));
                 % If resduals ph by ph are available on out use them
-                if isempty(rec(1).out.sat.res)
-                    ant_mp = rec.work.computeMultiPath();
+                if nargin == 2 && ~isempty(day_span)
+                    if isempty(rec(1).out.sat.res)
+                        ant_mp = rec.work.computeMultiPath([], day_span);
+                    else
+                        ant_mp = rec.out.computeMultiPath([], day_span);
+                    end
                 else
-                    ant_mp = rec.out.computeMultiPath();
+                    if isempty(rec(1).out.sat.res)
+                        ant_mp = rec.work.computeMultiPath();
+                    else
+                        ant_mp = rec.out.computeMultiPath();
+                    end
                 end
                 
                 % rec.ant_mp = rec.ant_mp + ant_mp;
@@ -1164,13 +1172,13 @@ classdef GNSS_Station < handle
                         if exist(fullfile(out_dir, rec.getMarkerName4Ch), 'dir') ~= 7
                             mkdir(fullfile(out_dir, rec.getMarkerName4Ch));
                         end
+                        ant_mp = rec.ant_mp; %#ok<NASGU>
                         out_file_name = fullfile(out_dir, rec.getMarkerName4Ch, sprintf('%s_mp_%s_%s.mat', ...
                             rec.getMarkerName4Ch, ...
-                            rec.getTime.first.toString('yyyymmddHHMM'), ...
-                            rec.getTime.last.toString('yyyymmddHHMM')));
+                            ant_mp.time_lim.first.toString('yyyymmddHHMM'), ...
+                            ant_mp.time_lim.last.toString('yyyymmddHHMM')));
                         
                         log.addMarkedMessage(sprintf('Exporting multipath model to "%s"',out_file_name));
-                        ant_mp = rec.ant_mp; %#ok<NASGU>
                         save(out_file_name, 'ant_mp');
                         flag_export = flag_export + 1;
                     end

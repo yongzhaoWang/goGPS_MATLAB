@@ -1989,6 +1989,9 @@ classdef GPS_Time < Exportable & handle
             %
             % SYNTAX
             %   this = GPS_Time.fromDoySod(year, doy, sod)
+            if nargin == 2
+                sod = 0;
+            end
             unix_s = uint32((datenummx(year , 1, doy)  - datenummx(1970,1,1))*86400) + uint32(floor(sod));
             unix_s_f = sod - floor(sod);
             this = GPS_Time(unix_s, unix_s_f);
