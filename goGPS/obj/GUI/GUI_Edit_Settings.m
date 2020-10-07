@@ -3212,7 +3212,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     clear cur_unique_dir old_dir_list old_unique_dir;
                     
                     for d = 1 : numel(unique_dir)
-                        available_files = [available_files {dir_list{d}(3:end).name}];
+                        if not(isempty(dir_list{d}))
+                            available_files = [available_files {dir_list{d}(3:end).name}];
+                        end
                     end
                 end
                 
