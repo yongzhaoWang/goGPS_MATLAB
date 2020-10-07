@@ -1950,15 +1950,18 @@ classdef Receiver_Work_Space < Receiver_Commons
             end
         end
         
-        function combinePhTrackings(this)
+        function status = combinePhTrackings(this)
             % This function combines different phase trackings
             % to get a unique tracking with repaired CS
             %
+            % OUTPUT
+            %   status  return 0 if no trackings have been combined
             % SYNTAX
-            %   this.combinePhTrackings()
+            %   status = this.combinePhTrackings()
             
             % Remove step
             % Estimate rough clock
+            status = 0;
             log = Core.getLogger;
             log.addMarkedMessage('Combining trackings');
             [ph, ~, id_ph0] = this.getPhases;
@@ -2013,6 +2016,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                         end
                         % Move all the trackings to the first one
                         for t = 2 : numel(trk_avail)
+                            status = status + 1;
+                            
                             % TRAKING BIAS REMOVAL
                             
                             % Hp 0
@@ -10953,12 +10958,12 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 this.getSatCache([], true);
                                
                                 if this.state.isCombineTrk
-                                    this.combinePhTrackings();
-                                end
-                                 if this.NEW_OUT_DET
-                                    this.detectOutlierMarkCycleSlipNew();
-                                else
-                                    this.detectOutlierMarkCycleSlip();
+                                    status = this.combinePhTrackings();
+                                    if status && this.NEW_OUT_DET
+                                        this.detectOutlierMarkCycleSlipNew();
+                                    else
+                                        this.detectOutlierMarkCycleSlip();
+                                    end
                                 end
                                 if this.CS_REPAIR
                                     this.cycleSlipRepair();
