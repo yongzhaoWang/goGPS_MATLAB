@@ -3103,6 +3103,7 @@ classdef LS_Manipulator_new < handle
             else
                 idx_glonass = [];
             end
+            fix_strategy = {'lambda_ILS','lambda_bootstrapping','lambda_partial','bayesian_with_monte_carlo','best_integer_equivariant','sequential_best_integer_equivariant'};
             if sum(idx_glonass) > 0 % GLONASS
                 [C_amb_amb, amb_float,idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
                 
