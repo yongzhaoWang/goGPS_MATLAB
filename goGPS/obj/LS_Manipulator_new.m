@@ -3113,7 +3113,7 @@ classdef LS_Manipulator_new < handle
                 idx_cond = ~idx_amb_estable & idx_amb_est;
                 
                 
-                [amb_fixed, is_fixed, l_fixed] = Fixer.fix(z_all(idx_amb_estable), C_zz_all(idx_amb_estable,idx_amb_estable), 'lambda_partial');
+                [amb_fixed, is_fixed, l_fixed] = Fixer.fix(z_all(idx_amb_estable), C_zz_all(idx_amb_estable,idx_amb_estable), fix_strategy{Core.getState.net_amb_fix_approach-1});
                 ambs(idx_cond) = ambs(idx_cond) - C_zz_all(idx_cond,idx_amb_estable)*(C_zz_all(idx_amb_estable,idx_amb_estable)\(z_all(idx_amb_estable) - amb_fixed));
                 ambs(idx_amb_estable) = amb_fixed(:,1);
                 
@@ -3124,12 +3124,12 @@ classdef LS_Manipulator_new < handle
                 ambs = zeros(length(idx_amb_est),1);
                 ambs(idx_amb_est) = amb_float;
                 clearvars N_amb_amb B_amb_amb
-                if size(C_amb_amb,1) > 2000 % fix by receiver matrix tto large
-                    rec_idx = this.rec_par(this.class_par == this.PAR_AMB);
-                    rec_idx = rec_idx(idx_amb_est);
-                    [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, 'lambda_partial',rec_idx);
+                
+                if size(C_amb_amb,1) > 2000 && false % fix by receiver matrix tto large
+                    rec_idx = rec_amb(idx_amb_est);
+                    [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, fix_strategy{Core.getState.net_amb_fix_approach-1},rec_idx);
                 else
-                    [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, 'lambda_partial');
+                    [amb_fixed, is_fixed, l_fixed] = Fixer.fix(amb_float, C_amb_amb, fix_strategy{Core.getState.net_amb_fix_approach-1});
                 end
                 idx_amb_est = find(idx_amb_est);
                 ambs(idx_amb_est(:)) = amb_fixed(:,1);

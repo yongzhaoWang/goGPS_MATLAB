@@ -414,7 +414,7 @@ function [y_splined, x_spline, s_weights] = spliner_v5R(x, y, dxs, reg_factor)
     x = x - x0;
     
     % compute the number of splines needed for the interpolation
-    n_splines = ceil(x_span/dxs) + 3;
+    n_splines = ceil((x_span+eps(x_span))/dxs) + 3;
 
     % compute spline centers
     x_spline = zeros(n_splines,1);

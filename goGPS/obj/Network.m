@@ -398,9 +398,9 @@ classdef Network < handle
                         ls.absValRegularization(ls.PAR_SAT_X, 0.5);
                         ls.absValRegularization(ls.PAR_SAT_Y, 0.5);
                         ls.absValRegularization(ls.PAR_SAT_Z, 0.5);
-                        ls.timeRegularization(ls.PAR_SAT_X, 0.01);
-                        ls.timeRegularization(ls.PAR_SAT_Y, 0.01);
-                        ls.timeRegularization(ls.PAR_SAT_Z, 0.01);
+                        ls.timeRegularization(ls.PAR_SAT_X, 0.001);
+                        ls.timeRegularization(ls.PAR_SAT_Y, 0.001);
+                        ls.timeRegularization(ls.PAR_SAT_Z, 0.001);
                     end
                     
                     this.is_tropo_decorrel = this.state.isReferenceTropoEnabled;
@@ -1021,6 +1021,12 @@ classdef Network < handle
                             data = ls.x(ii);
                             cs.tracking_bias{s}{ip} = Electronic_Bias(o_code, data);
                         end
+                    end
+                end
+                for i = 1 : length(this.rec_list)
+                    if ~this.rec_list(i).work.isEmpty
+                        %this.rec_list(i).work.remGroupDelay(); % apply the new clock
+                        this.rec_list(i).work.applyGroupDelayNew();
                     end
                 end
             end
