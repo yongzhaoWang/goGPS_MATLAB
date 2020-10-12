@@ -101,7 +101,7 @@ classdef Command_Settings < Settings_Interface
                     else
                         this.cmd_list{l} = settings.getData(this.CMD_SECTION, cmd_keys{l});
                         if iscell(this.cmd_list{l}) && (numel(this.cmd_list{l}) > 1)
-                            this.cmd_list{l} = [this.cmd_list{14}{1} '"' this.cmd_list{14}{2:end} '"'];
+                            this.cmd_list{l} = [this.cmd_list{l}{1} '"' this.cmd_list{l}{2:end} '"'];
                         end
                     end
                 end
