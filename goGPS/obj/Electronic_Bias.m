@@ -104,9 +104,9 @@ classdef Electronic_Bias < handle
                  end
                  if any(~interp_ep)
                      bf_ep = ep_id < 0;
-                     bias(bf_ep) = this.data(1);
+                     bias(bf_ep) = bias(find(interp_ep,1,'first'));
                      aft_ep = ep_id >= length(this.data);
-                     bias(aft_ep) = this.data(end);
+                     bias(aft_ep) =bias(find(interp_ep,1,'last'));
                      log.addWarning('Epoch requested out of time boundaries, extrapolating');
                  end
             end
