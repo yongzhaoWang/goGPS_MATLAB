@@ -1729,7 +1729,7 @@ classdef Core < handle
             % SYNTAX
             %   rin_list = this.getRinFileList()            
             if isempty(this.rin_list)
-                this.updateRinFileList()
+                this.updateRinFileList();
             end            
             rin_list = this.rin_list;
         end
