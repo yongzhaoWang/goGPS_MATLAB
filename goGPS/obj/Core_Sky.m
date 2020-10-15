@@ -131,10 +131,15 @@ classdef Core_Sky < handle
                 start_date = start_date.first();
             end
             if nargin <= 3 || isempty(cc)
-                this.cc = Core.getState.getConstellationCollector;
+                new_cc = Core.getState.getConstellationCollector;
             else
-                this.cc = cc;
+                new_cc = cc;
             end
+            flag_new_cc = ~strcmp(unique(this.cc), unique(new_cc));
+            if flag_new_cc
+                this.clearOrbit;
+            end
+            this.cc = new_cc;
             
             if nargin <= 4 || isempty(flag_no_clock)
                 flag_no_clock = false;
@@ -144,7 +149,7 @@ classdef Core_Sky < handle
             flag_time_loaded = ~isempty(this.getFirstEpochClock) && this.getFirstEpochClock <= start_date && this.getLastEpochClock >= stop_date;
             %flag_update_sky = start_date < this.getCoordTime.first || stop_date > this.getCoordTime.last || ...
             %    start_date < this.getClockTime.first || stop_date > this.getClockTime.last;
-            if ~isempty(start_date) && (~flag_coo_loaded || ~flag_time_loaded)
+            if ~isempty(start_date) && (flag_new_cc || (~flag_coo_loaded || ~flag_time_loaded))
                 this.group_delays = zeros(this.cc.getNumSat(),82); % group delay of code measurements (meters) referenced to their constellation reference:
                 this.phase_delays = zeros(this.cc.getNumSat(),82); % group delay of code measurements (meters) referenced to their constellation reference:
                 
@@ -2458,6 +2463,71 @@ classdef Core_Sky < handle
     %% STATIC FUNCTIONS used as utilities
     % ==================================================================================================================================================
     methods (Static, Access = public)
+        
+        function [az, el, sat_coo] = getAzEl(coo, time, sat)
+            % Get the azimuth and elevation of a satellite "sat" e.g. G21
+            % 
+            % INPUT
+            %   coo         Coordinates of the ground point
+            %   time        GPS_Time object
+            %   sat         satellite (eg. 'R02') / go_id (e.g. 34)
+            %
+            % OUTPUT
+            %   az, el      azimuth and elevation [deg]
+            %   sat_coo     coordinates of the satellite (Coordinate object)
+            %
+            % SYNTAX
+            %   [az, el, sat_coo] = Core_Sky.getAzEl(coo, gps_time, sat)
+            %
+            % EXAMPLE 
+            %   [az, el] = Core_Sky.getAzEl(Coordinates.fromGeodetic(0,0,0), GPS_Time('2020-10-14 12:14'), 'G22');
+            
+            core = Core.getCurrentCore;
+            old_cc = unique(core.getConstellationCollector.getActiveSysChar);
+            sky = core.sky;
+            if isempty(sky)
+                sky = Core_Sky();
+                core.sky = sky;
+            end
+            cc = sky.cc;
+            if isempty(sat)
+                sat = cc.index;
+            end
+            if isnumeric(sat)
+                sat_name = cc.getSatName(sat);
+            else
+                sat_name = sat;
+            end
+            sys_char_list = unique(sat_name(:,1)');
+            cc.setActive(sys_char_list);
+            if ~strcmp(sys_char_list, old_cc)
+                core.state.cc = cc;
+                fw = File_Wizard();                
+                if (time.last < (GPS_Time.now.addIntSeconds(-86400*14))); 
+                    fw.setCurCenter('code_mgex_aiub', 'final');
+                else
+                    fw.setCurCenter('code_predicted', 'ultra');
+                end
+                fw.conjureNavFiles(time.first, time.last);
+            else
+                core.state.cc = cc;            
+                if isempty(core.state.eph_name)
+                    fw = File_Wizard();
+                    fw.conjureNavFiles(time.first, time.last);
+                end
+            end
+            
+            lim = time.first.getCopy;
+            lim.append(time.last);
+            flag_no_clock = true;
+            core.initSkySession(lim, flag_no_clock);
+            if nargout == 3
+                [az, el, sat_coo] = sky.getAzimuthElevation(coo, time, sat);
+            else
+                [az, el] = sky.getAzimuthElevation(coo, time, sat);
+            end
+            
+        end
         
         function prn_num = prnName2Num(prn_name)
             % Convert a 4 char name into a numeric value (float)
