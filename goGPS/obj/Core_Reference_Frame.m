@@ -36,6 +36,10 @@ classdef Core_Reference_Frame < handle
     
     properties (Constant)
         FLAG_STRING = {'0) rough position', '1) a-priori','2) Fixed', '3) Fixed for PREPRO'};
+        FLAG_ROUGH = 0;
+        FLAG_APRIORI = 1
+        FLAG_FIXED = 2
+        FLAG_FIXED4PREPRO = 3
     end
     
     properties        
