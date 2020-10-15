@@ -862,7 +862,7 @@ classdef Constellation_Collector < Settings_Interface
             if nargin == 2
                 sat_name = sys;
                 sys = sat_name(:,1);
-                prn = str2num(sat_name(:,2:end)'); %#ok<ST2NM>
+                prn = str2num(sat_name(:,2:end)); %#ok<ST2NM>
             end
             
             index = zeros(size(prn));
