@@ -1551,7 +1551,7 @@ classdef Command_Interpreter < handle
             log = Core.getLogger();
             
             [id_trg, found] = this.getMatchingRec(rec, tok, 'T');
-            if ~found
+            if ~found || isempty(rec)
                 log.addWarning('No target found -> nothing to do');
             else
                 [sys_list, sys_found] = this.getConstellation(tok);
@@ -3057,7 +3057,7 @@ classdef Command_Interpreter < handle
     %% METHODS UTILITIES (PRIVATE)
     % ==================================================================================================================================================
     methods (Access = public)
-        function [id_rec, found, matching_rec] = getMatchingRec(this, rec, tok, type)
+        function [id_rec, found] = getMatchingRec(this, rec, tok, type)
             % Extract from a set of tokens the receivers to be used
             %
             % INPUT
@@ -3066,7 +3066,7 @@ classdef Command_Interpreter < handle
             %   type    type of receavers to search for ('T'/'R'/'M')
             %
             % SYNTAX
-            %   [id_rec, found, matching_rec] = this.getMatchingRec(rec, tok, type)
+            %   [id_rec, found] = this.getMatchingRec(rec, tok, type)
             if nargin == 2
                 type = 'T';
             end
