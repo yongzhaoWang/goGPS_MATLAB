@@ -999,7 +999,7 @@ classdef Core < handle
                 [out_limits, time_lim_large] = this.getRecTimeSpan(session);
             end
                         
-            if out_limits.length < 2 || (~this.state.isRinexSession() && ~rin_list.isValid) || ((time_lim_large.last - time_lim_large.first) < 0) % && ~rin_list_chk.isValid
+            if out_limits.length < 2 || (out_limits.last - out_limits.first) < 0 || (~this.state.isRinexSession() && ~rin_list.isValid) || ((time_lim_large.last - time_lim_large.first) < 0) % && ~rin_list_chk.isValid
                 is_empty = true;
                 this.log.addMessage(sprintf('No valid receivers are present / session not valid %d', session));
             else
