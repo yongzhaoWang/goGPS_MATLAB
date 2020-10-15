@@ -4263,58 +4263,59 @@ classdef Receiver_Work_Space < Receiver_Commons
         function toString(this)
             % Display on screen information about the receiver
             % SYNTAX this.toString();
+            log = Core.getLogger();
             if ~this.isEmpty
-                fprintf('----------------------------------------------------------------------------------\n')
-                this.log.addMarkedMessage(sprintf('Receiver Work Space %s', this.parent.getMarkerName()));
-                fprintf('----------------------------------------------------------------------------------\n')
-                this.log.addMessage(sprintf(' From     %s', this.time.first.toString()));
-                this.log.addMessage(sprintf(' to       %s', this.time.last.toString()));
-                this.log.newLine();
-                this.log.addMessage(sprintf(' Rate of the observations [s]:            %d', this.getRate()));
-                this.log.newLine();
-                this.log.addMessage(sprintf(' Maximum number of satellites seen:       %d', max(this.n_sat)));
-                this.log.addMessage(sprintf(' Number of stored frequencies:            %d', this.n_freq));
-                this.log.newLine();
-                this.log.addMessage(sprintf(' Satellite System(s) seen:                "%s"', unique(this.system)));
-                this.log.newLine();
+                log.simpleSeparator();
+                log.addMarkedMessage(sprintf('Receiver Work Space %s', this.parent.getMarkerName()));
+                log.simpleSeparator();
+                log.addMessage(sprintf(' From     %s', this.time.first.toString()));
+                log.addMessage(sprintf(' to       %s', this.time.last.toString()));
+                log.newLine();
+                log.addMessage(sprintf(' Rate of the observations [s]:            %d', this.getRate()));
+                log.newLine();
+                log.addMessage(sprintf(' Maximum number of satellites seen:       %d', max(this.n_sat)));
+                log.addMessage(sprintf(' Number of stored frequencies:            %d', this.n_freq));
+                log.newLine();
+                log.addMessage(sprintf(' Satellite System(s) seen:                "%s"', unique(this.system)));
+                log.newLine();
                 
                 xyz0 = this.getAPrioriPos();
                 [enu0(1), enu0(2), enu0(3)] = cart2plan(xyz0(:,1), xyz0(:,2), xyz0(:,3));
                 static_dynamic = {'Dynamic', 'Static'};
-                this.log.addMessage(sprintf(' %s receiver', static_dynamic{this.parent.static + 1}));
-                fprintf(' ----------------------------------------------------------\n')
-                this.log.addMessage(' Receiver a-priori position:');
-                this.log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
+                log.addMessage(sprintf(' %s receiver', static_dynamic{this.parent.static + 1}));
+                log.smallSeparator();
+                log.addMessage(' Receiver a-priori position:');
+                log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
                     xyz0(1), enu0(1), xyz0(2), enu0(2), xyz0(3), enu0(3)));
                 
                 if ~isempty(this.xyz)
                     enu = zero2nan(this.xyz); [enu(:, 1), enu(:, 2), enu(:, 3)] = cart2plan(zero2nan(this.xyz(:,1)), zero2nan(this.xyz(:,2)), zero2nan(this.xyz(:,3)));
                     xyz_m = median(zero2nan(this.xyz), 1, 'omitnan');
                     enu_m = median(enu, 1, 'omitnan');
-                    this.log.newLine();
-                    this.log.addMessage(' Receiver median position:');
-                    this.log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
+                    log.newLine();
+                    log.addMessage(' Receiver median position:');
+                    log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
                         xyz_m(1), enu_m(1), xyz_m(2), enu_m(2), xyz_m(3), enu_m(3)));
                     
                     enu = zero2nan(this.xyz); [enu(:, 1), enu(:, 2), enu(:, 3)] = cart2plan(zero2nan(this.xyz(:,1)), zero2nan(this.xyz(:,2)), zero2nan(this.xyz(:,3)));
                     xyz_m = median(zero2nan(this.xyz), 1, 'omitnan');
                     enu_m = median(enu, 1, 'omitnan');
-                    this.log.newLine();
-                    this.log.addMessage(' Correction of the a-priori position:');
-                    this.log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
+                    log.newLine();
+                    log.addMessage(' Correction of the a-priori position:');
+                    log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
                         xyz0(1) - xyz_m(1), enu0(1) - enu_m(1), xyz0(2) - xyz_m(2), enu0(2) - enu_m(2), xyz0(3) - xyz_m(3), enu0(3) - enu_m(3)));
-                    this.log.newLine();
-                    this.log.addMessage(sprintf('     3D distance = %+16.4f m', sqrt(sum((xyz_m - xyz0).^2))));
+                    log.newLine();
+                    log.addMessage(sprintf('     3D distance = %+16.4f m', sqrt(sum((xyz_m - xyz0).^2))));
                 end
-                fprintf(' ----------------------------------------------------------\n')
-                this.log.addMessage(' Processing statistics:');
+                log.smallSeparator();
+                log.addMessage(' Processing statistics:');
                 if not(isempty(this.quality_info.s0_ip) || this.quality_info.s0_ip == 0)
-                    this.log.addMessage(sprintf('     sigma0 code positioning = %+16.4f m', this.quality_info.s0_ip));
+                    log.addMessage(sprintf('     sigma0 code positioning = %+16.4f m', this.quality_info.s0_ip));
                 end
                 if not(isempty(this.quality_info.s0) || this.quality_info.s0 == 0)
-                    this.log.addMessage(sprintf('     sigma0 PPP positioning  = %+16.4f m', this.quality_info.s0));
+                    log.addMessage(sprintf('     sigma0 PPP positioning  = %+16.4f m', this.quality_info.s0));
                 end
-                fprintf(' ----------------------------------------------------------\n')
+                log.smallSeparator();
             end
         end
         

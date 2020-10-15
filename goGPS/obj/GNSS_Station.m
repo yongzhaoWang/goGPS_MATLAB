@@ -1328,11 +1328,12 @@ classdef GNSS_Station < handle
             %
             % SYNTAX
             %   this.toString(sta_list);
+            log = Core.getLogger();
             for i = 1:length(sta_list)
                 if ~isempty(sta_list(i))
-                    fprintf('==================================================================================\n')
-                    sta_list(i).log.addMarkedMessage(sprintf('Receiver %s\n Object created at %s', sta_list(i).getMarkerName(), sta_list(i).creation_time.toString));
-                    fprintf('==================================================================================\n')
+                    log.starSeparator();
+                    log.addMarkedMessage(sprintf('Receiver %s\n Object created at %s', sta_list(i).getMarkerName(), sta_list(i).creation_time.toString));
+                    log.starSeparator();
 
                     if ~sta_list(i).work.isEmpty()
                         sta_list(i).work.toString();

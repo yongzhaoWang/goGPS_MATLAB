@@ -131,28 +131,29 @@ classdef Receiver_Output < Receiver_Commons
         function toString(this)
             % Display on screen information about the receiver
             % SYNTAX this.toString();
+            log = Core.getLogger;
             for r = 1 : numel(this)
                 if ~this(r).isEmpty
-                    fprintf('----------------------------------------------------------------------------------\n')
-                    this(r).log.addMarkedMessage(sprintf('Receiver %s', this(r).parent.getMarkerName()));
-                    fprintf('----------------------------------------------------------------------------------\n')
-                    this(r).log.addMessage(sprintf(' From     %s', this(r).time.first.toString()));
-                    this(r).log.addMessage(sprintf(' to       %s', this(r).time.last.toString()));
-                    this(r).log.newLine();
-                    this(r).log.addMessage(sprintf(' Rate of the observations [s]:            %d', this(r).getRate()));
-                    this(r).log.newLine();
+                    log.simpleSeparator();
+                    log.addMarkedMessage(sprintf('Receiver %s', this(r).parent.getMarkerName()));
+                    log.simpleSeparator();
+                    log.addMessage(sprintf(' From     %s', this(r).time.first.toString()));
+                    log.addMessage(sprintf(' to       %s', this(r).time.last.toString()));
+                    log.newLine();
+                    log.addMessage(sprintf(' Rate of the observations [s]:            %d', this(r).getRate()));
+                    log.newLine();
                     
-                    fprintf(' ----------------------------------------------------------\n')
+                    log.smallSeparator();
                     if ~isempty(this(r).xyz)
                         enu = zero2nan(this(r).xyz); [enu(:, 1), enu(:, 2), enu(:, 3)] = cart2plan(zero2nan(this(r).xyz(:,1)), zero2nan(this(r).xyz(:,2)), zero2nan(this(r).xyz(:,3)));
                         xyz_m = median(zero2nan(this(r).xyz), 1, 'omitnan');
                         enu_m = median(enu, 1, 'omitnan');
-                        this(r).log.newLine();
-                        this(r).log.addMessage(' Receiver median position:');
-                        this(r).log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
+                        log.newLine();
+                        log.addMessage(' Receiver median position:');
+                        log.addMessage(sprintf('     X = %+16.4f m        E = %+16.4f m\n     Y = %+16.4f m        N = %+16.4f m\n     Z = %+16.4f m        U = %+16.4f m', ...
                             xyz_m(1), enu_m(1), xyz_m(2), enu_m(2), xyz_m(3), enu_m(3)));
                     end
-                    fprintf(' ----------------------------------------------------------\n')
+                    log.smallSeparator();
                 end
             end
         end                
