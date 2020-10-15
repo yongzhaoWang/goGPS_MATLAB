@@ -71,7 +71,7 @@ function [y_splined, x_spline, s_weights, y_splined_ext] = splinerMat(x, y, dxs,
     y(inan) = [];
     
     [x, id] = sort(x);
-    y = y(id);
+    y = y(id,:);
     if ~isempty(y)
         if ((nargin == 3) || (reg_factor == 0))
             if (size(y,2) == 2)
@@ -361,7 +361,6 @@ end
 
 % No Regularization - no variances
 function [y_splined, x_spline, s_weights] = spliner_v5(x, y, dxs)
-    x_spline = [];
     nObs = length(x);
 
     % size of the intervall to interpolate
@@ -373,8 +372,11 @@ function [y_splined, x_spline, s_weights] = spliner_v5(x, y, dxs)
     n_splines = ceil(x_span/dxs) + 3;
 
     % compute spline centers
-    x_spline = x:dxs:(n_splines+3)*dxs;
-    s_weights = zeros(n_splines,1);
+    x_spline = zeros(n_splines,1);
+    s_center = x(1) - (((n_splines-3)*dxs-x_span)/2) - dxs;
+    for i = 1:n_splines
+        x_spline(i) = s_center+(i-1)*dxs;
+    end
     
     % init A matrix
     A = zeros(nObs, 4);
@@ -398,6 +400,7 @@ function [y_splined, x_spline, s_weights] = spliner_v5(x, y, dxs)
     
     x = N\B;
     
+    s_weights = nan(numel(idx_null),1);
     s_weights(~idx_null) = x;
     y_splined = A*x;
 
