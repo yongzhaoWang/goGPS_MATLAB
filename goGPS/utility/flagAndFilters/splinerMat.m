@@ -184,18 +184,18 @@ function [y_splined, x_spline, s_weights] = spliner_v51(x, y, y_var, dxs)
                 % If I skip more than 3 times the spline solutions are independent,
                 % I can start solving my filtering for the first i points
 
-                sPar = [];
+                s_par = [];
                 if (used_obs < size(N,2))
                     fprintf('WARNING: Regularization is needed observations are less than splines.\n         Adding 1e-9 on the normal matrix diagonal\n');
                     R = sparse(eye(cur_local_spline)*1e-9);
-                    sPar = (N(1:cur_local_spline,1:cur_local_spline)+R)\TN(1:cur_local_spline);
+                    s_par = (N(1:cur_local_spline,1:cur_local_spline)+R)\TN(1:cur_local_spline);
                 else
-                    sPar = (N(1:cur_local_spline,1:cur_local_spline))\TN(1:cur_local_spline);
+                    s_par = (N(1:cur_local_spline,1:cur_local_spline))\TN(1:cur_local_spline);
                 end
-                s_weights = [s_weights; sPar];
+                s_weights = [s_weights; s_par];
 
                 for s = first_spline:cur_spline-3
-                    y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * sPar(s-first_spline+1:s+3-first_spline+1);
+                    y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * s_par(s-first_spline+1:s+3-first_spline+1);
                 end
 
                 % find the next spline whose domain intersect the next observation
@@ -230,19 +230,19 @@ function [y_splined, x_spline, s_weights] = spliner_v51(x, y, y_var, dxs)
     end
 
     % find the interpolation for the last subset of observations
-    sPar = [];
+    s_par = [];
     if (used_obs < size(N,2))
         fprintf('WARNING: Regularization is needed observations are less than splines.\n         Adding 1e-9 on the normal matrix diagonal\n');
         R = speye(size(N,2), size(N,2))*1e-9;
-        sPar = (N+R)\TN;
+        s_par = (N+R)\TN;
     else
-        sPar = N\TN;
+        s_par = N\TN;
     end
-    s_weights = [s_weights; sPar];
+    s_weights = [s_weights; s_par];
 
     for s = first_spline:cur_spline
         if ((skips(s)<skips(s+1)))
-            y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * sPar(s-first_spline+1:s+3-first_spline+1);
+            y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * s_par(s-first_spline+1:s+3-first_spline+1);
         end
     end
     
@@ -333,26 +333,26 @@ function [y_splined, x_spline, s_weights] = spliner_v51R(x, y, y_var, dxs, reg_f
     end
 
     % find the interpolation for the last subset of observations
-    sPar = [];
+    s_par = [];
     if (size(N,2)>2)
         fprintf('WARNING: Regularization is needed observations are less than splines.\n         Adding 1e-9 on the normal matrix diagonal\n');
         R = sparse(eye(size(N,2))-diag(ones(size(N,2)-1,1),1)-diag(ones(size(N,2)-1,1),-1) + diag([0; ones(size(N,2)-2,1); 0]));
         R = R*reg_factor;
-        sPar = (N+R)\TN;
+        s_par = (N+R)\TN;
     else
         if (used_obs < size(N,2))
             fprintf('WARNING: Regularization is needed observations are less than splines.\n         Adding 1e-9 on the normal matrix diagonal\n');
             R = sparse(eye(size(N,2))*reg_factor);
-            sPar = (N+R)\TN;
+            s_par = (N+R)\TN;
         else
-            sPar = N\TN;
+            s_par = N\TN;
         end
     end
-    s_weights = [s_weights; sPar];
+    s_weights = [s_weights; s_par];
 
     for s = first_spline:cur_spline
         if ((skips(s)<skips(s+1)))
-            y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * sPar(s-first_spline+1:s+3-first_spline+1);
+            y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * s_par(s-first_spline+1:s+3-first_spline+1);
         end
     end
     
@@ -489,28 +489,28 @@ function [y_splined, x_spline, s_weights] = spliner_v5R(x, y, dxs, reg_factor)
     end
 
     % find the interpolation for the last subset of observations
-    sPar = [];
+    s_par = [];
     if (size(N,2)>2)
         %fprintf('WARNING: Regularization is needed observations are less than splines.\n         Adding 1e-9 on the normal matrix diagonal\n');
         R = (speye(size(N,2), size(N,2)) - spdiags(ones(size(N,2), 1), 1, size(N,2), size(N,2)) - spdiags(ones(size(N,2), 1), -1, size(N,2), size(N,2)) + spdiags([0; ones(size(N,2) - 2, 1); 0], 0, size(N,2), size(N,2))) * reg_factor;
-        sPar = (N+R)\TN;
+        s_par = (N+R)\TN;
     else
         if (used_obs < size(N,2))
             %fprintf('WARNING: Regularization is needed observations are less than splines.\n         Adding 1e-9 on the normal matrix diagonal\n');
             R = speye(size(N,2)) * reg_factor;
-            sPar = (N+R)\TN;
+            s_par = (N+R)\TN;
         else
-            sPar = N\TN;
+            s_par = N\TN;
         end
     end
-    s_weights = [s_weights; sPar];
+    s_weights = [s_weights; s_par];
 
     for s = first_spline:cur_spline
         if (skips(s) == 0 && s > 1)
             skips(s) = skips(s-1);
         end
         if ((skips(s)<skips(s+1)))
-            y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * sPar(s-first_spline+1:s+3-first_spline+1);
+            y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) = y_splined(skips(s)+first_obs:skips(s+1)+first_obs-1) + A((skips(s):skips(s+1)-1)+1,:) * s_par(s-first_spline+1:s+3-first_spline+1);
         end
     end
     

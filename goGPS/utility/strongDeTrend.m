@@ -1,12 +1,12 @@
 function detrended_data = strongDeTrend(data, thr_perc, thr_perc_global, n_sigma)
-% Returns the mean per column with a certaint percentile of values in data
+% Returns the detrend per column with a certaint percentile of values in data
 % The code uses only the data filtered by the requested percentile to estimate 
-% an std column by column
+% an detred column by column
 % With this estimation only the data within n_sigma range are used for the 
-% robust mean estimation
+% robust detrend estimation
 %
 % SYNTAX:
-%   smean = strongMean(data, thr_perc, thr_perc_global, n_sigma)
+%   smean = strongDeTrend(data, thr_perc, thr_perc_global, n_sigma)
 %
 % INPUT:
 %   data                matrix of values
@@ -15,7 +15,7 @@ function detrended_data = strongDeTrend(data, thr_perc, thr_perc_global, n_sigma
 %   n_sigma             number of sigmas
 %
 % OUTPUT:
-%   smean   strong mean per column
+%   detrended_data   strong detrend per column
 
 %--- * --. --- --. .--. ... * ---------------------------------------------
 %               ___ ___ ___
