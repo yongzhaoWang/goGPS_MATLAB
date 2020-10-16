@@ -384,7 +384,7 @@ function [y_splined, x_spline, s_weights] = spliner_v5(x, y, dxs)
     
     tau   = round(rem(x',dxs)/dxs*1e13)/1e13;  % 1e13 rounding necessary to avoid numerical problems
     idx   = floor((x')/dxs)+1; 
-    A     = Core_Utils.cubicSpline(tau);
+    A     = cubicSpline4Col(tau);
     A_idx = [idx(:) idx(:)+1 idx(:)+2 idx(:)+3];
     n_par = max(A_idx(:,4));
     n_obs = numel(x);
@@ -582,4 +582,20 @@ y(p2) = ((2-t(p2)).^3 - 4*(1-t(p2)).^3)/6;
 %             end
 %         end
 %     end
+end
+
+function [val] = cubicSpline4Col(t)
+    % Compute matrix entry for cubic spline
+    %
+    % INPUT
+    %   t -> 0 : 1
+    %   order -> 1,3
+    %
+    % SYNTAX:
+    %  Core_Utils.cubicSplic(t)
+    val = zeros(numel(t),4);
+    val(:,1) = (1 - t).^3/6;
+    val(:,2) = ((2-t).^3 - 4*(1-t).^3)/6;
+    val(:,3) = ((1+t).^3 - 4*(t).^3)/6;
+    val(:,4) = (t).^3/6;
 end
