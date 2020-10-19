@@ -2234,7 +2234,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             j_ini.setContentType(codeType);
             % str = strrep(strCell2Str(Core.getCurrentSettings.export(), 10),'#','%');
             % <= This will be performed at the end of GUI initialization
-            str = "Loading ini settings...";
+            str = 'Loading ini settings...';
             j_ini.setText(str);
             % Create the ScrollPanel containing the widget
             j_scroll_settings = com.mathworks.mwswing.MJScrollPane(j_ini);

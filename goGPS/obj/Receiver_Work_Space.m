@@ -11506,7 +11506,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     else
                          param_selection =  [param_selection;
                             LS_Manipulator_new.PAR_REC_CLK;
-                            LS_Manipulator_new.PAR_REC_PPB;
+                           % LS_Manipulator_new.PAR_REC_PPB;
                             ];
                     end
                 end

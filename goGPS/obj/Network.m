@@ -134,7 +134,14 @@ classdef Network < handle
             if nargin < 6
                 free_net = false;
             end
+            recs = Core.getRecList();
             
+            for i = 1 : length(recs)
+                if ~recs(i).work.isEmpty
+                    %this.rec_list(i).work.remGroupDelay(); % apply the new clock
+                    recs(i).work.remGroupDelayNew();
+                end
+            end
             
             
             if nargin < 2 || any(isnan(id_ref)) || isempty(id_ref)
@@ -270,7 +277,7 @@ classdef Network < handle
                         else
                             param_selection =  [param_selection;
                                 LS_Manipulator_new.PAR_REC_CLK;
-                                LS_Manipulator_new.PAR_REC_PPB;
+                               % LS_Manipulator_new.PAR_REC_PPB;
                                 ];
                         end
                     end
@@ -283,7 +290,7 @@ classdef Network < handle
                         else
                             param_selection =  [param_selection;
                                 LS_Manipulator_new.PAR_SAT_CLK;
-                                LS_Manipulator_new.PAR_SAT_PPB;
+                             %   LS_Manipulator_new.PAR_SAT_PPB;
                                 ];
                         end
                     end
@@ -931,19 +938,21 @@ classdef Network < handle
             cs = Core.getCoreSky();
             %%% subs clk
             clk = zeros(this.common_time.length,size(cs.clock,2));
+            rate = this.common_time.getRate();
             comm_time_ref = this.common_time.getNominalTime(ls.obs_rate).getRefTime(this.common_time.minimum.getMatlabTime);
             for s = 1 : length(ls.unique_sat_goid)
                 idx_clk = ls.class_par == ls.PAR_SAT_CLK & ls.sat_par == ls.unique_sat_goid(s);
                 time_sat = ls.getTimePar(idx_clk).getNominalTime(ls.obs_rate);
-                [~,idx] = ismember(time_sat.getRefTime(this.common_time.first.getMatlabTime), this.common_time.getRefTime(this.common_time.first.getMatlabTime));
+                [~,idx] = ismember(round(time_sat.getRefTime(this.common_time.first.getMatlabTime)/rate)*rate, round(this.common_time.getRefTime(this.common_time.first.getMatlabTime)/rate)*rate);
                 clk(idx,ls.unique_sat_goid(s)) = ls.x(idx_clk);
             end
             
-            GReD_Utility.substituteClK(clk, time_sat);
+            GReD_Utility.substituteClK(clk, this.common_time.getNominalTime(ls.obs_rate));
             %%% sub epehem
             idx_sat_x = ls.class_par == LS_Manipulator_new.PAR_SAT_X;
             idx_sat_y = ls.class_par == LS_Manipulator_new.PAR_SAT_Y;
             idx_sat_z = ls.class_par == LS_Manipulator_new.PAR_SAT_Z;
+            if sum(idx_sat_x) > 0 |  sum(idx_sat_y) > 0 | sum(idx_sat_z) > 0
             coord = zeros(this.common_time.length,length(ls.unique_sat_goid),3);
             spline_rate = ls.ls_parametrization.sat_x_opt.spline_rate;
             spline_order = 3;
@@ -983,7 +992,8 @@ classdef Network < handle
                 end
             end
             cs.coordFit(this.common_time, coord, ls.unique_sat_goid);  
-            
+            end
+            recs = Core.getRecList();
             % piush back bias
             if sum(ls.param_class == LS_Manipulator_new.PAR_SAT_EB) > 0
                 cs = Core.getCoreSky();
@@ -1019,17 +1029,19 @@ classdef Network < handle
                         else
                             o_code = ls.unique_obs_codes{ls.obs_codes_id_par(ii)};
                             data = ls.x(ii);
-                            cs.tracking_bias{s}{ip} = Electronic_Bias(o_code, data);
+                            cs.tracking_bias{s}{ip} = Electronic_Bias(o_code,data);
                         end
                     end
                 end
-                for i = 1 : length(this.rec_list)
-                    if ~this.rec_list(i).work.isEmpty
+                for i = 1 : length(recs)
+                    if ~recs(i).work.isEmpty
                         %this.rec_list(i).work.remGroupDelay(); % apply the new clock
-                        this.rec_list(i).work.applyGroupDelayNew();
+                        recs(i).work.applyGroupDelayNew();
                     end
                 end
             end
+            works = [recs.work];
+            Receiver_Work_Space.detectOutlierMarkCycleSlipMultiReceiver(works);
         end
         
         function pushBackSubCooInReceiver(this, time, rate)

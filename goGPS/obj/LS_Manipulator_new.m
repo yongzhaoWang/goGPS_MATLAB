@@ -392,10 +392,10 @@ classdef LS_Manipulator_new < handle
                     end
                     % ----------- electronic bias ------------------
                     if par_rec_eb
-                        A(lines_stream, par_rec_eb_lid) = 1/100;
+                        A(lines_stream, par_rec_eb_lid) = 1;
                     end
                     if par_rec_ebfr
-                        A(lines_stream, par_rec_ebfr_lid) = 1/100;
+                        A(lines_stream, par_rec_ebfr_lid) = 1;
                     end
                     if par_rec_ppb && phase_s(s)
                         A(lines_stream, par_rec_ppb_lid) = 1;
@@ -404,10 +404,10 @@ classdef LS_Manipulator_new < handle
                         A(lines_stream, par_rec_eb_lin_lid) = 1/obs_set.wl(s);
                     end
                     if par_sat_eb
-                        A(lines_stream, par_sat_eb_lid) = 1/100;
+                        A(lines_stream, par_sat_eb_lid) = 1;
                     end
                     if par_sat_ebfr
-                        A(lines_stream, par_sat_ebfr_lid) = 1/100;
+                        A(lines_stream, par_sat_ebfr_lid) = 1;
                     end
                     if par_sat_ppb && phase_s(s)
                         A(lines_stream, par_sat_ppb_lid) = 1;
@@ -1917,9 +1917,10 @@ classdef LS_Manipulator_new < handle
                         [U,D,V] = svds(N(idx_bias, idx_bias),sum(idx_bias));
                         d = diag(D);
                         tol = max(size(N(idx_bias, idx_bias))) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                        if sum(d < tol) > 5
-                            [~,idx_min] = min(diff(log10(d(d<tol))));
-                            last_valid = find(d < tol,1,'first') + idx_min -1;
+                        if sum(d < tol) > 2
+                            d_d = diff(log10(d));
+                            [~,idx_min] = min(d_d(d(2:end) < tol));
+                            last_valid = find(d > tol,1,'last') + idx_min -1;
                             keep_id = 1:sum(idx_bias) <= last_valid;
                         else
                             keep_id = d > (tol/1e4);
@@ -2014,9 +2015,15 @@ classdef LS_Manipulator_new < handle
                         [U,D,V] = svds(N,sum(size(N,1)));
                         d = diag(D);
                         tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                        [~,idx_min] = min(diff(log10(d(d<tol))));
-                        last_valid = find(d < tol,1,'first') + idx_min -1;
-                        keep_id = 1:sum(size(N,1)) <= last_valid;
+                        if sum(d<tol) > 1
+                              d_d = diff(log10(d));
+                            [~,idx_min] = min(d_d(d(2:end) < tol));
+                            last_valid = find(d > tol,1,'last') + idx_min -1;
+                            keep_id = 1:sum(size(N,1)) <= last_valid;
+                            
+                        else
+                            keep_id = d > max(size(N)) * sqrt(eps(norm(diag(D),inf)));
+                        end
                         real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
                         clearvars U V D
                         pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
@@ -2245,6 +2252,7 @@ classdef LS_Manipulator_new < handle
             idx_rw = abs(res_n) > thr & id_ph;
             
             this.reweight_obs(idx_rw) =  wfun(res_n(idx_rw));
+            this.reweight_obs(~idx_rw) =  1;
             if sum(this.reweight_obs(idx_rw) < 1e-3) > 0 % observation with weight less than 1e-3 are removed from the adjustment otherwise parameters that depend only on them may suffer numerical instability
                 this.outlier_obs(this.reweight_obs < 1e-3) = true;
             end
@@ -2263,6 +2271,7 @@ classdef LS_Manipulator_new < handle
             idx_rw = abs(res_n) > thr & id_ph;
             
             this.reweight_obs(idx_rw) =  wfun(res_n(idx_rw));
+            this.reweight_obs(~idx_rw) =  1;
             if sum(this.reweight_obs(idx_rw) < 1e-3) > 0 % observation with weight less than 1e-3 are removed from the adjustment otherwise parameters that depend only on them may suffer numerical instability
                 this.outlier_obs(this.reweight_obs < 1e-3) = true;
             end
