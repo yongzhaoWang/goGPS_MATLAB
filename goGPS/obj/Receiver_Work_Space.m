@@ -13475,5 +13475,348 @@ classdef Receiver_Work_Space < Receiver_Commons
             o_idx = (abs(td_phr(1,:)) > ol_thr & abs(td_phr(2,:)) > ol_thr) |  (isnan(td_phr(1,:)) & abs(td_phr(2,:)) > ol_thr) |  (abs(td_phr(1,:)) > ol_thr & isnan(td_phr(2,:)));
             cs_idx = abs(td_phr(1,:) ./ wl) > cs_thr & ~isnan(td_phr(2,:));
         end
+        
+        
+        
+        function detectOutlierMarkCycleSlipMultiReceiver(rec_work_list)
+            state = Core.getCurrentSettings();
+            ol_thr = 0.10; % 10cm
+            cs_thr = 0.7 * state.getCycleSlipThr(); % CYCLE SLIP THR
+            % detect outlier and cycle slips based on a network of
+            % receivers
+            cc =  Core.getConstellationCollector;
+            n_rec = numel(rec_work_list);
+            n_sat = length(cc.prn);
+            
+            % get union of all times and index of the receiver times
+            [p_time, id_sync] = Receiver_Commons.getSyncTimeExpanded(rec_work_list);
+            % get union of all obervation code
+            n_time = length(p_time);
+            % initialize dt receiver and satellite
+            state = Core.getCurrentSettings();
+            
+            
+            obs = {};
+            el_obs = {};
+            id_obs = {};
+            go_id_obs = {};
+            wl_obs = {};
+            apr_std_obs = {};
+            is_ph_obs = {};
+            %fill obs
+            rs = Receiver_Settings();
+            for r = 1 : n_rec
+                rec_work_list(r).sat.outliers_ph_by_ph = false(size(rec_work_list(r).obs,1),sum(rec_work_list(r).obs_code(:,1) =='L'));
+                rec_work_list(r).sat.cycle_slip_ph_by_ph = false(size(rec_work_list(r).obs,1),sum(rec_work_list(r).obs_code(:,1) =='L'));
+                [ph, wl,idx_ph] = rec_work_list(r).getPhases();
+                ph = zero2nan(ph) - zero2nan(rec_work_list(r).getSyntPhases);
+                [pr, idx_pr] = rec_work_list(r).getPseudoRanges();
+                pr = zero2nan(pr) - zero2nan(rec_work_list(r).getSyntPrObs);
+                obs{r} = [ph pr];
+                el_obs{r} = rec_work_list(r).sat.el;
+                id_obs{r} = [find(idx_ph); find(idx_pr)];
+                go_id_obs{r} =  [rec_work_list(r).go_id(idx_ph); rec_work_list(r).go_id(idx_pr)];
+                wl_obs{r} = [rec_work_list(r).wl(idx_ph); rec_work_list(r).wl(idx_pr)];
+                o_codes =  [[rec_work_list(r).system(idx_ph)' rec_work_list(r).obs_code(idx_ph,:)]; [rec_work_list(r).system(idx_pr)' rec_work_list(r).obs_code(idx_pr,:)]];;
+                apr_std = zeros(size(o_codes,1),1);
+                for i = 1 : length(apr_std)
+                    apr_std(i) = rs.getStd(o_codes(i,1), o_codes(i,2:end));      
+                end
+        
+                apr_std_obs{r} = apr_std;
+                is_ph_obs{r} = o_codes(:,2) == 'L';
+            end
+            ddt_rec = zeros(n_time, n_rec);
+            ddt_sat = zeros(n_time, n_sat);
+                        dt_iono = zeros(n_time, n_sat,n_rec);
+
+            % run the estimation & detetction
+            for i = 1 : (n_time-1)
+                
+                valid_rec = find(id_sync(i,:) ~=0 & id_sync(i+1,:) ~= 0);
+                d_ph = [];
+                rec_id = [];
+                go_id = [];
+                wl_id = [];
+                el = [];
+                apr_std = [];
+                is_ph = [];
+                for r = valid_rec
+                    ob = obs{r};
+                    d_p = ob(i+1,:) - ob(i,:);
+                    g = go_id_obs{r};
+                    ip = is_ph_obs{r};
+                    
+                    is_valid = ~isnan(d_p)';
+                    [df ] = setdiff(unique(g(~ip & is_valid)),unique(g(ip & is_valid))); % remove code only observations
+                    [is_only_pr] = ismember(g(is_valid),df);
+                    is_valid = find(is_valid);
+                    is_valid(is_only_pr) = [];
+                    
+                    d_p = d_p(is_valid);
+                    d_ph = [d_ph d_p];
+                    rec_id = [rec_id r*ones(size(d_p))];
+                    
+                    go_id = [go_id g(is_valid)'];
+                    w = wl_obs{r};
+                    wl_id = [wl_id w(is_valid)'];
+                    e = el_obs{r};
+                    el = [el e(i,g(is_valid))];
+                    as = apr_std_obs{r};
+                    apr_std = [apr_std as(is_valid)'];
+                  
+                    is_ph = [is_ph ip(is_valid)'];
+                end
+                
+                [res, dt_rec, dt_sat, d_iono, rs_id] = Receiver_Work_Space.dtRobustAdjustement(d_ph, rec_id, go_id, wl_id, el, apr_std, is_ph);
+                u_r = unique(rec_id);
+                ddt_rec(i+1,u_r) = dt_rec;
+                ddt_sat(i+1,unique(go_id)) = dt_sat;
+                for rr = 1 : n_rec
+                    idx_o = floor(rs_id/1000) == rr;
+                    dt_iono(i+1,rem(rs_id(idx_o),1000) ,rr) = d_iono(idx_o);
+                end
+                i
+            end
+            % fill holes smaller than ....
+            min_hole = state.getMinArc(rec_work_list(1).time.getRate);
+            sat_hole = false(size(ddt_sat));
+            for s = 1 : n_sat
+                idx = ddt_sat(:,s)==0;
+                idx_s = flagShrink(idx, ceil((min_hole - 1)/2));
+                idx_e = flagExpand(idx_s, ceil((min_hole - 1)/2));
+                arc_join = xor(idx,idx_e);
+                sat_hole(:,s) = arc_join;
+            end
+            rec_hole = false(size(ddt_rec));
+            for r = 1 : n_rec
+                idx = ddt_rec(:,r)==0;
+                idx_s = flagShrink(idx, ceil((min_hole - 1)/2));
+                idx_e = flagExpand(idx_s, ceil((min_hole - 1)/2));
+                arc_join = xor(idx,idx_e);
+                start_arc = find(diff(arc_join) ==1);
+                end_arc = find(diff(arc_join)  == -1);
+                end_arc(end_arc == 1) = [];
+                if length(start_arc) > length(end_arc)
+                    start_arc(end) = [];
+                end
+                for i = 1 : length(start_arc)
+                valid_rec = find(id_sync(start_arc(i),:) ~=0 & id_sync(end_arc(i),:) ~= 0);
+                
+                for r = valid_rec
+                    ob = obs{r};
+                    d_p = ob(end_arc(i),:) - ob(start_arc(i),:);
+                    g = go_id_obs{r};
+                    ip = is_ph_obs{r};
+                    
+                    is_valid = ~isnan(d_p)';
+                    [df ] = setdiff(unique(g(~ip & is_valid)),unique(g(ip & is_valid))); % remove code only observations
+                    [is_only_pr] = ismember(g(is_valid),df);
+                    is_valid = find(is_valid);
+                    is_valid(is_only_pr) = [];
+                    
+                    d_p = d_p(is_valid);
+                    d_ph = [d_ph d_p];
+                    rec_id = [rec_id r*ones(size(d_p))];
+                    
+                    go_id = [go_id g(is_valid)'];
+                    w = wl_obs{r};
+                    wl_id = [wl_id w(is_valid)'];
+                    e = el_obs{r};
+                    el = [el e(i,g(is_valid))];
+                    as = apr_std_obs{r};
+                    apr_std = [apr_std as(is_valid)'];
+                    
+                    is_ph = [is_ph ip(is_valid)'];
+                end
+                [res, dt_rec, dt_sat, d_iono, rs_id] = Receiver_Work_Space.dtRobustAdjustement(d_ph, rec_id, go_id, wl_id, el, apr_std, is_ph);
+                ddt_rec(start_arc(i)+1,r) = dt_rec(unique(rec_id) == r);
+                end
+            end
+            
+            for s = 1 : n_sat
+                idx = ddt_sat(:,s)==0;
+                idx_s = flagShrink(idx, ceil((min_hole - 1)/2));
+                idx_e = flagExpand(idx_s, ceil((min_hole - 1)/2));
+                arc_join = xor(idx,idx_e);
+                sat_hole(:,s) = arc_join;
+                start_arc = find(diff(arc_join) ==1);
+                end_arc = find(diff(arc_join)  == -1);
+                end_arc(end_arc == 1) = [];
+                if length(start_arc) > length(end_arc)
+                    start_arc(end) = [];
+                end
+                for i = 1 : length(start_arc)
+                    valid_rec = find(id_sync(start_arc(i),:) ~=0 & id_sync(end_arc(i),:) ~= 0);
+                    
+                    for r = valid_rec
+                        ob = obs{r};
+                        d_p = ob(end_arc(i),:) - ob(start_arc(i),:);
+                        g = go_id_obs{r};
+                        ip = is_ph_obs{r};
+                        
+                        is_valid = ~isnan(d_p)';
+                        [df ] = setdiff(unique(g(~ip & is_valid)),unique(g(ip & is_valid))); % remove code only observations
+                        [is_only_pr] = ismember(g(is_valid),df);
+                        is_valid = find(is_valid);
+                        is_valid(is_only_pr) = [];
+                        
+                        d_p = d_p(is_valid);
+                        d_ph = [d_ph d_p];
+                        rec_id = [rec_id r*ones(size(d_p))];
+                        
+                        go_id = [go_id g(is_valid)'];
+                        w = wl_obs{r};
+                        wl_id = [wl_id w(is_valid)'];
+                        e = el_obs{r};
+                        el = [el e(i,g(is_valid))];
+                        as = apr_std_obs{r};
+                        apr_std = [apr_std as(is_valid)'];
+                        
+                        is_ph = [is_ph ip(is_valid)'];
+                    end
+                    [res, dt_rec, dt_sat, d_iono, rs_id] = Receiver_Work_Space.dtRobustAdjustement(d_ph, rec_id, go_id, wl_id, el, apr_std, is_ph);
+                    ddt_sat(start_arc(i)+1,s) = dt_sat(unique(go_id) == s);
+                end
+            end
+            ddt_sat = cumsum(ddt_sat);
+            ddt_rec = cumsum(ddt_rec);
+            iono_const = 40.3*10^16;
+            
+            for r = 1 : n_rec
+                ob = obs{r};
+                go_id = go_id_obs{r};
+                iono = cumsum(dt_iono(:,:,r));
+                ip = is_ph_obs{r};
+                w = wl_obs{r};
+                sgn = ones(size(ip)).*iono_const.*(w/Core_Utils.V_LIGHT).^2;
+                sgn(ip) = -1*sgn(ip);
+                
+                ob = ob - ddt_sat(id_sync(:,r)~=0,go_id) - repmat(sgn',sum(id_sync(:,r)~=0),1).*iono(id_sync(:,r)~=0,go_id) - repmat(ddt_rec(id_sync(:,r)~=0,r),1,length(go_id));
+                ob = ob(:,ip);
+                for j = 1 : size(ob,2)
+                    idx = ob(:,j)==0;
+                    idx_s = flagShrink(idx, ceil((min_hole - 1)/2));
+                    idx_e = flagExpand(idx_s, ceil((min_hole - 1)/2));
+                    arc_join = xor(idx,idx_e);
+                    sat_hole(:,s) = arc_join;
+                    start_arc = find(diff(arc_join) ==1);
+                    end_arc = find(diff(arc_join)  == -1);
+                    end_arc(end_arc == 1) = [];
+                    if length(start_arc) > length(end_arc)
+                        start_arc(end) = [];
+                    end
+                    for k = 1 : length(start_arc)
+                        ob((start_arc(k)+1):(end_arc(k)-1),j) =  ob(start_arc(k),j);
+                    end
+                end
+                d_ob = [  diff(ob); 1e3*ones(1, size(ob,2));];
+                d_ob(isnan(ob)) = 1e3;
+                d_ob = [1e3*ones(1, size(ob,2));  d_ob;];
+                for i = 1 : size(ob,1) % actual outlier & cycle slips detection
+                    idx_ob = find(~isnan(ob(i,:)));
+                    [o_idx, cs_idx] = Receiver_Work_Space.outlierCyscleSlipDetect(d_ob(i:(i+1),idx_ob), w(idx_ob)', ol_thr, cs_thr);
+                    rec_work_list(r).sat.outliers_ph_by_ph(i,idx_ob) = o_idx;
+                    rec_work_list(r).sat.cycle_slip_ph_by_ph(i,idx_ob) = cs_idx;
+                end
+                rec_work_list(r).sat.outliers_ph_by_ph = sparse(rec_work_list(r).sat.outliers_ph_by_ph);
+                rec_work_list(r).sat.cycle_slip_ph_by_ph = sparse(rec_work_list(r).sat.cycle_slip_ph_by_ph);
+            end
+            
+            for r = 1 : n_rec
+                rec_work_list(r).remShortArc(state.getMinArc(rec_work_list(r).time.getRate));
+            end
+        end
+        function [res, dt_rec, dt_sat, d_iono, u_rs] = dtRobustAdjustement(d_ph, rec_id, go_id, wl_id, el, apr_std, is_ph)
+            
+            n_obs = length(d_ph);
+            u_r = unique(rec_id);
+            n_rec = length(u_r);
+            [~,rec_clk_id] = ismember(rec_id',u_r');
+            sat = numel(u_r) > 1;
+            u_s = unique(go_id);
+            n_sat = length(u_s);
+            rec = n_sat > 1;
+            if sat
+                [~,sat_clk_id] = ismember(go_id, u_s);
+                sat_clk_id = sat_clk_id' + length(u_r);
+            end
+            iono = true;
+            if iono
+                rs_id = round(rec_id*1000+go_id);
+                u_rs = unique(rs_id);
+                [~,iono_id] = ismember(rs_id, u_rs);
+                iono_id = iono_id' + max(sat_clk_id);
+            end
+            
+            iono_const = 40.3*10^16;
+            sign_iono = ones(size(is_ph'));
+            sign_iono(is_ph>0) = -1;
+            if rec
+                A = [ones(n_obs,1)];
+                A_idx = [rec_clk_id];
+            else
+                A = [];
+                A_idx = [];
+            end
+            if sat
+                A = [A ones(n_obs,1)];
+                A_idx = [A_idx  sat_clk_id];
+            end
+            if iono
+                A = [A sign_iono.*iono_const.*(wl_id'/Core_Utils.V_LIGHT).^2];
+                A_idx = [A_idx iono_id];
+            end
+            rows = repmat((1:n_obs)',1,size(A,2));
+            n_par = max(A_idx(:,end));
+            A = sparse(rows,A_idx,A,n_obs, n_par);
+            
+            vars_apr = apr_std'.^2 .* (sind(el')).^4;
+            % if sat && rec
+            %     A(:,n_rec+1) = [];
+            %     n_par = n_par -1;
+            % end
+            
+            W = sparse(diag(1./vars_apr));
+            N = A'*W*A ;
+            d_ph = d_ph';
+            B = A'*W*d_ph;
+            % G = [];
+            % if sat
+            %     G = [zeros(max(rec_clk_id),1) ; ones(max(sat_clk_id)-max(rec_clk_id),1)];
+            %     if iono
+            %         G = [G; zeros(length(u_rs),1)];
+            %     end
+            % end
+            % n_lagr = size(G,2);
+            % N = [[N G]; [G' zeros(n_lagr)]];
+            % B = [B;zeros(n_lagr,1)];
+            if iono
+                reg_d_iono = 1/(0.05^2);
+                n_iono = length(u_rs);
+                n_other = max(A_idx(:,end)) - n_iono;
+                R = sparse([[zeros(n_other) zeros(n_other, n_iono)]; [zeros(n_iono, n_other) reg_d_iono*eye(n_iono)]]);
+                N = N + R;%(1:(end-n_lagr),1:(end-n_lagr))
+            end
+            x = zeros(n_par,1);
+            dx = 9999*ones(999,1);
+            while max(abs(dx)) > 1e-3 %(1: (end-n_lagr))
+                dx = spinv(N,[],'qr') * B;
+                x = x +dx;%(1: (end-n_lagr))
+                res = d_ph - A*x;
+                res_n = res ./ sqrt(vars_apr);
+                res_n = res_n / mean(res_n);
+                rw =  ones(size(res_n));
+                rw(abs(res_n) > 2) =  2 ./ abs(res_n(abs(res_n) > 2));
+                RW = sparse(diag(1./vars_apr .*rw));
+                N =  A'*RW*A + R;
+                B = A'*RW*res;
+                %     N = [N G; G' zeros(n_lagr)];
+                %     B = [B;zeros(n_lagr,1)];
+            end
+            dt_rec = x(1:n_rec);
+            dt_sat = x((n_rec+1):(n_rec+n_sat));
+            d_iono = x((n_rec+n_sat+1):end);
+        end
     end
 end
