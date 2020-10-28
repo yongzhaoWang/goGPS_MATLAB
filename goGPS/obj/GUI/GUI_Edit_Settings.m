@@ -411,11 +411,13 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             this.is_gui_ready = true;
                             
             this.win.Visible = 'on';
+            drawnow;
+            
             % the update of the command list is repeated here because at
             % least on linux the handle to the java container is not valid
             % till visibility is on
             this.updateCmdList();
-
+            
             % Now that the GUI it is ready I can perform the update of the UI:
             this.updateUI();
             
@@ -3170,7 +3172,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             % dir list, otherwise use existent cache
             % persistent unique_dir dir_list
             
-            if (tot_rec < 1100) || flag_force
+            if (tot_rec < 740) || flag_force
                 % If last check is older than 30 minutes ago force_check
                 % if flag_force is passed to the function it means that a check is not requested because cache hould exist
                 % but if the cache does not exist it is better to force its creation

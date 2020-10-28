@@ -4074,7 +4074,7 @@ classdef GNSS_Station < handle
             end
             
             fh_list = f;
-            fig_name = sprintf('RecMapDtm');
+            fig_name = sprintf('RecMapGoogle');
             f.UserData = struct('fig_name', fig_name);
 
             Core.getLogger.addMarkedMessage('Preparing map, please wait...');
