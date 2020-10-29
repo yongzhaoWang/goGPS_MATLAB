@@ -8131,7 +8131,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                 iono_model_override = 2;
             end
             if iono_model_override == 3 && isempty(atmo.ionex.data) && (isempty(cs.iono) || sum(sum(cs.iono~=0)) > 0)
-                this.log.addError('No iono model present');
+                if this.state.needIonoMap
+                    this.log.addError('No iono model present');
+                end
                 iono_model_override = 1;
             end
             this.updateCoordinates();
