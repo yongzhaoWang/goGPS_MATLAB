@@ -6935,6 +6935,15 @@ classdef Receiver_Work_Space < Receiver_Commons
             this.parent.static = false;
         end
         
+        function setAsAPriori(this)
+            % Set the internal coordinate as a-priori
+            %
+            % SYNTAX
+            %   this.setAsAPriori
+            rf = Core.getReferenceFrame;
+            rf.setFlag(this.parent.getMarkerName4Ch, rf.FLAG_APRIORI);
+        end
+        
         function setDoppler(this, dop, wl, id_dop)
             % set the snr observations
             % SYNTAX [pr, id_pr] = this.setDoppler(<sys_c>)
@@ -9843,6 +9852,11 @@ classdef Receiver_Work_Space < Receiver_Commons
                 if this.isStatic()
                     if this.NEW_ISP
                         s0 = this.initStaticPositioningNew(sys_c);
+                        if s0 == 0
+                            log.addError('The new init positioning failed, trying to go legacy');
+                            this.dt = 0;
+                            s0 = this.initStaticPositioning(sys_c);
+                        end
                     else
                         s0 = this.initStaticPositioning(sys_c);
                     end
@@ -10111,7 +10125,6 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 % if positioni is not fixed
                 if ~(this.isFixed || this.isFixedPrepro)
-                   
                     if sum(this.hasAPriori) == 0 || isempty(this.xyz) %%% if no apriori information on the position
                         sys_list_c = Core_Utils.getPrefSys(sys_list);
                         
@@ -10144,9 +10157,11 @@ classdef Receiver_Work_Space < Receiver_Commons
                         log.addMessage(log.indent('Improving estimation'))
                         this.updateAllTOT();
                         [dpos, s0] = this.codeStaticPositioning([],[],[],0);
-                        this.updateAllTOT();
-                        this.updateErrTropo(all_go_id);
-                        [dpos, s0] = this.codeStaticPositioning([],[],[],3);
+                        if s0 > 0
+                            this.updateAllTOT();
+                            this.updateErrTropo(all_go_id);
+                            [dpos, s0] = this.codeStaticPositioning([],[],[],3);
+                        end
                     end
                 else
                     this.updateAllAvailIndex();
@@ -10160,19 +10175,20 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                     this.updateErrTropo(all_go_id);
                     [dpos, s0] = this.codeStaticPositioning([],[],[],0);
-                    this.updateAllTOT();
-                    this.updateErrTropo(all_go_id);
-                    [dpos, s0] = this.codeStaticPositioning([],[],[],3);
+                    if s0 > 0
+                        this.updateAllTOT();
+                        this.updateErrTropo(all_go_id);
+                        [dpos, s0] = this.codeStaticPositioning([],[],[],3);
+                    end
                 end
-
             end
         end
         
         function coarseDtEstimation(this)
             sys_list = unique(this.system);
             %only use one system  -> preferred order is GRECJI
-            sys_list = Core_Utils.getPrefSys(sys_list); 
-
+            sys_list = Core_Utils.getPrefSys(sys_list);
+            
             % get obscode
             obs_set = Observation_Set();
             if this.isMultiFreq() %% case multi frequency
@@ -10185,9 +10201,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                     obs_set.merge(this.getPrefObsSetCh(['C' num2str(f(1))], sys_c));
                 end
             end
-                    all_go_id = unique(obs_set.go_id);
+            all_go_id = unique(obs_set.go_id);
             
-            sat_cache = this.getSatCache(all_go_id,true); 
+            sat_cache = this.getSatCache(all_go_id,true);
             [synt_obs] = this.getSyntTwin(obs_set);
             diff_obs = zero2nan(obs_set.obs) - zero2nan(synt_obs);
             dt = median(diff_obs ,2,'omitnan');
@@ -10361,91 +10377,100 @@ classdef Receiver_Work_Space < Receiver_Commons
             ls.Astack2Nstack();
             [x, res, s0] = ls.solve(true);
 
-            id_ko = abs(ls.res) > Core.getState.getMaxCodeErrThrPP;
-            if nargin < 5 || isempty(num_reweight)
-                % loop if:
-                %  - there are big outliers > 3 times the thr
-                %  - outliers + (s0 > 1)
-                if any(abs(ls.res) > 3 * Core.getState.getMaxCodeErrThrPP) || (any(id_ko) && (s0 > 1))
-                    num_reweight = 4;
-                else
-                    num_reweight = 0;                    
-                end
-            end
-            
-            log = Core.getLogger;
-            if num_reweight > 0
-                % show this message only in case of iterations
-                log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (first estimation)', s0)));
-            end
-            cc = Core.getConstellationCollector;
-            % REWEIGHT ON RESIDUALS AND OUTLIER REJECTION
-            for i = 1 : num_reweight
-                flag_recompute = false;
-                if i == num_reweight - 1
-                    id_ko = abs(ls.res) > 2 * Core.getState.getMaxCodeErrThrPP;
-                    % snoopGatt cannot be used in this way, arcs should be splitted
-                    %id_ko = Core_Utils.snoopGatt(ls.res, 2 * Core.getState.getMaxCodeErrThrPP, Core.getState.getMaxCodeErrThrPP);
-                    if any(~id_ko)
-                        flag_recompute = true;
-                        ls.remObs(id_ko);
-                    end
-                elseif i == num_reweight
-                    id_ko = abs(ls.res) > Core.getState.getMaxCodeErrThrPP;
-                    % snoopGatt cannot be used in this way, arcs should be splitted
-                    %id_ko = Core_Utils.snoopGatt(ls.res, Core.getState.getMaxCodeErrThrPP, Core.getState.getMaxCodeErrThrPP/2);
-                    if any(~id_ko)
-                        flag_recompute = true;
-                        ls.remObs(id_ko);
-                    end
-                else
-                    flag_recompute = true;
-                    ls.reweightHuber();
-                end
-                if flag_recompute
-                    ls.Astack2Nstack();
-                    [x, res, s0] = ls.solve(true);
-                    log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration)', s0)));
-                else
-                    log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration skipped)', s0)));
-                end
-            end
-            
-            if isempty(x)
+            if isinf(s0)
                 dpos = [0 0 0];
                 s0 = 0;
             else
-                dpos = [x(x(:,2) == 1,1) x(x(:,2) == 2,1) x(x(:,2) == 3,1)];
-                if isempty(dpos)
+                id_ko = abs(ls.res) > Core.getState.getMaxCodeErrThrPP;
+                if nargin < 5 || isempty(num_reweight)
+                    % loop if:
+                    %  - there are big outliers > 3 times the thr
+                    %  - outliers + (s0 > 1)
+                    if any(abs(ls.res) > 3 * Core.getState.getMaxCodeErrThrPP) || (any(id_ko) && (s0 > 1))
+                        num_reweight = 4;
+                    else
+                        num_reweight = 0;
+                    end
+                end
+                
+                log = Core.getLogger;
+                if num_reweight > 0
+                    % show this message only in case of iterations
+                    log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (first estimation)', s0)));
+                end
+                cc = Core.getConstellationCollector;
+                % REWEIGHT ON RESIDUALS AND OUTLIER REJECTION
+                for i = 1 : num_reweight
+                    flag_recompute = false;
+                    if i == num_reweight - 1
+                        id_ko = abs(ls.res) > 2 * Core.getState.getMaxCodeErrThrPP;
+                        % snoopGatt cannot be used in this way, arcs should be splitted
+                        %id_ko = Core_Utils.snoopGatt(ls.res, 2 * Core.getState.getMaxCodeErrThrPP, Core.getState.getMaxCodeErrThrPP);
+                        if any(~id_ko)
+                            flag_recompute = true;
+                            ls.remObs(id_ko);
+                        end
+                    elseif i == num_reweight
+                        id_ko = abs(ls.res) > Core.getState.getMaxCodeErrThrPP;
+                        % snoopGatt cannot be used in this way, arcs should be splitted
+                        %id_ko = Core_Utils.snoopGatt(ls.res, Core.getState.getMaxCodeErrThrPP, Core.getState.getMaxCodeErrThrPP/2);
+                        if any(~id_ko)
+                            flag_recompute = true;
+                            ls.remObs(id_ko);
+                        end
+                    else
+                        flag_recompute = true;
+                        ls.reweightHuber();
+                    end
+                    if flag_recompute
+                        ls.Astack2Nstack();
+                        [x, res, s0] = ls.solve(true);
+                        log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration)', s0)));
+                    else
+                        log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration skipped)', s0)));
+                    end
+                end
+                
+                if isempty(x)
                     dpos = [0 0 0];
+                    s0 = 0;
+                else
+                    dpos = [x(x(:,2) == 1,1) x(x(:,2) == 2,1) x(x(:,2) == 3,1)];
+                    if isempty(dpos)
+                        dpos = [0 0 0];
+                    end
+                    if isempty(this.xyz)
+                        this.xyz = [0 0 0];
+                    end
+                    this.xyz = repmat(this.getMedianPosXYZ(), size(dpos,1),1) + dpos;
+                    dt = x(x(:,2) == 6,1);
+                    this.dt = zeros(this.time.length,1);
+                    try
+                        this.dt(ls.true_epoch,1) = dt ./ Core_Utils.V_LIGHT;
+                    catch ex
+                        keyboard
+                    end
+                    isb = x(x(:,2) == 4,1);
+                    
+                    id_sync = ls.true_epoch;
+                    this.id_sync = id_sync;
+                    
+                    [sys, prn] = cc.getSysPrn(ls.sat_go_id);
+                    obs_code = ls.obs_code;
+                    rec_coo = Coordinates.fromXYZ(this.getMedianPosXYZ, this.getTime.getCentralTime);
+                    this.sat.res = Residuals();
+                    this.sat.res.import(2, this.time.getEpoch(id_sync), res(id_sync, ls.sat_go_id), prn, obs_code, rec_coo);
+                    
+                    this.quality_info.s0_ip = s0;
+                    this.quality_info.n_epochs = ls.n_epochs;
+                    this.quality_info.n_obs = size(ls.epoch, 1);
+                    this.quality_info.n_out = sum(this.sat.outliers_ph_by_ph(:));
+                    this.quality_info.n_spe = length(sum(~isnan(res)));
+                    this.quality_info.n_sat = length(unique(ls.sat));
+                    this.quality_info.n_sat_max = max(hist(unique(ls.epoch * 1000 + ls.sat), ls.n_epochs));
+                    this.quality_info.fixing_ratio = 0;
+                    this.generateNumSatPerEpochU1(ls ,res, id_sync)
                 end
-                if isempty(this.xyz)
-                    this.xyz = [0 0 0];
-                end
-                this.xyz = repmat(this.getMedianPosXYZ(), size(dpos,1),1) + dpos;
-                dt = x(x(:,2) == 6,1);
-                this.dt = zeros(this.time.length,1);
-                this.dt(ls.true_epoch,1) = dt ./ Core_Utils.V_LIGHT;
-                isb = x(x(:,2) == 4,1);
-                
-                id_sync = ls.true_epoch;
-                this.id_sync = id_sync;
-                                       
-                [sys, prn] = cc.getSysPrn(ls.sat_go_id);
-                obs_code = ls.obs_code;
-                rec_coo = Coordinates.fromXYZ(this.getMedianPosXYZ, this.getTime.getCentralTime);
-                this.sat.res = Residuals();
-                this.sat.res.import(2, this.time.getEpoch(id_sync), res(id_sync, ls.sat_go_id), prn, obs_code, rec_coo);
-                
-                this.quality_info.s0_ip = s0;
-                this.quality_info.n_epochs = ls.n_epochs;
-                this.quality_info.n_obs = size(ls.epoch, 1);
-                this.quality_info.n_out = sum(this.sat.outliers_ph_by_ph(:));
-                this.quality_info.n_spe = length(sum(~isnan(res)));
-                this.quality_info.n_sat = length(unique(ls.sat));
-                this.quality_info.n_sat_max = max(hist(unique(ls.epoch * 1000 + ls.sat), ls.n_epochs));
-                this.quality_info.fixing_ratio = 0;               
-                this.generateNumSatPerEpochU1(ls ,res, id_sync)
             end
         end
         
