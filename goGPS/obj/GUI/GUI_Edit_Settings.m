@@ -3184,6 +3184,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 available_files = [];
                 % Get all the folders in wich the receivers are stored
                 i = 0;
+                dir_path = {};
                 for r = 1 : numel(rec_path)
                     for s = 1 : numel(rec_path{r})
                         i = i + 1;
