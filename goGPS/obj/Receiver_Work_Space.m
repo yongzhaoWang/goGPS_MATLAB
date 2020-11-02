@@ -40,6 +40,7 @@ classdef Receiver_Work_Space < Receiver_Commons
     %% CONSTANTS
     properties (Constant)
         NEW_ISP = true;
+        DT_CORRECTION_TIME_DESYNC = false;
         NEW_OUT_DET = true;
         CS_REPAIR = false;
     end
@@ -10874,7 +10875,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     if this.hasGoodApriori
                         % In this case I have to remove the clock to be
                         % able to perform outlier rejection
-                        [is_pr_jumping, is_ph_jumping] = this.correctTimeDesync(false);
+                        [is_pr_jumping, is_ph_jumping] = this.correctTimeDesync(~Receiver_Work_Space.DT_CORRECTION_TIME_DESYNC);
                     else
                         [is_pr_jumping, is_ph_jumping] = this.correctTimeDesync(true);
                     end
