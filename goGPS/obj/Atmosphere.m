@@ -2355,13 +2355,13 @@ classdef Atmosphere < handle
             k = ((rcm + h_ortho)/((rcm + h_ortho) + thin_shell_height)) * cos(el_rad);
             psi_pp = (pi/2) - el_rad - asin(k);
             
-            %set azimuth from -180 to 180
+            % set azimuth from -180 to 180
             az_rad = mod((az_rad+pi),2*pi)-pi;
             
-            %latitude of the ionosphere piercing point
+            % latitude of the ionosphere piercing point
             lat_pp = asin(sin(lat_rad) * cos(psi_pp) + cos(lat_rad) * sin(psi_pp) .* cos(az_rad));
             
-            %longitude of the ionosphere piercing point
+            % longitude of the ionosphere piercing point
             id_hl = ((lat_pp >  70*pi/180) & (tan(psi_pp).*cos(az_rad)      > tan((pi/2) - lat_rad))) | ...
                 ((lat_pp < -70*pi/180) & (tan(psi_pp).*cos(az_rad + pi) > tan((pi/2) + lat_rad)));
             
