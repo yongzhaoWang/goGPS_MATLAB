@@ -1368,7 +1368,11 @@ classdef Core_Sky < handle
                 else
                     sat_bias_name = tmp(sat_idx,4:end);
                     sat_bias = bias(sat_idx);
-                    sat_bias_std = bias_std(sat_idx);
+                    try
+                        sat_bias_std = bias_std(sat_idx);
+                    catch ex
+                        % no STD present
+                    end
                     %check if there is the reference bias in the one
                     %provided by the external source
                     for b = 1 : size(sat_bias_name,1)
