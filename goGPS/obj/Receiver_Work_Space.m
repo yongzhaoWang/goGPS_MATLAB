@@ -1054,7 +1054,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 idx_v_el = A_idx ~= 0;
                 rows = repmat((1:size(A,1))',1,3);
                 A = sparse(rows(idx_v_el), A_idx(idx_v_el), A(idx_v_el), n_obs_s+n_i-1, max(max(A_idx(:,2:3))));
-                A(:,max(noZero(A_idx(:,2)))+[find(u_o_code_s == rdc_n(1)) find(u_o_code_s == rdc_n(2))]) = []; % fix the rankk deficency eleimtaing the bias for the first two pseudoranges
+                A(:,max(noZero(A_idx(:,2)))+[find(u_o_code_s == rdc_n(1)) find(u_o_code_s == rdc_n(2))]) = []; % fix the rank deficency eleimtaing the bias for the first two pseudoranges
                 x = A\obs;
                 res = obs - A*x;
                 stec(is_valid,i) = x(unique(A_idx(:,2)));
@@ -1890,11 +1890,22 @@ classdef Receiver_Work_Space < Receiver_Commons
                     idx_m =  this.sat.cycle_slip_ph_by_ph;
                     for s = 1: size(ph,2)
                          c = find(idx_m(:,s))';
-                         for e = c
+                         for i = 1 : numel(c)
+                             e = c(i);
+                             if i < numel(c)
+                                 next_arc_begin = c(i+1);
+                             else
+                                 next_arc_begin = size(ph, 1);
+                             end
                              fa = find(isnan(ph((e+1):end,s)),1,'first');
                              if fa < min_arc
                                  ph(e:(e+fa-1),s) = nan;
                                  n_el = n_el + fa;
+                                 % Move the cycle slip at the beginning of the next arc (if present)
+                                 if this.sat.cycle_slip_ph_by_ph(e,s)
+                                     next_arc_begin = (e + fa - 1) + find(~isnan(ph((e+fa):next_arc_begin,s)), 1, 'first');
+                                     this.sat.cycle_slip_ph_by_ph(next_arc_begin, s) = true;
+                                 end
                                  this.sat.cycle_slip_ph_by_ph(e,s) = false;
                              end
                          end
@@ -6559,7 +6570,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             wl_cycle = zero2nan(wl_cycle) + repmat(wsb,size(mwb.obs,1),1);
             
             [wl_cycle(~isnan(wl_cycle)), wsb_rec] = Core_Utils.getFracBias(wl_cycle(~isnan(wl_cycle)));
-            % apply tyhe cycle to the widelane
+            % apply the cycle to the widelane
             wl =  this.getWideLane('L1','L2','G');
             amb_idx = zeros(size(wl.obs,1),cc.getGPS.N_SAT, 'uint16');
             amb_idx(:, wl.go_id) = wl.getAmbIdx();
@@ -10982,16 +10993,19 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 end
                                 this.dt_ip = this.dt_ip + this.dt; % save init_positioning clock
                                 % smooth clock estimation
-                                this.smoothAndApplyDt(0, false, false,0);
+                                this.smoothAndApplyDt(0, false, false, 0);
                                 this.shiftToNominal;
                                 this.getSatCache([], true);
                                
                                 if this.state.isCombineTrk
+                                    % Check if multiple trackings are really present (otherwise do not repeat cycle-slip detection)
                                     status = this.combinePhTrackings();
-                                    if status && this.NEW_OUT_DET
-                                        this.detectOutlierMarkCycleSlipNew();
-                                    else
-                                        this.detectOutlierMarkCycleSlip();
+                                    if status
+                                        if this.NEW_OUT_DET
+                                            this.detectOutlierMarkCycleSlipNew();
+                                        else
+                                            this.detectOutlierMarkCycleSlip();
+                                        end
                                     end
                                 end
                                 if this.CS_REPAIR
