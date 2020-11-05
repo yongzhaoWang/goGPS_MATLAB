@@ -1426,7 +1426,7 @@ classdef GPS_Time < Exportable & handle
             yy(year>= 2000) = year(year>= 2000) - 2000;
             yy(year< 2000)  = year(year< 2000)  - 1900;
             n_ep = length(year);
-            sinex_str = reshape(sprintf('%2d:%03d:%05d',[yy,doy,sod]'),12,n_ep)';
+            sinex_str = reshape(sprintf('%2d:%03d:%05d',[yy,doy,round(sod)]'),12,n_ep)';
         end
         
         function date_string = toStringGpsWeek(this)
