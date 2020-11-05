@@ -1142,6 +1142,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             rec(1).log.addStatusOk(sprintf('Tropo saved into: %s', file_name));
                         end
                     catch ex
+                        Core_Utils.printEx(ex);
                         rec(1).log.addError(sprintf('saving Tropo in sinex format failed: %s', ex.message));
                     end
                 else
