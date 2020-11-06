@@ -858,7 +858,7 @@ classdef GNSS_Station < handle
                type = 'Geodetic';
             end
             
-            sta_list = sta_list(~sta_list.isEmpty_mr);
+            sta_list = sta_list(~sta_list.isEmptyOut_mr);
             if ~isempty(sta_list)
                 out_list = [sta_list.out];
                 
