@@ -851,6 +851,116 @@ classdef File_Wizard < handle
             end
             log.addStatusOk('CRX files are present ^_^')
         end
+        
+        function err_code = conjureIGSATXFile(this)
+            % SYNTAX:
+            %   this.conjureIGSATXFile();
+            %
+            % OUTPUT:
+            %   Save the latest ATX file from IGS
+            %
+            % DESCRIPTION:
+            %   Download of .ATX files from the IGS FTP server.
+            
+            err_code = 0;
+            log = Core.getLogger;
+            this.log.addMarkedMessage('Update ATX (IGS antex file)');
+                        
+            % Pointer to the global settings:
+            state = Core.getCurrentSettings();
+            
+            %AIUB FTP server IP address
+            % aiub_ip = '130.92.9.78'; % ftp.aiub.unibe.ch
+            igs_ip = 'ftp.igs.org';           
+            
+            %download directory
+            down_dir = state.atx_dir;
+            
+            % Check / create output folder
+            if not(exist(down_dir, 'dir'))
+                mkdir(down_dir);
+            end
+            % target directory
+            rem_path = '/pub/station/general';
+                        
+            % target file
+            rem_file = 'igs14.atx';
+            
+            log.addMessage(log.indent(sprintf(['FTP connection to the IGS server (ftp://' igs_ip ').\nIGS ftp might be slow and the ATX file is approximately 18MB. Please wait...'])));
+            %if not(exist([down_dir, '/', s2]) == 2)
+            try
+                % move the old antex file
+                move_success = false;
+                if exist(fullfile(down_dir, rem_file), 'file') == 2
+                    [move_success, message] = movefile(fullfile(down_dir, rem_file), fullfile(down_dir, [rem_file '.old']), 'f');
+                    if ~move_success
+                        log.addError(message);
+                    end
+                end
+                try % ARIA2C download
+                    clear file_name_lst f_ext_lst;
+                    file_lst{1} = ['ftp://' igs_ip rem_path '/' rem_file];
+                    f_ext_lst{1} = '';
+                    f_status_lst = false;
+                    f_status_lst = Core_Utils.aria2cDownloadUncompress(file_lst, f_ext_lst, f_status_lst, [], down_dir);
+                    %https_link = 'https://files.igs.org:80/pub/station/general/igs14.atx'; 
+                    % you should add "--check-certificate=false" to aria, IGS website have a broken certificate *_*
+                    %f_status_lst = Core_Utils.aria2cDownloadUncompress({http_link}, f_ext_lst, f_status_lst, [], down_dir);
+                catch ex
+                    % connect to the CRX server
+                    try
+                        ftp_server = ftp(igs_ip);
+                        cd(ftp_server, '/');
+                        cd(ftp_server, rem_path);
+                    catch
+                        log.addError('Connection failed.');
+                        return
+                    end
+                    % fprintf(ex.message)
+                    mget(ftp_server,rem_file, down_dir);
+                    f_status_lst = true;
+                    try
+                        close(ftp_server);
+                    catch
+                    end
+                end
+                if ~f_status_lst
+                    throw(MException('Verify ATX download', 'download error'));
+                end
+                % rename the downloaded file as the expected name
+                [move_success, message] = movefile(fullfile(down_dir, rem_file), fullfile(down_dir, state.atx_name));
+                if ~move_success
+                    err_code = 2;
+                    log.addError(message);
+                end
+            catch ex
+                % If the FTP is still open (and have been used)
+                try
+                    close(ftp_server);
+                catch
+                end
+                log.addWarning(sprintf('ATX file have not been updated due to connection problems: %s', ex.message))
+                if exist(fullfile(down_dir, [upper(rem_file), '.old']), 'file') == 2
+                    if move_success
+                        [move_success, message] = movefile(fullfile(down_dir, [rem_file '.old']), fullfile(down_dir, rem_file));
+                        if ~move_success
+                            err_code = 2;
+                            log.addError(message);
+                            return
+                        end
+                    end
+                else
+                    err_code = 1;
+                end
+            end
+            log.addMessage(log.indent(sprintf(['Downloaded ATX file: ' rem_file '\n'])));
+            
+            try
+                close(ftp_server);
+            catch
+            end
+            log.addStatusOk('ATX files are present ^_^')
+        end
     end
     
     methods
@@ -1108,7 +1218,7 @@ classdef File_Wizard < handle
             end
             
             if numel(type) == 1 && strcmp(type{1}, 'all')
-                type = {'eph', 'bias', 'crx', 'atm', 'iono', 'iono_brdc', 'vmf'};
+                type = {'eph', 'bias', 'crx', 'atm', 'iono', 'iono_brdc', 'vmf', 'igsatx'};
             end
             
             err_code = {};
@@ -1130,6 +1240,8 @@ classdef File_Wizard < handle
                         err_code{t} = this.conjureIonoFiles(date_start, date_stop, true);
                     case {'vmf'}
                         err_code{t} = this.conjureVmfFiles(date_start, date_stop);
+                    case {'igsatx'}
+                        err_code{t} = this.conjureIGSATXFile();
                 end
             end
             if numel(err_code) == 1

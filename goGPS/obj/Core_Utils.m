@@ -2126,10 +2126,10 @@ classdef Core_Utils < handle
                                     try
                                         if ispc()
                                             dos(sprintf('"%s" %s -j 20 -c -i %s -d %s >nul 2>&1', aria2c_path, credentials, file_name, old_od)); % suppress output
-                                            % dos(sprintf('"%s" -j 20 -c -i %s -d %s', aria2c_path, file_name, old_od)); % do not suppress output
+                                            %dos(sprintf('"%s" %s -j 20 -c -i %s -d %s', aria2c_path, credentials, file_name, old_od)); % do not suppress output
                                         else
                                             dos(sprintf('%s %s -j 20 -c -i %s -d %s &> /dev/null', aria2c_path, credentials, file_name, old_od));  % suppress output
-                                            %dos(sprintf('%s -j 20 -c -i %s -d %s', aria2c_path, file_name, old_od));  % do not suppress output
+                                            %dos(sprintf('%s %s -j 20 -c -i %s -d %s ', aria2c_path, credentials, file_name, old_od));  % do not suppress output
                                         end
                                     catch
                                         aria_err_code = 1;
