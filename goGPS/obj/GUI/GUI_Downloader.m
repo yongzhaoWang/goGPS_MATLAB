@@ -329,6 +329,7 @@ classdef GUI_Downloader < GUI_Unique_Win
                 left_bv.Heights = [left_bv.Heights(1:3)' 10 200 -1];
                 vb = uix.VBox('Parent', dwn_panel, ...
                     'BackgroundColor', Core_UI.LIGHT_GREY_BG);
+                this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'igs14.atx', 'chkbox_igsatx', []); this.check_boxes_dwn{end}.Value = false;                
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'CRX', 'chkbox_crx', []); this.check_boxes_dwn{end}.Value = true;
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Ephemerides, clocks, ERP', 'chkbox_eph', []); this.check_boxes_dwn{end}.Value = true;
                 this.check_boxes_dwn{end+1} = Core_UI.insertCheckBoxLight(vb, 'Ionospheric maps', 'chkbox_iono', []); this.check_boxes_dwn{end}.Value = true;
@@ -801,7 +802,7 @@ classdef GUI_Downloader < GUI_Unique_Win
         
         function type = getDownloadableItems(this)
             % Get from GUI the resources to be downloaded (or checked)
-            type = {'crx', 'eph', 'iono', 'iono_brdc', 'bias', 'vmf', 'atm'};
+            type = {'igsatx', 'crx', 'eph', 'iono', 'iono_brdc', 'bias', 'vmf', 'atm'};
             flag_type = false(numel(type), 1);
             for i = 1 : numel(type)
                 flag_type(i) = this.check_boxes_dwn{i}.Enable(2) == 'n' && this.check_boxes_dwn{i}.Value;

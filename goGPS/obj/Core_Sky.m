@@ -1022,7 +1022,7 @@ classdef Core_Sky < handle
                 eoh = strfind(txt,'END OF HEADER');
                 eoh = find(lim(:,1) > eoh);
                 eoh = eoh(1) - 1;
-                if strcmp(fname(1:3),'grg') % if cnes orbit loas wsb values
+                if strcmp(fname(1:3),'grg') % if cnes orbit load wsb values
                     wl_line = txt(lim(1:eoh,1)) == 'W' & txt(lim(1:eoh,1)+1) == 'L'& txt(lim(1:eoh,1)+60) == 'C' & txt(lim(1:eoh,1)+61) == 'O' & txt(lim(1:eoh,1)+62) == 'M';
                     wsb_date = GPS_Time(cell2mat(textscan(txt(lim(find(wl_line,1,'first'),1) + [8:33]),'%f %f %f %f %f %f')));
                     wsb_prn = sscanf(txt(bsxfun(@plus, repmat(lim(wl_line, 1),1,3), 4:6))',' %f ');
