@@ -137,7 +137,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FLAG_DOWNLOAD = true;      % automatically try to download resources
         FLAG_NO_RESOURCES = false; % one true no resources are used => no orbits are computed -> useful in limited scenarios
         
-        PREFERRED_EPH = {'final', 'rapid', 'ultra', 'broadcast'}
+        PREFERRED_EPH = {'final', 'rapid', 'ultra', 'broadcast', 'real-time'}
         SELECTED_ORBIT_CENTER= {'default'}
         SELECTED_IONO_CENTER= {'default'}
         PREFERRED_IONO = {'final', 'rapid', 'predicted1', 'predicted2', 'broadcast'}
@@ -4159,19 +4159,21 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   2 rapid
             %   3 ultra rapid
             %   4 broadcast
+            %   5 real-time
             %
             % OUPUT
             %   flag is a logical array with 4 values (see above)
             %
             % SYNTAX
             %   flag = this.getPreferredOrbit()
-            flag = false(4,1);
+            flag = false(5,1);
             for i = 1 : numel(this.preferred_eph)
                 switch this.preferred_eph{i}
                     case 'final', flag(1) = true;
                     case 'rapid', flag(2) = true;
                     case 'ultra', flag(3) = true;
                     case 'broadcast', flag(4) = true;
+                    case 'real-time', flag(5) = true;
                 end
             end            
         end
@@ -5439,13 +5441,14 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   2 rapid
             %   3 ultra rapid
             %   4 broadcast
+            %   5 real-time
             %
             % INPUT
             %   flag is a logical array with 4 values (see above)
             %
             % SYNTAX
             %   this.setPreferredOrbit(flag)
-            flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
+            flag_name = {'final', 'rapid', 'ultra', 'broadcast', 'real-time'};
             if ischar(flag)
                 flag = ismember(flag_name, {flag});
             end
@@ -5453,10 +5456,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 flag = ismember(flag_name, flag);
             end
             if ~islogical(flag)
-                if sum(flag == 0 | flag == 1) == 4
+                if sum(flag == 0 | flag == 1) == 5
                     flag = logical(flag);
                 else
-                    tmp = false(4,1);
+                    tmp = false(5,1);
                     tmp(flag) = true;
                     flag = tmp;
                 end

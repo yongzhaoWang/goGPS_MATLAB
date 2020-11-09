@@ -376,6 +376,7 @@ classdef Remote_Resource_Manager < Ini_Manager
             flag_frub(2) = ~isempty(this.getData(['oc_' center], 'rapid'));
             flag_frub(3) = ~isempty(this.getData(['oc_' center], 'ultra'));
             flag_frub(4) = ~isempty(this.getData(['oc_' center], 'broadcast'));
+            flag_frub(5) = ~isempty(this.getData(['oc_' center], 'real-time'));
         end
         
         function [flag_fp1p2b] = getIonoType(this, iono_center)
