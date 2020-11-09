@@ -1969,7 +1969,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             this.ropref{2} = Core_UI.insertCheckBoxLight(box_opref, 'Rapid', 'orbit2', @this.onResourcesPrefChange);
             this.ropref{3} = Core_UI.insertCheckBoxLight(box_opref, 'Ultra rapid', 'orbit3', @this.onResourcesPrefChange);
             this.ropref{4} = Core_UI.insertCheckBoxLight(box_opref, 'Broadcast', 'orbit4', @this.onResourcesPrefChange);
-            box_opref.Widths = [250 -1 -1 -1 -1];
+            this.ropref{5} = Core_UI.insertCheckBoxLight(box_opref, 'Real-time', 'orbit5', @this.onResourcesPrefChange);
+            box_opref.Widths = [250 -1 -1 -1 -1 -1];
             
             try
                 [tmp, this.rpop_up{end+1}] = Core_UI.insertPopUpLight(tab_bv, 'Iono Center', r_man.getCenterListExtended(1), 'selected_iono_center', @this.onResourcesPopUpChange, [200 -1]);                
@@ -2487,8 +2488,8 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             % Update Orbit Preferences
             available_orbit = r_man.getOrbitType(state.getRemoteCenter());
-            flag_preferred_orbit = true(4,1);
-            for i = 1 : 4
+            flag_preferred_orbit = true(5,1);
+            for i = 1 : numel(this.ropref)
                 this.ropref{i}.Enable = iif(available_orbit(i), 'on', 'off');
                 flag_preferred_orbit(i) = available_orbit(i) && logical(this.ropref{i}.Value);
             end
@@ -2513,7 +2514,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             elseif strcmp(caller.UserData(1:4), 'orbi')
                 % Update Orbit Preferences
                 available_orbit = r_man.getOrbitType(state.getRemoteCenter());
-                flag_preferred_orbit = true(4,1);
+                flag_preferred_orbit = true(5,1);
                 for i = 1 : numel(this.ropref)
                     flag_preferred_orbit(i) = available_orbit(i) && logical(this.ropref{i}.Value);
                 end
@@ -2851,11 +2852,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             
             % Update Orbit Preferences
             available_orbit = r_man.getOrbitType(cur_center{1});
-            for i = 1 : 4
+            for i = 1 : 5
                 this.ropref{i}.Enable = iif(available_orbit(i), 'on', 'off');
             end
             flag_preferred_orbit = state.getPreferredOrbit();
-            for i = 1 : 4
+            for i = 1 : 5
                 if available_orbit(i)
                     this.ropref{i}.Value = this.ropref{i}.Value | flag_preferred_orbit(i);
                 end

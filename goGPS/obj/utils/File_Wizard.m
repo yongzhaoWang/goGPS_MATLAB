@@ -647,6 +647,8 @@ classdef File_Wizard < handle
                         log.addStatusOk('Rapid orbits files are present ^_^');
                     case {'ultra'}
                         log.addStatusOk('Ultra orbits files are present ^_^');
+                    case {'real-time'}
+                        log.addStatusOk('Real-time orbits files are present ^_^');
                     case {'broadcast'}
                         log.addStatusOk('Broadcast files are present ^_^');
                 end
@@ -1023,7 +1025,7 @@ classdef File_Wizard < handle
             if nargin == 3
                 this.setPreferredOrbit(preferred_type);
             else
-                this.setPreferredOrbit(true(4,1));
+                this.setPreferredOrbit(true(5,1));
             end
         end
         
@@ -1076,16 +1078,17 @@ classdef File_Wizard < handle
             %   2 rapid
             %   3 ultra
             %   4 broadcast
+            %   5 real-time
             %
             % OUPUT
-            %   flag is a logical array with 4 values (see above)
+            %   flag is a logical array with 5 values (see above)
             %   flag_name is a cell array with the name of the preference
             %
             % SYNTAX
             %   flag = this.getPreferredOrbit()
             flag = Core.getState.getPreferredOrbit;
             if nargout == 2
-                flag_name = {'final', 'rapid', 'ultra', 'broadcast'};
+                flag_name = {'final', 'rapid', 'ultra', 'broadcast', 'real-time'};
                 flag_name = flag_name(flag);
             end
         end
@@ -1096,6 +1099,7 @@ classdef File_Wizard < handle
             %   2 rapid
             %   3 ultra
             %   4 broadcast
+            %   5 real-time
             %
             % INPUT
             %   flag is a logical array with 4 values (see above)
