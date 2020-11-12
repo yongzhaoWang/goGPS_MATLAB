@@ -54,6 +54,11 @@ classdef Command_Interpreter < handle
         STR_ERR = {'Commad unknown', ...
             'Not enough input parameters', ...
             'Too many input parameters'};
+        
+    end
+    
+    properties (Constant, GetAccess = public)
+        SUB_KEY = urldecode('%C2%A7');
     end
     %
     %% PROPERTIES COMMAND CONSTANTS
@@ -61,6 +66,8 @@ classdef Command_Interpreter < handle
     properties (GetAccess = public, SetAccess = private)
         % List of the supported commands
         
+        CMD_SENDMSG     % Send a message on log (or telegram)
+
         CMD_SET         % Allow the modification of a setting parameter
         CMD_LOAD        % Load data from the linked RINEX file into the receiver
         CMD_RENAME      % Rename a receiver        
@@ -89,13 +96,15 @@ classdef Command_Interpreter < handle
         CMD_REMSAT      % remove satellites from receivers
         CMD_REMOBS      % Remove some observations from the receiver (given the obs code)
         CMD_REMTMP      % Remove temporary data not used later for pushout
-                    
+                            
         CMD_PINIT       % parallel request slaves
         CMD_PKILL       % parallel kill slaves
         
         KEY_FOR         % For each session keyword
         KEY_PAR         % For each target (parallel) keyword
         KEY_END         % For/Par marker end
+        
+        PAR_STR       % Dummy PArameter
         
         PAR_NEWSET      % Parameter new setting
         
@@ -113,7 +122,8 @@ classdef Command_Interpreter < handle
 
         PAR_EXPORT      % Export figure
         PAR_CLOSE       % Close figure after export
-        
+        PAR_TELEBOT     % Telebot export
+
         PAR_SLAVE       % number of parallel slaves to request
         
         PAR_R_FROM_OUT  % Parameter to indicate to get data from Receiver Out
@@ -200,7 +210,7 @@ classdef Command_Interpreter < handle
         PAR_S_SAVE      % flage for saving                
                 
         KEY_LIST = {'FOR', 'PAR', 'END'};
-        CMD_LIST = {'SET', 'PINIT', 'PKILL', 'LOAD', 'RENAME', 'EMPTY', 'EMPTYWORK', 'EMPTYOUT', 'AZEL', 'MASK', 'BASICPP', 'PREPRO', 'OUTDET', 'FIX_POS', 'CODEPP', 'PPP', 'NET', 'SEID', 'SID', 'REMIONO', 'MPEST', 'KEEP', 'SYNC', 'SHOW', 'VALIDATE', 'EXPORT', 'PUSHOUT', 'REMSAT', 'REMOBS', 'REMTMP'};
+        CMD_LIST = {'SET', 'PINIT', 'PKILL', 'LOAD', 'RENAME', 'EMPTY', 'EMPTYWORK', 'EMPTYOUT', 'AZEL', 'MASK', 'BASICPP', 'PREPRO', 'OUTDET', 'FIX_POS', 'CODEPP', 'PPP', 'NET', 'SEID', 'SID', 'REMIONO', 'MPEST', 'KEEP', 'SYNC', 'SHOW', 'VALIDATE', 'EXPORT', 'PUSHOUT', 'REMSAT', 'REMOBS', 'REMTMP', 'SENDMSG'};
         PUSH_LIST = {'PPP','NET','CODEPP','AZEL'};
         VALID_CMD = {};
         CMD_ID = [];
@@ -247,6 +257,13 @@ classdef Command_Interpreter < handle
                     this.core = core;
                 end
             end
+            
+            this.PAR_STR.name = 'string parameter';
+            this.PAR_STR.descr = 'string parameter, must be defined between " symbols';
+            this.PAR_STR.par = '".*"';
+            this.PAR_STR.class = 'char';
+            this.PAR_STR.limits = [];
+            this.PAR_STR.accepted_values = [];
             
             this.PAR_NEWSET.name = 'Settings update';
             this.PAR_NEWSET.descr = '"param = value"     update to the parameter';
@@ -332,6 +349,13 @@ classdef Command_Interpreter < handle
             this.PAR_EXPORT.class = 'char';
             this.PAR_EXPORT.limits = [];
             this.PAR_EXPORT.accepted_values = [];
+
+            this.PAR_TELEBOT.name = 'telesend';
+            this.PAR_TELEBOT.descr = '-tg=<"name">       send using telegram to the channel "name" (GReD only), imply -e';
+            this.PAR_TELEBOT.par = '(\-tg\=)|(\-\-telegram\=)'; % (regexp) parameter postfix: -e --export
+            this.PAR_TELEBOT.class = 'char';
+            this.PAR_TELEBOT.limits = [];
+            this.PAR_TELEBOT.accepted_values = [];
 
             this.PAR_CLOSE.name = 'close';
             this.PAR_CLOSE.descr = '-c                 Close figure after export (valid only if export is present)';
@@ -844,11 +868,16 @@ classdef Command_Interpreter < handle
             % definition of commands
             
             new_line = [char(10) '             ']; %#ok<CHARTEN>
+            this.CMD_SENDMSG.name = {'SENDMSG', 'sendmsg'};
+            this.CMD_SENDMSG.descr = 'Send a message on console (or telegram GReD only)';
+            this.CMD_SENDMSG.rec = '';
+            this.CMD_SENDMSG.par = [this.PAR_STR this.PAR_TELEBOT];
+
             this.CMD_SET.name = {'SET', 'set'};
             this.CMD_SET.descr = 'Change the value of a parameter';
             this.CMD_SET.rec = '';
             this.CMD_SET.par = [this.PAR_NEWSET];
-
+            
             this.CMD_LOAD.name = {'LOAD', 'load'};
             this.CMD_LOAD.descr = 'Import the RINEX file linked with this receiver';
             this.CMD_LOAD.rec = 'T';
@@ -952,7 +981,7 @@ classdef Command_Interpreter < handle
             this.CMD_SHOW.name = {'SHOW', 'show'};
             this.CMD_SHOW.descr = 'Display various plots / images';
             this.CMD_SHOW.rec = 'T';
-            this.CMD_SHOW.par = [this.PAR_SS this.PAR_EXPORT this.PAR_CLOSE this.PAR_S_MAP this.PAR_S_MAPL this.PAR_S_MAPG this.PAR_S_MAPDTM this.PAR_S_MAPRG this.PAR_S_MAPRDTM ...
+            this.CMD_SHOW.par = [this.PAR_SS this.PAR_EXPORT this.PAR_TELEBOT this.PAR_CLOSE this.PAR_S_MAP this.PAR_S_MAPL this.PAR_S_MAPG this.PAR_S_MAPDTM this.PAR_S_MAPRG this.PAR_S_MAPRDTM ...
                 this.PAR_S_DA this.PAR_S_ENU this.PAR_S_PUP this.PAR_S_ENUBSL this.PAR_CTYPE...
                 this.PAR_S_PUPBSL this.PAR_S_XYZ this.PAR_S_CKW this.PAR_S_CK ...
                 this.PAR_S_MPN this.PAR_S_SNR this.PAR_S_SNRI ...
@@ -1386,6 +1415,8 @@ classdef Command_Interpreter < handle
                         else
                             try
                                 switch upper(tok{1})
+                                    case this.CMD_SENDMSG.name              % SENDMSG
+                                        this.runSendMsg(core.state, tok(2:end));
                                     case this.CMD_SET.name                  % SET a parameter
                                         this.runSet(core.state, tok(2:end));
                                     case this.CMD_RENAME.name               % RENAME
@@ -1483,6 +1514,30 @@ classdef Command_Interpreter < handle
     % ==================================================================================================================================================
     % methods to execute a set of goGPS Commands
     methods (Access = public)
+        
+        function runSendMsg(this, state, tok)
+            % Send a message on log (or telegram)
+            %
+            % SYNTAX
+            %   this.runSendMsg(state, tok)
+            
+            % First of all merge the tokens separated by space 
+            % e.g. "flag_mp = 1" is splitted into 3 parts!
+            telebot_chat_id = this.getTeleBotChatId(tok);
+            for t = 1 : numel(tok)
+                if tok{t}(1) == '"' % this is the message
+                    if ~isempty(telebot_chat_id)
+                        if Core.isGReD
+                            tb = Telebot();
+                            tb.sendText(telebot_chat_id, strrep(tok{t}(1:end-1), this.SUB_KEY, ' '), 'md');
+                        else
+                            log = Core.getLogger;
+                            log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send message "%s"', strrep(tok{t}(1:end-1), this.SUB_KEY, ' ')));
+                        end
+                    end
+                end
+            end                
+        end
         
         function runSet(this, state, tok)
             % Modify a parameter founnd in state
@@ -2785,6 +2840,7 @@ classdef Command_Interpreter < handle
             
             if ~isempty(fh_list)
                 [export_file_name, export_found, flag_close] = this.getExportFig(tok);
+                telebot_chat_id = this.getTeleBotChatId(tok);
                 if export_found
                     for fh  = fh_list(:)'
                         file_name = fullfile(Core.getState.getOutDir, 'Images', [fh.UserData.fig_name export_file_name]);
@@ -2803,9 +2859,16 @@ classdef Command_Interpreter < handle
                         if isempty(file_name)
                             file_name = [file_name 'exported_at_' GPS_Time.now.toString('yyyymmdd_HHMMSS')]; %#ok<AGROW>
                         end
-                        file_name = fullfile(file_dir, [file_name file_ext]);
+                        file_path = fullfile(file_dir, [file_name file_ext]);
                         
-                        Core_Utils.exportFig(fh, file_name, Go_Settings.getInstance.getGUIModeExport);
+                        Core_Utils.exportFig(fh, file_path, Go_Settings.getInstance.getGUIModeExport);
+                        if Core.isGReD && ~isempty(telebot_chat_id)
+                            tb = Telebot();
+                            tb.sendImage(telebot_chat_id, file_path, file_name);
+                        else
+                            log = Core.getLogger;
+                            log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send image "%s"', file_name));
+                        end
                         if flag_close
                             delete(fh);
                         else
@@ -3191,6 +3254,23 @@ classdef Command_Interpreter < handle
             end
         end
         
+        function telebot_chat_id = getTeleBotChatId(this, tok)
+            % Extract from a set of tokens the telegram chat id
+            %
+            % INPUT
+            %   tok     list of tokens(parameters) from command line (cell array)
+            %
+            % SYNTAX
+            %   [telebot_chat_id] = this.getTeleBotChatId(tok)
+            telebot_chat_id = ~isempty(regexp([tok{:}], this.PAR_TELEBOT.par, 'match', 'once'));
+            if telebot_chat_id
+                found = true;
+                telebot_chat_id = strrep(regexp([tok{:}], ['(?<=' this.PAR_TELEBOT.par ')(?<=(=))".*"'], 'match', 'once'),'"', '');
+            else
+                telebot_chat_id = '';
+            end
+        end
+        
         function [file_name, found, flag_close] = getExportFig(this, tok)
             % Extract from a set of tokens the file_name of the figure to export
             % and tell if the figure must be closed after export
@@ -3242,7 +3322,7 @@ classdef Command_Interpreter < handle
             end
         end
         
-        function [cmd, err, id] = getCommandValidity(this, str_cmd)
+        function [cmd, err, id, str_cmd] = getCommandValidity(this, str_cmd)
             % Extract from a string the goGPS command found
             %
             % INPUT
@@ -3256,14 +3336,21 @@ classdef Command_Interpreter < handle
             % SYNTAX
             %  [cmd, err, id] = getCommandValidity(this, str_cmd)
             err = 0;
+            virgolette = regexp(str_cmd,'"');
+            if (numel(virgolette) > 1)
+                id = 1;
+                while id < numel(virgolette)
+                    str_cmd(virgolette(id) : virgolette(id+1)) = strrep(str_cmd(virgolette(id) : virgolette(id+1)), ' ', this.SUB_KEY);
+                    id = id + 2;
+                end
+            end
             tok = regexp(str_cmd,'[^ ]*', 'match');
             cmd = [];
             id = [];
             if isempty(tok)
                 err = this.WRN_MPT; % no command found
             else
-                str_cmd = tok{1};
-                id = this.CMD_ID((strcmp(str_cmd, this.VALID_CMD)));
+                id = this.CMD_ID((strcmp(strrep(tok{1}, this.SUB_KEY, ' '), this.VALID_CMD)));
                 if isempty(id)
                     err = this.ERR_UNK; % command unknown
                 else
@@ -3331,12 +3418,13 @@ classdef Command_Interpreter < handle
             loop_type = ''; % contains the list of loop types
             eb_counter = 0;
             for c = 1 : numel(cmd_list)
-                [cmd, err_list(c)] = this.getCommandValidity(cmd_list{c});
+                [cmd, err_list(c), ~, cmd_list{c}] = this.getCommandValidity(cmd_list{c});
                 if (nargout > 2)
                     if err_list(c) == 0 && (cmd.id == this.KEY_FOR.id)
                         % I need to loop
                         eb_counter = eb_counter + 1;
-                        tok = regexp(cmd_list{c},'[^ ]*', 'match'); % get command tokens
+                        
+                        tok = regexp(cmd_list{c}, '[^ ]*', 'match'); % get command tokens
                         [tmp, sss_found] = this.getMatchingSession(tok);
                         if sss_found
                             sss = tmp;

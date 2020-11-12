@@ -1548,7 +1548,7 @@ classdef GUI_Inspector < GUI_Unique_Win
                         end
                     end
                     str = strrep(strCell2Str(cmd_list{1}, 10),'#','%');
-                    this.j_cmd.setText(str);
+                    this.j_cmd.setText(strrep(str, Command_Interpreter.SUB_KEY, ' '));
                 end
             end
             Core.getLogger.addMarkedMessage('The command validity has been checked');
