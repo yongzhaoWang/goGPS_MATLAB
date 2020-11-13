@@ -2696,7 +2696,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         
         function refreshCmdList(this, caller, event)
             persistent cache_txt
-            txt = char(this.j_cmd.getText());
+            txt = strrep(char(this.j_cmd.getText()),'"', '''');
             if isempty(cache_txt) || ~strcmp(cache_txt, txt)
                 cache_txt = txt;
                 if ~isempty(txt)
@@ -2734,15 +2734,15 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             if ~isempty(this.win) && isvalid(this.win) && this.is_gui_ready
                 if this.j_cmd.isValid
                     str = strrep(strCell2Str(Core.getCurrentSettings.exportCmdList(), 10),'#','%');
-                    if ~strcmp(str, char(this.j_cmd.getText()))
-                        this.j_cmd.setText(str);
+                    if ~strcmp(str, strrep(char(this.j_cmd.getText()),'"', ''''))
+                        this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                     end
                 elseif strcmp(this.win.Visible, 'off')
                     this.win.Visible = 'on'; drawnow
                     if this.j_cmd.isValid
                         str = strrep(strCell2Str(Core.getCurrentSettings.exportCmdList(), 10),'#','%');
-                        if ~strcmp(str, char(this.j_cmd.getText()))
-                            this.j_cmd.setText(str);
+                        if ~strcmp(str, strrep(char(this.j_cmd.getText()),'"', ''''))
+                            this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                         end
                     end
                 end

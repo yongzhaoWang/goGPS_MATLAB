@@ -1525,14 +1525,14 @@ classdef Command_Interpreter < handle
             % e.g. "flag_mp = 1" is splitted into 3 parts!
             telebot_chat_id = this.getTeleBotChatId(tok);
             for t = 1 : numel(tok)
-                if tok{t}(1) == '"' % this is the message
+                if tok{t}(1) == '"' || tok{t}(1) == '''' % this is the message
                     if ~isempty(telebot_chat_id)
                         if Core.isGReD
                             tb = Telebot();
-                            tb.sendText(telebot_chat_id, strrep(tok{t}(1:end-1), this.SUB_KEY, ' '), 'md');
+                            tb.sendText(telebot_chat_id, strrep(tok{t}(2:end-1), this.SUB_KEY, ' '), 'md');
                         else
                             log = Core.getLogger;
-                            log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send message "%s"', strrep(tok{t}(1:end-1), this.SUB_KEY, ' ')));
+                            log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send message "%s"', strrep(tok{t}(2:end-1), this.SUB_KEY, ' ')));
                         end
                     end
                 end
@@ -2864,7 +2864,7 @@ classdef Command_Interpreter < handle
                         Core_Utils.exportFig(fh, file_path, Go_Settings.getInstance.getGUIModeExport);
                         if Core.isGReD && ~isempty(telebot_chat_id)
                             tb = Telebot();
-                            tb.sendImage(telebot_chat_id, file_path, file_name);
+                            tb.sendImage(telebot_chat_id, file_path, file_name, '');
                         else
                             log = Core.getLogger;
                             log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send image "%s"', file_name));
@@ -3265,7 +3265,7 @@ classdef Command_Interpreter < handle
             telebot_chat_id = ~isempty(regexp([tok{:}], this.PAR_TELEBOT.par, 'match', 'once'));
             if telebot_chat_id
                 found = true;
-                telebot_chat_id = strrep(regexp([tok{:}], ['(?<=' this.PAR_TELEBOT.par ')(?<=(=))".*"'], 'match', 'once'),'"', '');
+                telebot_chat_id = strrep(regexp([tok{:}], ['(?<=' this.PAR_TELEBOT.par ')(?<=(=))''.*'''], 'match', 'once'),'''', '');
             else
                 telebot_chat_id = '';
             end
@@ -3336,6 +3336,14 @@ classdef Command_Interpreter < handle
             % SYNTAX
             %  [cmd, err, id] = getCommandValidity(this, str_cmd)
             err = 0;
+            virgolette = regexp(str_cmd,'\''');
+            if (numel(virgolette) > 1)
+                id = 1;
+                while id < numel(virgolette)
+                    str_cmd(virgolette(id) : virgolette(id+1)) = strrep(str_cmd(virgolette(id) : virgolette(id+1)), ' ', this.SUB_KEY);
+                    id = id + 2;
+                end
+            end
             virgolette = regexp(str_cmd,'"');
             if (numel(virgolette) > 1)
                 id = 1;

@@ -135,7 +135,7 @@ classdef Command_Settings < Settings_Interface
                 str = '';
             end
             for l = 1 : numel(cmd_list)
-                str = [str sprintf(' %03d %s\n', l, cmd_list{l})];
+                str = [str sprintf(' %03d %s\n', l, strrep(cmd_list{l}, Command_Interpreter.SUB_KEY, ' '))];
             end
             %str = [str 10];
         end
@@ -156,7 +156,7 @@ classdef Command_Settings < Settings_Interface
             % To be moved in the manual in the future
             str_cell = Ini_Manager.toIniStringComment(cmd.getHelp, str_cell);
             for l = 1 : numel(this.cmd_list)
-                str_cell = Ini_Manager.toIniString(sprintf('cmd_%03d', l), this.cmd_list{l}, str_cell);
+                str_cell = Ini_Manager.toIniString(sprintf('cmd_%03d', l), strrep(this.cmd_list{l}, Command_Interpreter.SUB_KEY, ' '), str_cell);
             end
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
         end
@@ -208,7 +208,7 @@ classdef Command_Settings < Settings_Interface
             this.cmd_list = cmd_list;
             % To be moved in the manual in the future            
             for l = 1 : numel(this.cmd_list)
-                str_cell = [str_cell; {sprintf('%s%s', char(32 * ones(1,3 * loop_lev(l))), strtrim(this.cmd_list{l}))}];
+                str_cell = [str_cell; {sprintf('%s%s', char(32 * ones(1,3 * loop_lev(l))), strtrim(strrep(strrep(this.cmd_list{l}, Command_Interpreter.SUB_KEY, ' '), '''', '"')))}];
             end
             str_cell = Ini_Manager.toIniStringNewLine(str_cell);
         end
