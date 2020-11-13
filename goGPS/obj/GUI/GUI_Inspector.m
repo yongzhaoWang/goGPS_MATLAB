@@ -1525,10 +1525,10 @@ classdef GUI_Inspector < GUI_Unique_Win
         function cleaned_cmd_list = checkCommands(this)
             % Check Commands
             cleaned_cmd_list = {};
-            if isempty(char(this.j_cmd.getText))
+            if isempty(strrep(char(this.j_cmd.getText()),'"', ''''))
                 this.j_cmd.setText('% Write here the commands to be executed');
             else
-                cmd_list = textscan(strrep(char(this.j_cmd.getText),'%','#'),'%s','Delimiter', '\n');
+                cmd_list = textscan(strrep(strrep(char(this.j_cmd.getText()),'"', ''''),'%','#'),'%s','Delimiter', '\n');
                 cmd = Core.getCommandInterpreter();
                 if ~isempty(cmd_list)
                     [cleaned_cmd_list, err_list, loop_lev] = cmd.fastCheck(cmd_list{1});
@@ -1548,7 +1548,7 @@ classdef GUI_Inspector < GUI_Unique_Win
                         end
                     end
                     str = strrep(strCell2Str(cmd_list{1}, 10),'#','%');
-                    this.j_cmd.setText(str);
+                    this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                 end
             end
             Core.getLogger.addMarkedMessage('The command validity has been checked');
@@ -1704,7 +1704,7 @@ classdef GUI_Inspector < GUI_Unique_Win
                 
         function onInsertCommand(this, caller, event)
             cmd_list = {};
-            txt = char(this.j_cmd.getText);
+            txt = strrep(char(this.j_cmd.getText()),'"', '''');
             if ~isempty(txt)
                 cmd_list = textscan(strrep(txt, '%', '#'), '%s', 'Delimiter', '\n');
                 cmd_list = cmd_list{1};
@@ -1777,7 +1777,7 @@ classdef GUI_Inspector < GUI_Unique_Win
             end
             cmd_list = [cmd_list; new_cmd];
             str = strrep(strCell2Str(cmd_list, 10),'#','%');
-            this.j_cmd.setText(str);
+            this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
             this.checkCommands();
             
             % If immediate execution is required            

@@ -411,11 +411,13 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             this.is_gui_ready = true;
                             
             this.win.Visible = 'on';
+            drawnow;
+            
             % the update of the command list is repeated here because at
             % least on linux the handle to the java container is not valid
             % till visibility is on
             this.updateCmdList();
-
+            
             % Now that the GUI it is ready I can perform the update of the UI:
             this.updateUI();
             
@@ -2235,7 +2237,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             j_ini.setContentType(codeType);
             % str = strrep(strCell2Str(Core.getCurrentSettings.export(), 10),'#','%');
             % <= This will be performed at the end of GUI initialization
-            str = "Loading ini settings...";
+            str = 'Loading ini settings...';
             j_ini.setText(str);
             % Create the ScrollPanel containing the widget
             j_scroll_settings = com.mathworks.mwswing.MJScrollPane(j_ini);
@@ -2694,7 +2696,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         
         function refreshCmdList(this, caller, event)
             persistent cache_txt
-            txt = char(this.j_cmd.getText());
+            txt = strrep(char(this.j_cmd.getText()),'"', '''');
             if isempty(cache_txt) || ~strcmp(cache_txt, txt)
                 cache_txt = txt;
                 if ~isempty(txt)
@@ -2732,15 +2734,15 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             if ~isempty(this.win) && isvalid(this.win) && this.is_gui_ready
                 if this.j_cmd.isValid
                     str = strrep(strCell2Str(Core.getCurrentSettings.exportCmdList(), 10),'#','%');
-                    if ~strcmp(str, char(this.j_cmd.getText()))
-                        this.j_cmd.setText(str);
+                    if ~strcmp(str, strrep(char(this.j_cmd.getText()),'"', ''''))
+                        this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                     end
                 elseif strcmp(this.win.Visible, 'off')
                     this.win.Visible = 'on'; drawnow
                     if this.j_cmd.isValid
                         str = strrep(strCell2Str(Core.getCurrentSettings.exportCmdList(), 10),'#','%');
-                        if ~strcmp(str, char(this.j_cmd.getText()))
-                            this.j_cmd.setText(str);
+                        if ~strcmp(str, strrep(char(this.j_cmd.getText()),'"', ''''))
+                            this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                         end
                     end
                 end
@@ -3171,7 +3173,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             % dir list, otherwise use existent cache
             % persistent unique_dir dir_list
             
-            if (tot_rec < 1100) || flag_force
+            if (tot_rec < 740) || flag_force
                 % If last check is older than 30 minutes ago force_check
                 % if flag_force is passed to the function it means that a check is not requested because cache hould exist
                 % but if the cache does not exist it is better to force its creation
@@ -3183,6 +3185,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 available_files = [];
                 % Get all the folders in wich the receivers are stored
                 i = 0;
+                dir_path = {};
                 for r = 1 : numel(rec_path)
                     for s = 1 : numel(rec_path{r})
                         i = i + 1;
