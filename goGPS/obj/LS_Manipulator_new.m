@@ -1954,6 +1954,7 @@ classdef LS_Manipulator_new < handle
                         N_amb_amb = N_ap_ap(idx_amb, idx_amb) - BB*N_ap_ap(~idx_amb, idx_amb);
                         B_amb_amb = B_ap_ap(idx_amb) -  BB*B_ap_ap(~idx_amb);
                     else
+                        C_bb = 1;
                         N_amb_amb = N_ap_ap(idx_amb, idx_amb);
                         B_amb_amb = B_ap_ap(idx_amb);
                     end
@@ -1967,7 +1968,9 @@ classdef LS_Manipulator_new < handle
                     clearvars N_ap_ap
                     x_reduced = zeros(size(N,1),1);
                     
-                    phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
+                    if any(~idx_amb)
+                        phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
+                    end
                     phys_par_amb(idx_amb) = ambs;
                     x_reduced(~idx_bias) = phys_par_amb;
                     if any(idx_bias)
