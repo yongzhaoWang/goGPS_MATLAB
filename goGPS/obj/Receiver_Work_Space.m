@@ -537,6 +537,8 @@ classdef Receiver_Work_Space < Receiver_Commons
             if n_files == 0
                 Core.getLogger.addWarning('No RINEX files to import are available');
             else
+                tmp = char(uint8(rin_list.is_valid_list) + 32); tmp(tmp==33) = '*';
+                Core.getLogger.addMessage(sprintf('Checking file presence |%s|', tmp));
                 for i = 1 : n_files
                     tmp = time_stop.getCopy;
                     if tmp > rin_list.last_epoch.getEpoch(i)
