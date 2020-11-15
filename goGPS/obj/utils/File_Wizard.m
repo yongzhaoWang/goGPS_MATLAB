@@ -397,7 +397,7 @@ classdef File_Wizard < handle
                     end
                 end
                 file_tree{2} = status;
-            else % is if a brach go deeper into the branches / leafs
+            else % is if a branch go deeper into the branches / leafs
                 b_name = fieldnames(file_tree);
                 b_name = b_name{1};
                 or_flag = strcmp(b_name, 'or');
