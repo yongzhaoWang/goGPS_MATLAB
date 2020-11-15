@@ -112,6 +112,8 @@ classdef Command_Interpreter < handle
         
         PAR_RATE        % Parameter select rate
         PAR_CUTOFF      % Parameter select cutoff
+        PAR_N_DAYS      % Parameter select n_days
+        PAR_OFFSET      % Parameter select offset
         PAR_SNRTHR      % Parameter select snrthr
         PAR_SS          % Parameter select constellation
         PAR_OTYPE       % Parameter select observation type (i.e. CPLSD)
@@ -285,6 +287,20 @@ classdef Command_Interpreter < handle
             this.PAR_CUTOFF.limits = [0 90];
             this.PAR_CUTOFF.accepted_values = [];
 
+            this.PAR_N_DAYS.name = 'n_days';
+            this.PAR_N_DAYS.descr = '-n=<n_days>        Number of days starting from the current session';
+            this.PAR_N_DAYS.par = '(\-n\=)|(\-\-ndays\=)';
+            this.PAR_N_DAYS.class = 'double';
+            this.PAR_N_DAYS.limits = [0 1e5];
+            this.PAR_N_DAYS.accepted_values = [];
+            
+            this.PAR_OFFSET.name = 'offset';
+            this.PAR_OFFSET.descr = '-o=<offset>        Number of days of offset from the current session (-1 means yesterday)';
+            this.PAR_OFFSET.par = '(\-o\=)|(\-\-offset\=)';
+            this.PAR_OFFSET.class = 'double';
+            this.PAR_OFFSET.limits = [-1e5 1e5];
+            this.PAR_OFFSET.accepted_values = [];
+            
             this.PAR_SNRTHR.name = 'SNR threshold';
             this.PAR_SNRTHR.descr = '-q=<snrthr>        SNR threshold in dbHZ on L1 (e.g. -q=7)';
             this.PAR_SNRTHR.par = '(\-q\=)|(\-\-snrthr\=)'; % (regexp) parameter prefix: -q= | --snrthr= 
@@ -945,7 +961,7 @@ classdef Command_Interpreter < handle
             this.CMD_MPEST.name = {'MPEST', 'multipath_est'};
             this.CMD_MPEST.descr = ['Create a multipath model for the receiver.' new_line 'It requires to previously process the target with the uncombined engine.' new_line 'Uncombined residuals must be in the receiver'];
             this.CMD_MPEST.rec = 'T';
-            this.CMD_MPEST.par = [];
+            this.CMD_MPEST.par = [this.PAR_N_DAYS this.PAR_OFFSET];
 
             this.CMD_KEEP.name = {'KEEP'};
             this.CMD_KEEP.descr = ['Keep in the object the data of a certain constallation' new_line 'at a certain rate'];
@@ -1590,7 +1606,7 @@ classdef Command_Interpreter < handle
             log = Core.getLogger();
             
             [id_trg, found] = this.getMatchingRec(rec, tok, 'T');
-            if ~found
+            if ~found || isempty(rec)
                 log.addWarning('No target found -> nothing to do');
             else
                 [sys_list, sys_found] = this.getConstellation(tok);
@@ -2359,6 +2375,8 @@ classdef Command_Interpreter < handle
             % SYNTAX
             %   this.runMPEst(rec, tok)
             [id_trg, found] = this.getMatchingRec(rec, tok, 'T');
+            [n_days, found_n] = this.getNumericPar(tok, this.PAR_N_DAYS.par);
+            [offset, found_o] = this.getNumericPar(tok, this.PAR_OFFSET.par);
             log = Core.getLogger;
             if ~found
                 log.addWarning('No target found -> nothing to do');
@@ -2369,7 +2387,16 @@ classdef Command_Interpreter < handle
                     log.smallSeparator();
                     log.newLine();
                     
-                    rec(r).updateMultiPath();
+                    if found_n
+                        if found_o
+                            day_span = [n_days offset];
+                        else
+                            day_span = [n_days];
+                        end
+                        rec(r).updateMultiPath(day_span);
+                    else
+                        rec(r).updateMultiPath();
+                    end                    
                 end
             end
         end
@@ -3093,7 +3120,7 @@ classdef Command_Interpreter < handle
     %% METHODS UTILITIES (PRIVATE)
     % ==================================================================================================================================================
     methods (Access = public)
-        function [id_rec, found, matching_rec] = getMatchingRec(this, rec, tok, type)
+        function [id_rec, found] = getMatchingRec(this, rec, tok, type)
             % Extract from a set of tokens the receivers to be used
             %
             % INPUT
@@ -3102,7 +3129,7 @@ classdef Command_Interpreter < handle
             %   type    type of receavers to search for ('T'/'R'/'M')
             %
             % SYNTAX
-            %   [id_rec, found, matching_rec] = this.getMatchingRec(rec, tok, type)
+            %   [id_rec, found] = this.getMatchingRec(rec, tok, type)
             if nargin == 2
                 type = 'T';
             end
@@ -3144,7 +3171,7 @@ classdef Command_Interpreter < handle
             %   tok     list of tokens(parameters) from command line (cell array)
             %
             % SYNTAX
-            %   [id_sss, found] = this.getMatchingKey(tok)            
+            %   [id_sss, found] = this.getMatchingKey(tok, type, n_key)            
             
             id_key = [];
             found = false;
@@ -3221,7 +3248,7 @@ classdef Command_Interpreter < handle
             % SYNTAX
             %   [num, found] = this.getNumericPar(tok, this.PAR_RATE.par)
             found = false;            
-            num = str2double(regexp([tok{:}], ['(?<=' par_regexp ')[+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)*'], 'match', 'once'));
+            num = str2double(regexp([tok{:}], ['(?<=' par_regexp ')[+-]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)*'], 'match', 'once'));
             if ~isempty(num) && ~isnan(num)
                 found = true;
             end
