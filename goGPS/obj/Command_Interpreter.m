@@ -1566,7 +1566,7 @@ classdef Command_Interpreter < handle
                 par = strrep(par, '''', '');
                 if ~isempty(par)                    
                     % Try to modify par into state
-                    value = Ini_Manager.str2value(full_tok{p});
+                    value = Ini_Manager.str2value(strrep(full_tok{p},'''', '"'));
                     err_code = state.set(par, value);
                     if ~err_code
                         Core.getLogger.addStatusOk(sprintf('Parameter %s changed correctly', par));
