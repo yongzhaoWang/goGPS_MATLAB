@@ -2843,9 +2843,18 @@ classdef Command_Interpreter < handle
             if ~isempty(fh_list)
                 [export_file_name, export_found, flag_close] = this.getExportFig(tok);
                 telebot_chat_id = this.getTeleBotChatId(tok);
+                if Core.isGReD && ~isempty(telebot_chat_id)
+                    export_found = true; % If telebot needs to be used, the image must be saved first
+                end
                 if export_found
+                    if flag_close
+                        for fh  = fh_list(:)'
+                            fh.Visible = 'off'; drawnow
+                        end
+                    end
                     for fh  = fh_list(:)'
                         file_name = fullfile(Core.getState.getOutDir, 'Images', [fh.UserData.fig_name export_file_name]);
+                        file_name = strrep(file_name, '${NOW}', GPS_Time.now.toString('yyyymmdd_HHMMSS'));
                         [file_dir, file_name, file_ext] = fileparts(file_name);
                         if ~isempty(file_dir)
                             if ~exist(file_dir, 'file')
@@ -3283,9 +3292,9 @@ classdef Command_Interpreter < handle
             % SYNTAX
             %   [file_name, found, flag_close] = this.getExportFig(tok)
             found = ~isempty(regexp([tok{:}], this.PAR_EXPORT.par, 'match', 'once'));
-            file_name = '${STYPE}_${M_LIST}_${NOW}.png';
+            file_name = '_${NOW}.png'; % '${STYPE}_${M_LIST}_${NOW}.png';
             tmp = strrep(regexp([tok{:}], ['(?<=' this.PAR_EXPORT.par ')(?<=(=))".*"'], 'match', 'once'),'"', '');
-            if ~isempty(file_name)
+            if ~isempty(tmp)
                 file_name = tmp;
             end
             flag_close = ~isempty(regexp([tok{:}], this.PAR_CLOSE.par, 'match', 'once'));            
