@@ -550,7 +550,9 @@ classdef Receiver_Output < Receiver_Commons
             if nargin < 4 || isempty(flag_force)
                 flag_force = false;
             end
-            if flag_force || (flag_ok && (~(rec_work.isEmpty || rec_work.flag_currupted || not((rec_work.isPreProcessed && rec_work.quality_info.s0_ip < 2*1e2 && ~isempty(rec_work.quality_info.s0) && ~isnan(rec_work.quality_info.s0) && ~(rec_work.quality_info.s0 < 1e-10))))))
+            if flag_force || (flag_ok && (~(rec_work.isEmpty || rec_work.flag_currupted ...
+                    || not((rec_work.isPreProcessed && rec_work.quality_info.s0_ip < 2*1e2 ...
+                    && (isempty(rec_work.quality_info.s0) || (~isnan(rec_work.quality_info.s0) && ~(rec_work.quality_info.s0 < 1e-10))) )))))
                 % set the id_sync only to time in between out times
                 %[this.time.length length(this.zwd) rec_work.time.length length(rec_work.zwd)]
                 basic_export = false;

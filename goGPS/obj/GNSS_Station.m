@@ -241,7 +241,6 @@ classdef GNSS_Station < handle
             %   this.clearHandles();
 
             this.log = [];
-            this.state = [];
 
             this.w_bar = [];
         end
@@ -253,7 +252,6 @@ classdef GNSS_Station < handle
             %   this.initHandles
             
             this.log = Core.getLogger();
-            this.state = Core.getState();
 
             this.w_bar = Go_Wait_Bar.getInstance();
         end
@@ -265,7 +263,6 @@ classdef GNSS_Station < handle
             %   this.init();
 
             this.log = Core.getLogger();
-            this.state = Core.getState();
 
             this.w_bar = Go_Wait_Bar.getInstance();
             this.work = Receiver_Work_Space(this);
@@ -455,8 +452,9 @@ classdef GNSS_Station < handle
                 % Realign phases with the past
                 % (useful when work_list(r).state.flag_amb_pass)
                 if realign_ph
+                    state = Core.getState;
                     for r = 1 : n_rec
-                        if work_list(r).state.flag_amb_pass && ~isempty(work_list(r).parent.old_work) && ~work_list(r).parent.old_work.isEmpty
+                        if state.flag_amb_pass && ~isempty(work_list(r).parent.old_work) && ~work_list(r).parent.old_work.isEmpty
                             t_new = round(work_list(r).parent.work.time.getRefTime(work_list(r).parent.old_work.time.first.getMatlabTime) * 1e7) / 1e7;
                             t_old = round(work_list(r).parent.old_work.time.getRefTime(work_list(r).parent.old_work.time.first.getMatlabTime) * 1e7) / 1e7;
                             [~, id_new, id_old] = intersect(t_new, t_old);
@@ -469,7 +467,7 @@ classdef GNSS_Station < handle
                                     [amb_off, old_ph, old_synt] = work_list(r).parent.old_work.getLastRepair(work_list(r).go_id(id_ph(i)), work_list(r).obs_code(id_ph(i),2:3));
                                     if ~isempty(old_ph)
                                         ph_diff = (tmp(id_new, i) / wl(i) - (old_ph(id_old) - old_synt(id_old)));
-                                        amb_off_emp = median(round(ph_diff / work_list(r).state.getCycleSlipThr()), 'omitnan') * work_list(r).state.getCycleSlipThr;
+                                        amb_off_emp = median(round(ph_diff / state.getCycleSlipThr()), 'omitnan') * state.getCycleSlipThr;
                                         if ~isempty(amb_off_emp) && amb_off_emp ~= 0
                                             ph(:,i) = ph(:,i) - amb_off_emp * wl(i);
                                         end
@@ -620,8 +618,7 @@ classdef GNSS_Station < handle
     
     methods
         function exportCRD(sta_list, mode, flag)
-            % fix the position of the receiver into the reference frame
-            % object
+            % Export coordinates as a CRD file
             %
             % INPUT
             %   mode    it could be 'out' (dafault), 'work', ...(future modes)
@@ -657,6 +654,26 @@ classdef GNSS_Station < handle
             log.addStatusOk('Export completed successfully');
         end
         
+        function out_file_name = getCooOutPath(this, out_file_prefix)
+            % Get the path to the coordinatefile
+            %
+            % SYNTAX
+            %   out_file_path = this.getCooOutPath(<out_file_prefix>)
+            
+            state = Core.getState();
+            if nargin < 2 || isempty(out_file_prefix)
+                out_dir = state.getOutDir();
+                out_file_prefix = strrep([state.getPrjName '_'], ' ', '_');
+            end
+            % Add the folder if not present
+            if sum(out_file_prefix == filesep) == 0
+                out_dir = state.getOutDir();
+                out_file_prefix = fullfile(out_dir, out_file_prefix);
+            end
+            out_file_name = strrep([out_file_prefix this.getMarkerName4Ch '.coo'], ' ', '_');
+            
+        end
+        
         function exportAppendedCoo(sta_list, mode, out_file_prefix)
             % Export the current value of the coordinate to a text coordinate file
             % One file per receiver, containing: time_stamp: 
@@ -681,18 +698,12 @@ classdef GNSS_Station < handle
             if ~isempty(sta_list)
                 log = Core.getLogger;
                 for rec = sta_list(:)'
-                    state = Core.getState();
                     now_time = GPS_Time.now();
                     if nargin < 3 || isempty(out_file_prefix)
-                        out_dir = state.getOutDir();
-                        out_file_prefix = strrep([state.getPrjName '_'], ' ', '_');
+                        out_file_name = rec.getCooOutPath();
+                    else
+                        out_file_name = rec.getCooOutPath(out_file_prefix);
                     end
-                    % Add the folder if not present
-                    if sum(out_file_prefix == filesep) == 0
-                        out_dir = state.getOutDir();
-                        out_file_prefix = fullfile(out_dir, out_file_prefix);
-                    end
-                    out_file_name = strrep([out_file_prefix rec.getMarkerName4Ch '.coo'], ' ', '_');
                     
                     log.addMarkedMessage(sprintf('Updating coordinates to %s', out_file_name));
                     try
@@ -968,7 +979,7 @@ classdef GNSS_Station < handle
                     % Get time span of the receiver
                     time = sta_list(r).getTime().getEpoch([1 sta_list(r).getTime().length()]);
                     
-                    fname = fullfile(sta_list(r).state.getOutDir(), sprintf('full_%s-%s-%s-rec%04d%s', sta_list(r).getMarkerName4Ch, time.first.toString('yyyymmdd_HHMMSS'), time.last.toString('yyyymmdd_HHMMSS'), r, '.mat'));
+                    fname = fullfile(Core.getState.getOutDir(), sprintf('full_%s-%s-%s-rec%04d%s', sta_list(r).getMarkerName4Ch, time.first.toString('yyyymmdd_HHMMSS'), time.last.toString('yyyymmdd_HHMMSS'), r, '.mat'));
                     
                     rec = sta_list(r);
                     tmp_work = rec.work; % back-up current out
@@ -3771,48 +3782,73 @@ classdef GNSS_Station < handle
             fh_list = fh;
         end
         
-        function fh_list = showPositionENU(sta_list, flag_add_coo)
+        function fh_list = showPositionENU(sta_list, flag_add_coo, n_obs)
             % Plot East North Up coordinates of the receiver
             %
+            % INPUT:
+            %   sta_list                 list of GNSS_Station objects
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %
             % SYNTAX 
-            %   this.plotPositionENU(flag_add_coo);
+            %   this.plotPositionENU(<flag_add_coo>, <n_obs>);
 
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            if nargin < 3 || isempty(n_obs)
+                n_obs = 0;
+            end
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
             end
             
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             out_list = [sta_list.out];
             if numel(out_list) > 0
-                fh_list = out_list.showPositionENU(flag_add_coo);
+                fh_list = out_list.showPositionENU(flag_add_coo, n_obs);
             end
         end
 
-        function fh_list = showPositionPlanarUp(sta_list, flag_add_coo)
+        function fh_list = showPositionPlanarUp(sta_list, flag_add_coo, n_obs)
             % Plot Planar and Up coordinates of the receiver
             %
+            % INPUT:
+            %   sta_list                 list of GNSS_Station objects
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %
             % SYNTAX 
-            %   this.showPositionPlanarUp(flag_add_coo);
+            %   this.showPositionPlanarUp(<flag_add_coo>, <n_obs>);
             
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            if nargin < 3 || isempty(n_obs)
+                n_obs = 0;
+            end
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
             end
             
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             out_list = [sta_list.out];
-            fh_list = out_list.showPositionPlanarUp(flag_add_coo);
+            fh_list = out_list.showPositionPlanarUp(flag_add_coo, n_obs);
         end
         
-        function fh_list = showPositionXYZ(sta_list, flag_add_coo)
+        function fh_list = showPositionXYZ(sta_list, flag_add_coo, n_obs)
             % Plot X Y Z coordinates of the receiver
-            % SYNTAX this.plotPositionXYZ(flag_one_plot, flag_add_coo);
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            %
+            % INPUT:
+            %   sta_list                 list of GNSS_Station objects
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %
+            % SYNTAX this.plotPositionXYZ(<flag_add_coo>, <n_obs>);
+            if nargin < 3 || isempty(n_obs)
+                n_obs = 0;
+            end
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
             end
             
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             out_list = [sta_list.out];
-            fh_list = out_list.showPositionXYZ(flag_add_coo);
+            fh_list = out_list.showPositionXYZ(flag_add_coo, n_obs);
         end
 
         function fh_list = showPositionSigmas(sta_list)
@@ -6636,20 +6672,26 @@ classdef GNSS_Station < handle
             end
         end
         
-        function fh_list = showBaselineENU(sta_list, baseline_ids, flag_add_coo)
+        function fh_list = showBaselineENU(sta_list, baseline_ids, flag_add_coo, n_obs)
             % Function to plot baseline between 2 or more stations
             %
             % INPUT:
             %   sta_list                 list of GNSS_Station objects
             %   baseline_ids/ref_id      n_baseline x 2 - couple of id in sta_list to be used
-            
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %
             % SYNTAX
-            %   showBaselineENU(sta_list, <baseline_ids = []>)
+            %   sta_list.showBaselineENU(<baseline_ids = []>, <flag_add_coo>, <n_obs>)
+            
             tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
             id2valid = nan(numel(sta_list), 1);
             id2valid(tmp_id) = 1:numel(tmp_id);
             sta_list = sta_list(~sta_list.isEmptyOut_mr);
             out_list = [sta_list.out];
+            if nargin < 4 || isempty(n_obs)
+                n_obs = 0;
+            end
             if nargin < 3
                 flag_add_coo = 0;
             end
@@ -6658,147 +6700,39 @@ classdef GNSS_Station < handle
             else
                 baseline_ids(:) = id2valid(baseline_ids(:));
             end
-            fh_list = out_list.showBaselineENU(baseline_ids, flag_add_coo);
+            fh_list = out_list.showBaselineENU(baseline_ids, flag_add_coo, n_obs);
         end
         
-        function fh_list = showBaselinePlanarUp(sta_list, baseline_ids, plot_relative_variation)
+        function fh_list = showBaselinePlanarUp(sta_list, baseline_ids, flag_add_coo, n_obs)
             % Function to plot baseline between 2 or more stations
             %
             % INPUT:
             %   sta_list                 list of GNSS_Station objects
             %   baseline_ids/ref_id      n_baseline x 2 - couple of id in sta_list to be used
-            %                            if this field is a single element interpret it as reference
-            %   plot_relative_variation  show full baseline dimension / variation wrt the median value
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
             %
             % SYNTAX
-            %   sta_list.showBaselinePlanarUp(<baseline_ids = []>, <plot_relative_variation = true>)
-            %   sta_list.showBaselinePlanarUp(<ref_id>, <plot_relative_variation = true>)
-            
-            fh_list = [];
-            
-            if (nargin < 3) || isempty(plot_relative_variation)
-                plot_relative_variation = true;
+            %   sta_list.showBaselinePlanarUp(<baseline_ids = []>, <flag_add_coo>, <n_obs>)
+            tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            id2valid = nan(numel(sta_list), 1);
+            id2valid(tmp_id) = 1:numel(tmp_id);
+            sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            out_list = [sta_list.out];
+            if nargin < 4 || isempty(n_obs)
+                n_obs = 0;
             end
-
-            if nargin < 2 || isempty(baseline_ids)
-                % remove empty receivers
-                sta_list = sta_list(~sta_list.isEmpty_mr);
-
-                n_rec = numel(sta_list);
-                baseline_ids = GNSS_Station.getBaselineId(n_rec);
+            if nargin < 3
+                flag_add_coo = 0;
             end
-
-            if numel(baseline_ids) == 1
-                n_rec = numel(sta_list);
-                ref_rec = setdiff((1 : n_rec)', baseline_ids);
-                baseline_ids = [baseline_ids * ones(n_rec - 1, 1), ref_rec];
+            if nargin < 2
+                baseline_ids = [ones(numel(out_list)-1,1) (2:numel(out_list))'];
+            else
+                baseline_ids(:) = id2valid(baseline_ids(:));
             end
-            
-            for b = 1 : size(baseline_ids, 1)
-                rec = sta_list(baseline_ids(b, :));
-                if ~isempty(rec(1)) && ~isempty(rec(2))
-                    [enu, time] = rec.getPosENU_mr();
-                    if size(enu, 1) > 1
-                        rec(1).log.addMessage('Plotting positions');
-
-                        % prepare data
-                        baseline = diff(enu, 1, 3);
-                        if plot_relative_variation
-                            baseline = bsxfun(@minus, baseline, median(baseline, 'omitnan')) * 1e3;
-                        end
-                        t = time.getMatlabTime();
-
-                        f = figure('Visible', 'off'); f.Name = sprintf('%03d: BSL ENU %s - %s', f.Number, rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch); f.NumberTitle = 'off';
-                        
-                        fh_list = [fh_list; f]; %#ok<AGROW>
-                        fig_name = sprintf('BSL_EN_U_%s-%s_%s', rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch, rec(1).getTime.first.toString('yyyymmdd_HHMM'));
-                        f.UserData = struct('fig_name', fig_name);
-                       
-                        color_order = handle(gca).ColorOrder;
-
-                        main_vb = uix.VBox('Parent', f, ...
-                            'BackgroundColor', Core_UI.LIGHT_GREY_BG);
-                        
-                        tmp_box1 = uix.VBox('Parent', main_vb, ...
-                            'Padding', 5, ...
-                            'BackgroundColor', Core_UI.LIGHT_GREY_BG);
-                        tmp_box2 = uix.VBox('Parent', main_vb, ...
-                            'Padding', 5, ...
-                            'BackgroundColor', Core_UI.LIGHT_GREY_BG);
-                        main_vb.Heights = [-2 -1];
-                        Core_UI.beautifyFig(f);
-                        f.Visible = 'on';
-                        drawnow
-                        f.Visible = 'off';
-                        ax = axes('Parent', tmp_box1);
-                        
-                        % plot circles
-                        
-                        %plot parallel
-                        max_e = ceil(max(abs(minMax(baseline(:, 1))))/5) * 5;
-                        max_n = ceil(max(abs(minMax(baseline(:, 1))))/5) * 5;
-                        max_r = ceil(sqrt(max_e^2 + max_n^2) / 5) * 5;
-                        
-                        % Plot circles of precision
-                        az_l = 0 : pi/200: 2*pi;
-                        % dashed
-                        id_dashed = serialize(bsxfun(@plus, repmat((0:20:395)',1,5), (1:5)));
-                        az_l(id_dashed) = nan;
-                        decl_s = ((10 : 10 : max_r));
-                        for d = decl_s
-                            x = cos(az_l).*d;
-                            y = sin(az_l).*d;
-                            plot(x,y,'color',[0.6 0.6 0.6], 'LineWidth', 2); hold on;
-                            x = cos(az_l).*(d-5);
-                            y = sin(az_l).*(d-5);
-                            plot(x,y,'color',[0.75 0.75 0.75], 'LineWidth', 2); hold on;
-                        end
-                        
-                        plot(baseline(:, 1), baseline(:, 2), 'o', 'MarkerSize', 4, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
-                        %scatter(baseline(:, 2), baseline(:, 1), 20, t, 'filled'); hold on; colormap(Core_UI.getColor(1:numel(t), numel(t)));
-
-                        axis equal;
-                        if plot_relative_variation
-                            h = ylabel('East [mm]'); h.FontWeight = 'bold';
-                            h = xlabel('North [mm]'); h.FontWeight = 'bold';
-                            ylim(max_r * [-1 1]);
-                            xlim(max_r * [-1 1]);
-                        else
-                            h = ylabel('East [m]'); h.FontWeight = 'bold';
-                            h = ylabel('North [m]'); h.FontWeight = 'bold';
-                        end
-                        grid on;
-                        h = title(sprintf('Baseline %s - %s\nstd E %.2f mm - N %.2f mm\\fontsize{5} \n', rec(1).getMarkerName4Ch, rec(2).getMarkerName4Ch, std(baseline(:, 1:2), 'omitnan')), 'interpreter', 'tex'); h.FontWeight = 'bold'; %h.Units = 'pixels'; h.Position(2) = h.Position(2) + 8; h.Units = 'data';
-                        h.FontWeight = 'bold';
-                        
-                        ax = axes('Parent', tmp_box2);                        
-                        plot(t, baseline(:,3), '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:));
-                        h = title(sprintf('Up std %.2f [mm]', std(baseline(:, 3), 'omitnan')), 'interpreter', 'none'); h.FontWeight = 'bold';
-                        ax(1) = gca();
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end                        
-                        yl = minMax(baseline(:,3));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        setTimeTicks(4);
-                        if plot_relative_variation
-                            h = ylabel('Up [mm]'); h.FontWeight = 'bold';
-                        else
-                            h = ylabel('Up [m]'); h.FontWeight = 'bold';
-                        end
-
-                        grid minor;
-                        Core_UI.beautifyFig(f);
-                        Core_UI.addExportMenu(f);
-                        Core_UI.addBeautifyMenu(f);
-                        f.Visible = 'on';
-                    else
-                        rec(1).log.addMessage('Plotting a single point static position is not yet supported');
-                    end
-                end
-            end
+            fh_list = out_list.showBaselinePlanarUp(baseline_ids, flag_add_coo, n_obs);
         end
-                        
+                                
         function fh_list = showMapDtmWithCloseRaob(sta_list)
             [id_rds, lat, lon, appr_dist] = sta_list.getCloseRaobIdList(Radiosonde.MAX_DIST); % Get RAOB within 150Km
             fh_list = sta_list.showMapDtm([], [], lat, lon);

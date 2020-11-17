@@ -1620,15 +1620,17 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
         end
         
         
-        function  fh_list = showBaselineENU(recs, baseline_ids, flag_add_coo)
+        function  fh_list = showBaselineENU(recs, baseline_ids, flag_add_coo, n_obs)
             % Function to plot baseline between 2 or more stations
             %
             % INPUT:
             %   sta_list                 list of receiver commons objects
             %   baseline_ids/ref_id      n_baseline x 2 - couple of id in sta_list to be used
-            
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %   
             % SYNTAX
-            %   showBaselineENU(sta_list, <baseline_ids = []>)
+            %   showBaselineENU(sta_list, <baseline_ids = []>, flag_add_coo, n_obs))
             if nargin < 2 || isempty(baseline_ids)
                 % remove empty receivers
                 recs = recs(~recs.isEmpty_mr);
@@ -1642,7 +1644,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 ref_rec = setdiff((1 : n_rec)', baseline_ids);
                 baseline_ids = [baseline_ids * ones(n_rec - 1, 1), ref_rec];
             end
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
             end
             
@@ -1651,8 +1653,11 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             
             fh_list =  [];
             for b = 1 : size(baseline_ids, 1)
+                
+                % Select input data
                 flag_ready = false;
                 if flag_add_coo == 0
+                    % Use internal coordinates
                     coo_ref = recs(baseline_ids(b, 1)).getPos();
                     if coo_ref.time.isEmpty
                         coo_ref.setTime(recs(baseline_ids(b, 1)).getPositionTime());
@@ -1662,7 +1667,8 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         coo_trg.setTime(recs(baseline_ids(b, 2)).getPositionTime());
                     end
                     flag_ready = true;
-                else
+                elseif flag_add_coo > 0
+                    % Use additional coordinates
                     if ~isempty(recs(baseline_ids(b, 1)).add_coo) &&  ~isempty(recs(baseline_ids(b, 2)).add_coo)
                         coo_ref = recs(baseline_ids(b, 1)).add_coo(min(numel(recs(baseline_ids(b, 1)).add_coo), flag_add_coo)).coo;
                         coo_trg = recs(baseline_ids(b, 2)).add_coo(min(numel(recs(baseline_ids(b, 2)).add_coo), flag_add_coo)).coo;
@@ -1674,9 +1680,38 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         log.addWarning(sprintf('No additional coordinates are present into %s or %s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch, recs(baseline_ids(b, 2)).parent.getMarkerName4Ch));
                         flag_ready = false;
                     end
+                else
+                    % Use coordinates from coo files
+                    % If they exist
+                    coo_path = recs(baseline_ids(b, 1)).parent.getCooOutPath();
+                    if exist(coo_path, 'file') == 2
+                        coo_ref = Coordinates.importCoo(coo_path);
+                        flag_ready = true;
+                    else
+                        log.addWarning(sprintf('Missing reference coordinate file: "%s"', coo_path));
+                        coo_ref = Coordinates();
+                    end
+                    
+                    coo_path = recs(baseline_ids(b, 2)).parent.getCooOutPath();
+                    if exist(coo_path, 'file') == 2
+                        coo_trg = Coordinates.importCoo(coo_path);
+                    else
+                        log.addWarning(sprintf('Missing target coordinate file: "%s"', coo_path));
+                        coo_trg = Coordinates();
+                        flag_ready = false;
+                    end
                 end
+                
                 if flag_ready
-                    fh = coo_trg.showCoordinatesENU(coo_ref);
+                    flag_ready = coo_ref.length > 1 && coo_trg.length > 1;
+                    if not(flag_ready)
+                        log.addError('This plot is not available without a series of data (more than one point)')
+                    end
+                end
+                
+                % Effective plot of the baseline
+                if flag_ready
+                    fh = coo_trg.showCoordinatesENU(coo_ref, n_obs);
                     figure(fh);
                     ax = subplot(3,1,1);
                     bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
@@ -1689,14 +1724,130 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 end
             end
         end
-        
-        function fh_list = showPositionENU(this, flag_add_coo)
+
+        function  fh_list = showBaselinePlanarUp(recs, baseline_ids, flag_add_coo, n_obs)
+            % Function to plot baseline between 2 or more stations
+            %
+            % INPUT:
+            %   sta_list                 list of receiver commons objects
+            %   baseline_ids/ref_id      n_baseline x 2 - couple of id in sta_list to be used
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %   
+            % SYNTAX
+            %   showBaselineENU(sta_list, <baseline_ids = []>, flag_add_coo, n_obs)
+            if nargin < 2 || isempty(baseline_ids)
+                % remove empty receivers
+                recs = recs(~recs.isEmpty_mr);
+                
+                n_rec = numel(recs);
+                baseline_ids = GNSS_Station.getBaselineId(n_rec);
+            end
+
+            if numel(baseline_ids) == 1
+                n_rec = numel(recs);
+                ref_rec = setdiff((1 : n_rec)', baseline_ids);
+                baseline_ids = [baseline_ids * ones(n_rec - 1, 1), ref_rec];
+            end
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
+                flag_add_coo = 0;
+            end
+            if nargin < 4 || isempty(n_obs)
+                n_obs = 0;
+            end
+           
+            recs = recs(~recs.isEmpty_mr);
+            log = Core.getLogger();
+            
+            fh_list =  [];
+            for b = 1 : size(baseline_ids, 1)
+                
+                % Select input data
+                flag_ready = false;
+                if flag_add_coo == 0
+                    % Use internal coordinates
+                    coo_ref = recs(baseline_ids(b, 1)).getPos();
+                    if coo_ref.time.isEmpty
+                        coo_ref.setTime(recs(baseline_ids(b, 1)).getPositionTime());
+                    end
+                    coo_trg = recs(baseline_ids(b, 2)).getPos();
+                    if coo_trg.time.isEmpty
+                        coo_trg.setTime(recs(baseline_ids(b, 2)).getPositionTime());
+                    end
+                    flag_ready = true;
+                elseif flag_add_coo > 0
+                    % Use additional coordinates
+                    if ~isempty(recs(baseline_ids(b, 1)).add_coo) &&  ~isempty(recs(baseline_ids(b, 2)).add_coo)
+                        coo_ref = recs(baseline_ids(b, 1)).add_coo(min(numel(recs(baseline_ids(b, 1)).add_coo), flag_add_coo)).coo;
+                        coo_trg = recs(baseline_ids(b, 2)).add_coo(min(numel(recs(baseline_ids(b, 2)).add_coo), flag_add_coo)).coo;
+                        flag_ready = true;
+                    else
+                        log.addWarning(sprintf('No additional coordinates are present into %s or %s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch, recs(baseline_ids(b, 2)).parent.getMarkerName4Ch));
+                    end
+                    if isempty(coo_ref) || isempty(coo_trg)
+                        log.addWarning(sprintf('No additional coordinates are present into %s or %s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch, recs(baseline_ids(b, 2)).parent.getMarkerName4Ch));
+                        flag_ready = false;
+                    end
+                else
+                    % Use coordinates from coo files
+                    % If they exist
+                    coo_path = recs(baseline_ids(b, 1)).parent.getCooOutPath();
+                    if exist(coo_path, 'file') == 2
+                        coo_ref = Coordinates.importCoo(coo_path);
+                        flag_ready = true;
+                    else
+                        log.addWarning(sprintf('Missing reference coordinate file: "%s"', coo_path));
+                        coo_ref = Coordinates();
+                    end
+                    
+                    coo_path = recs(baseline_ids(b, 2)).parent.getCooOutPath();
+                    if exist(coo_path, 'file') == 2
+                        coo_trg = Coordinates.importCoo(coo_path);
+                    else
+                        log.addWarning(sprintf('Missing target coordinate file: "%s"', coo_path));
+                        coo_trg = Coordinates();
+                        flag_ready = false;
+                    end
+                end
+                
+                if flag_ready
+                    flag_ready = coo_ref.length > 1 && coo_trg.length > 1;
+                    if not(flag_ready)
+                        log.addError('This plot is not available without a series of data (more than one point)')
+                    end
+                end
+                
+                % Effective plot of the baseline
+                if flag_ready
+                    fh = coo_trg.showCoordinatesPlanarUp(coo_ref, n_obs);
+                    figure(fh);
+                    ax = fh.Children(end).Children(end).Children;
+                    bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
+                    ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
+                    fig_name = sprintf('BSL_EN_U_%s-%s_%s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch,recs(baseline_ids(b, 2)).parent.getMarkerName4Ch, recs(baseline_ids(b, 1)).getTime.first.toString('yyyymmdd_HHMM'));
+                    fh.UserData = struct('fig_name', fig_name);
+                    fh.Name = ['dENU ' bsl_str];
+                    Core_UI.addExportMenu(fh);
+                    fh_list = [fh_list; fh];
+                end
+            end
+        end
+
+        function fh_list = showPositionENU(this, flag_add_coo, n_obs)
             % Plot East North Up coordinates of the receiver
             %
+            % INPUT
+            %   flag_add_coo             use external / internal / high rate cordinates
+            %   n_obs                    use only the last n_obs
+            %
             % SYNTAX 
-            %   this.plotPositionENU(flag_add_coo);
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            %   this.plotPositionENU(flag_add_coo, flag_add_coo, n_obs)
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
+            end
+            
+            if nargin < 3 || isempty(n_obs)
+                n_obs = 0;
             end
             
             log = Core.getLogger();
@@ -1705,7 +1856,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 rec = this(r);
                 if ~isempty(rec)
                     xyz = rec.getPosXYZ();
-                    if size(xyz, 1) > 1 || flag_add_coo > 0
+                    if size(xyz, 1) > 1 || flag_add_coo ~= 0
                         log.addMessage('Plotting positions');
                         
                         if flag_add_coo == 0
@@ -1713,7 +1864,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             if coo.time.isEmpty
                                 coo.setTime(rec.getPositionTime());
                             end
-                        else
+                        elseif flag_add_coo > 0
                             if ~isempty(rec.add_coo)
                                 coo = rec.add_coo(min(numel(rec.add_coo), flag_add_coo)).coo;
                                 if coo.time.isEmpty
@@ -1726,15 +1877,28 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                                     coo.setTime(rec.getPositionTime());
                                 end
                             end
+                        else
+                            % Use coordinates from coo files
+                            % If they exist
+                            coo_path = rec.parent.getCooOutPath();
+                            if exist(coo_path, 'file') == 2
+                                coo = Coordinates.importCoo(coo_path);
+                            else
+                                log.addWarning(sprintf('Missing coordinate file: "%s"', coo_path));
+                                coo = Coordinates();
+                            end
                         end
-                        fh = coo.showPositionENU();    
-                        figure(fh);
-                        ax = subplot(3,1,1);
-                        ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
-                        fig_name = sprintf('ENU_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
-                        fh.UserData = struct('fig_name', fig_name);
-                        Core_UI.addExportMenu(fh);
-                        fh_list = [fh_list; fh]; %#ok<AGROW>
+                        
+                        if not(coo.isEmpty)
+                            fh = coo.showCoordinatesENU([], n_obs);
+                            figure(fh);
+                            ax = subplot(3,1,1);
+                            ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
+                            fig_name = sprintf('ENU_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
+                            fh.UserData = struct('fig_name', fig_name);
+                            Core_UI.addExportMenu(fh);
+                            fh_list = [fh_list; fh]; %#ok<AGROW>
+                        end
                     else
                         Core.getLogger.addWarning(sprintf('%s - Plotting a single point static position is not yet supported', rec.parent.getMarkerName4Ch));
                     end
@@ -1742,13 +1906,17 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             end
         end
 
-        function fh_list = showPositionPlanarUp(this, flag_add_coo)
+        function fh_list = showPositionPlanarUp(this, flag_add_coo, n_obs)
             % Plot East North Up coordinates of the receiver
             %
             % SYNTAX 
             %   this.plotPositionENU(flag_add_coo);            
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
+            end
+            
+            if nargin < 3 || isempty(n_obs)
+                n_obs = 0;
             end
             
             log = Core.getLogger();
@@ -1757,7 +1925,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 rec = this(r);
                 if ~isempty(rec)
                     xyz = rec.getPosXYZ();
-                    if size(xyz, 1) > 1 || flag_add_coo > 0
+                    if size(xyz, 1) > 1 || flag_add_coo ~= 0
                         log.addMessage('Plotting positions');
                         
                         if flag_add_coo == 0
@@ -1765,7 +1933,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             if coo.time.isEmpty
                                 coo.setTime(rec.getPositionTime());
                             end
-                        else
+                        elseif flag_add_coo > 0
                             if ~isempty(rec.add_coo)
                                 coo = rec.add_coo(min(numel(rec.add_coo), flag_add_coo)).coo;
                                 if coo.time.isEmpty
@@ -1778,15 +1946,27 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                                     coo.setTime(rec.getPositionTime());
                                 end
                             end
+                        else
+                            % Use coordinates from coo files
+                            % If they exist
+                            coo_path = rec.parent.getCooOutPath();
+                            if exist(coo_path, 'file') == 2
+                                coo = Coordinates.importCoo(coo_path);
+                            else
+                                log.addWarning(sprintf('Missing coordinate file: "%s"', coo_path));
+                                coo = Coordinates();
+                            end
                         end
-                        fh = coo.showPositionPlanarUp();    
-                        figure(fh);
-                        ax = fh.Children(end).Children(end).Children(1);
-                        ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
-                        fig_name = sprintf('PUP_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
-                        fh.UserData = struct('fig_name', fig_name);
-                        Core_UI.addExportMenu(fh);
-                        fh_list = [fh_list; fh]; %#ok<AGROW>                         
+                        if not(coo.isEmpty)
+                            fh = coo.showCoordinatesPlanarUp([], n_obs);
+                            figure(fh);
+                            ax = fh.Children(end).Children(end).Children(1);
+                            ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
+                            fig_name = sprintf('PUP_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
+                            fh.UserData = struct('fig_name', fig_name);
+                            Core_UI.addExportMenu(fh);
+                            fh_list = [fh_list; fh]; %#ok<AGROW>
+                        end
                     else
                         Core.getLogger.addWarning(sprintf('%s - Plotting a single point static position is not yet supported', rec.parent.getMarkerName4Ch));
                     end
@@ -1794,11 +1974,15 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             end
         end
 
-        function fh_list = showPositionXYZ(this, flag_add_coo)
+        function fh_list = showPositionXYZ(this, flag_add_coo, n_obs)
             % Plot X Y Z coordinates of the receiver (as estimated by initDynamicPositioning
             % SYNTAX this.plotPositionXYZ();            
-            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo > 0)
+            if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
                 flag_add_coo = 0;
+            end
+            
+            if nargin < 3 || isempty(n_obs)
+                n_obs = 0;
             end
             
             log = Core.getLogger();
@@ -1807,7 +1991,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 rec = this(r);
                 if ~isempty(rec)
                     xyz = rec.getPosXYZ();
-                    if size(xyz, 1) > 1 || flag_add_coo > 0
+                    if size(xyz, 1) > 1 || flag_add_coo ~= 0
                         log.addMessage('Plotting positions');
                         
                         if flag_add_coo == 0
@@ -1815,7 +1999,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             if coo.time.isEmpty
                                 coo.setTime(rec.getPositionTime());
                             end
-                        else
+                        elseif flag_add_coo > 0
                             if ~isempty(rec.add_coo)
                                 coo = rec.add_coo(min(numel(rec.add_coo), flag_add_coo)).coo;
                                 if coo.time.isEmpty
@@ -1828,15 +2012,27 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                                     coo.setTime(rec.getPositionTime());
                                 end
                             end
+                        else
+                            % Use coordinates from coo files
+                            % If they exist
+                            coo_path = rec.parent.getCooOutPath();
+                            if exist(coo_path, 'file') == 2
+                                coo = Coordinates.importCoo(coo_path);
+                            else
+                                log.addWarning(sprintf('Missing coordinate file: "%s"', coo_path));
+                                coo = Coordinates();
+                            end
                         end
-                        fh = coo.showPositionXYZ();    
-                        figure(fh);
-                        ax = subplot(3,1,1);
-                        ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
-                        fig_name = sprintf('XYZ_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
-                        fh.UserData = struct('fig_name', fig_name);
-                        Core_UI.addExportMenu(fh);
-                        fh_list = [fh_list; fh]; %#ok<AGROW>                         
+                        if not(coo.isEmpty)
+                            fh = coo.showCoordinatesXYZ([], n_obs);
+                            figure(fh);
+                            ax = subplot(3,1,1);
+                            ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
+                            fig_name = sprintf('XYZ_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
+                            fh.UserData = struct('fig_name', fig_name);
+                            Core_UI.addExportMenu(fh);
+                            fh_list = [fh_list; fh]; %#ok<AGROW>
+                        end
                     else
                         Core.getLogger.addWarning(sprintf('%s - Plotting a single point static position is not yet supported', rec.parent.getMarkerName4Ch));
                     end

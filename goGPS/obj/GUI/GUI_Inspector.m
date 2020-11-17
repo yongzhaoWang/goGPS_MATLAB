@@ -50,7 +50,7 @@ classdef GUI_Inspector < GUI_Unique_Win
         BG_COLOR = Core_UI.DARK_GREY_BG;
         RES_SOURCE = {'Last-session (work-space)', 'Stored outputs'}
         RES_TYPE = {'Pseudo-ranges', 'Carrier Phases'}
-        COO_TYPE = {'Per session coordinates', 'Additional coordinates 1', 'Additional coordinates 2', 'Additional coordinates 3'}
+        COO_TYPE = {'External ".coo" file', 'Per session coordinates', 'Additional coordinates 1', 'Additional coordinates 2', 'Additional coordinates 3'}
     end
     
     %% PROPERTIES GUI
@@ -621,6 +621,7 @@ classdef GUI_Inspector < GUI_Unique_Win
                 'BackgroundColor', cmd_bg);
             Core_UI.insertEmpty(h_but);
             [~, this.coo_type] = Core_UI.insertPopUpLight(h_but, 'Coordinates type', this.COO_TYPE, 'coo_type', [], [120 -1]);
+            this.coo_type.Value = 2;
             h_but.Widths = [5 -1];
             v_but.Heights = [4 -1];
                         
@@ -938,6 +939,7 @@ classdef GUI_Inspector < GUI_Unique_Win
                 'BackgroundColor', cmd_bg);
             Core_UI.insertEmpty(h_but);
             [~, this.bsl_type] = Core_UI.insertPopUpLight(h_but, 'Coordinates type', this.COO_TYPE, 'bsl_type', [], [120 -1]);
+            this.bsl_type.Value = 2;
             h_but.Widths = [5 -1];
             v_but.Heights = [4 -1];
             
@@ -1713,23 +1715,27 @@ classdef GUI_Inspector < GUI_Unique_Win
             new_cmd = strrep(caller.UserData(:), 'T@', this.getTargetList());
             % Manage Coordinate type
             if this.coo_type.Value == 1 % CODE
-                new_cmd = strrep(new_cmd, '(CTYPE)', '0');
+                new_cmd = strrep(new_cmd, '(CTYPE)', '-1');
             elseif this.coo_type.Value == 2 % PR
+                new_cmd = strrep(new_cmd, '(CTYPE)', '0');
+            elseif this.coo_type.Value == 3 % PR
                 new_cmd = strrep(new_cmd, '(CTYPE)', '1');
-            elseif this.coo_type.Value == 3 % PH
-                new_cmd = strrep(new_cmd, '(CTYPE)', '2');
             elseif this.coo_type.Value == 4 % PH
+                new_cmd = strrep(new_cmd, '(CTYPE)', '2');
+            elseif this.coo_type.Value == 5 % PH
                 new_cmd = strrep(new_cmd, '(CTYPE)', '3');
             end
 
             % Manage Baseline Coordinate type
             if this.bsl_type.Value == 1 % CODE
-                new_cmd = strrep(new_cmd, '(BTYPE)', '0');
+                new_cmd = strrep(new_cmd, '(BTYPE)', '-1');
             elseif this.bsl_type.Value == 2 % PR
+                new_cmd = strrep(new_cmd, '(BTYPE)', '0');
+            elseif this.bsl_type.Value == 3 % PR
                 new_cmd = strrep(new_cmd, '(BTYPE)', '1');
-            elseif this.bsl_type.Value == 3 % PH
-                new_cmd = strrep(new_cmd, '(BTYPE)', '2');
             elseif this.bsl_type.Value == 4 % PH
+                new_cmd = strrep(new_cmd, '(BTYPE)', '2');
+            elseif this.bsl_type.Value == 5 % PH
                 new_cmd = strrep(new_cmd, '(BTYPE)', '3');
             end
             
