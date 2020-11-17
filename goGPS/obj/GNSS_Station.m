@@ -5911,8 +5911,12 @@ classdef GNSS_Station < handle
                     sta_list(1).out.log.addWarning([par_name ' and slants have not been computed']);
                 else
                     tlim = [inf -inf];
-                    dlim = [inf -inf];
-
+                    if strcmpi(par_name, 'zwd')
+                        dlim = [-1 50];
+                    else
+                        dlim = [inf -inf];
+                    end
+                    
                     if new_fig
                         cc = Core.getState.getConstellationCollector;
                         drawnow;
@@ -5934,7 +5938,11 @@ classdef GNSS_Station < handle
                     f.UserData = struct('fig_name', fig_name);
                     
                     if new_fig
-                        ax1 = subplot(3,1,1:2);
+                        if sub_plot_nsat
+                            ax1 = subplot(3,1,1:2);
+                        else
+                            ax1 = subplot(3,1,1:3);
+                        end
                     else
                         try
                             ax1 = f.Children(end);
@@ -5965,7 +5973,7 @@ classdef GNSS_Station < handle
                         end
                         mode = '.-';
                         if new_fig
-                            if strcmp(par_name, 'nsat')
+                            if strcmpi(par_name, 'nsat')
                                 Core_Utils.plotSep(t{r}.getMatlabTime(), zero2nan(data_tmp'), '.-', 'LineWidth', 2, 'Color', Core_UI.getColor(r, size(sta_list, 2))); hold on;
                             else
                                 if any(id_ko_tmp)
@@ -5976,7 +5984,7 @@ classdef GNSS_Station < handle
                                 end
                             end
                         else
-                            if strcmp(par_name, 'nsat')
+                            if strcmpi(par_name, 'nsat')
                                 plot(t{r}.getMatlabTime(), zero2nan(data_tmp'), '.-', 'LineWidth', 2); hold on;
                             else
                                 if any(id_ko_tmp)
