@@ -137,6 +137,7 @@ function goGPS(ini_settings, use_gui, flag_online)
         ui = Core_UI.getInstance();
         flag_wait = true;
         ui.openGUI(flag_wait);
+        Core_UI.isHideFig(false);
         
         if ~ui.isGo()
             return

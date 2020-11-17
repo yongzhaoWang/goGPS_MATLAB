@@ -129,6 +129,8 @@ classdef Core_UI < Logos
     properties % Utility Pointers to Singletons
         state
         w_bar
+        
+        hide_fig = false; % Keep figure hidden (for background processing)
     end
     %% PROPERTIES GUI
     % ==================================================================================================================================================
@@ -143,6 +145,7 @@ classdef Core_UI < Logos
             % Core object creator
         end
     end
+    
     %% METHODS UI
     % ==================================================================================================================================================
     methods (Static, Access = public)
@@ -763,6 +766,7 @@ classdef Core_UI < Logos
             fig_handle.Units = unit;
         end
     end
+    
     %% METHODS INIT
     % ==================================================================================================================================================
     methods
@@ -778,6 +782,7 @@ classdef Core_UI < Logos
             this.main = GUI_Edit_Settings.getInstance(flag_wait);
         end
     end
+    
     %% METHODS INSERT
     % ==================================================================================================================================================
     methods (Static)
@@ -1531,7 +1536,8 @@ classdef Core_UI < Logos
             end
             j_edit_box = handle(jScrollPanel.getView,'CallbackProperties');
         end
-    end     
+    end
+    
     %% METHODS ELEMENT MODIFIER
     % ==================================================================================================================================================
     methods (Static)
@@ -1785,6 +1791,7 @@ classdef Core_UI < Logos
             j_edit_box.setText('');% end of content
         end
     end
+    
     %% METHODS EVENTS
     % ==================================================================================================================================================
     methods (Static, Access = public)
@@ -1899,6 +1906,7 @@ classdef Core_UI < Logos
             end
         end        
     end
+    
     %% METHODS getters
     % ==================================================================================================================================================
     methods
@@ -1909,6 +1917,14 @@ classdef Core_UI < Logos
     %% METHODS (static) getters
     % ==================================================================================================================================================
     methods (Static)
+        function hide_fig = isHideFig(status)
+            ui = Core_UI.getInstance();
+            if nargin == 1
+                ui.hide_fig = logical(status(1));
+            end
+            hide_fig = ui.hide_fig;
+        end
+                
         function os_size = getSizeConversion()
             if isunix()
                 if ismac()
@@ -1942,7 +1958,7 @@ classdef Core_UI < Logos
             end
         end
         
-        function logo_ax = insertLogo(container, location)  
+        function logo_ax = insertLogo(container, location)
             % Insert a new axis containing goGPS Logo
             %
             % SYNTAX 

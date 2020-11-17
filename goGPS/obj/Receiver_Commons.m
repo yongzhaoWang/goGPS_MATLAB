@@ -1712,7 +1712,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 % Effective plot of the baseline
                 if flag_ready
                     fh = coo_trg.showCoordinatesENU(coo_ref, n_obs);
-                    figure(fh);
+                    set(0, 'CurrentFigure', fh);
                     ax = subplot(3,1,1);
                     bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
                     ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
@@ -1820,7 +1820,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 % Effective plot of the baseline
                 if flag_ready
                     fh = coo_trg.showCoordinatesPlanarUp(coo_ref, n_obs);
-                    figure(fh);
+                    set(0, 'CurrentFigure', fh);
                     ax = fh.Children(end).Children(end).Children;
                     bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
                     ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
@@ -1891,7 +1891,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         
                         if not(coo.isEmpty)
                             fh = coo.showCoordinatesENU([], n_obs);
-                            figure(fh);
+                            set(0, 'CurrentFigure', fh);
                             ax = subplot(3,1,1);
                             ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
                             fig_name = sprintf('ENU_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
@@ -1959,7 +1959,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         end
                         if not(coo.isEmpty)
                             fh = coo.showCoordinatesPlanarUp([], n_obs);
-                            figure(fh);
+                            set(0, 'CurrentFigure', fh);
                             ax = fh.Children(end).Children(end).Children(1);
                             ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
                             fig_name = sprintf('PUP_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
@@ -2025,7 +2025,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         end
                         if not(coo.isEmpty)
                             fh = coo.showCoordinatesXYZ([], n_obs);
-                            figure(fh);
+                            set(0, 'CurrentFigure', fh);
                             ax = subplot(3,1,1);
                             ax.Title.String{1} = [rec.parent.getMarkerName4Ch  ax.Title.String{1}(9:end)];
                             fig_name = sprintf('XYZ_at%gs_%s_%s', coo.time.getRate, rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));

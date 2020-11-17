@@ -3494,7 +3494,7 @@ classdef GNSS_Station < handle
                 end
             end
             Core_UI.addExportMenu(f); Core_UI.addBeautifyMenu(f); Core_UI.beautifyFig(f);
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
             title(sprintf('Stations position\\fontsize{5} \n'), 'FontSize', 16);
             %xlabel('Longitude [deg]');
             %ylabel('Latitude [deg]');
@@ -4070,7 +4070,7 @@ classdef GNSS_Station < handle
                 end
             end
             Core_UI.addExportMenu(f); Core_UI.addBeautifyMenu(f); Core_UI.beautifyFig(f, 'light');
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
             title(sprintf('Map of GNSS stations\\fontsize{5} \n'), 'FontSize', 16);
             %xlabel('Longitude [deg]');
             %ylabel('Latitude [deg]');
@@ -4244,7 +4244,7 @@ classdef GNSS_Station < handle
             end
             
             Core_UI.addExportMenu(f); Core_UI.addBeautifyMenu(f); Core_UI.beautifyFig(f);
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
             title(sprintf('Map of GNSS stations\\fontsize{5} \n'), 'FontSize', 16);
             %xlabel('Longitude [deg]');
             %ylabel('Latitude [deg]');
@@ -4330,7 +4330,7 @@ classdef GNSS_Station < handle
             xlabel('Longitude [deg]');
             ylabel('Latitude [deg]');
             Core_UI.addExportMenu(fh); Core_UI.addBeautifyMenu(fh); Core_UI.beautifyFig(fh);
-            fh.Visible = 'on'; drawnow;
+            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
             Core.getLogger.addStatusOk('The map is ready ^_^');
         end
 
@@ -5386,7 +5386,7 @@ classdef GNSS_Station < handle
                                         Core_UI.beautifyFig(fh, 'light');
                                         Core_UI.addExportMenu(fh);
                                         Core_UI.addBeautifyMenu(fh);
-                                        fh.Visible = 'on'; drawnow;
+                                        fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                                         title((sprintf('Multipath %smitigation map of %s %s%s [mm]', str_type, rec.getMarkerName4Ch, sys_c, trk)), 'interpreter', 'none'); drawnow
                                         % caxis([-15 15]);
                                     end
@@ -5453,7 +5453,7 @@ classdef GNSS_Station < handle
                     Core_UI.beautifyFig(fh);
                     Core_UI.addExportMenu(fh);
                     Core_UI.addBeautifyMenu(fh);
-                    fh.Visible = 'on'; drawnow;
+                    fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                 end
             end
             
@@ -5602,7 +5602,7 @@ classdef GNSS_Station < handle
                             Core_UI.beautifyFig(gcf);
                             Core_UI.addExportMenu(gcf);             
                             Core_UI.addBeautifyMenu(gcf);             
-                            f.Visible = 'on'; drawnow;
+                            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                         end
                     end
                 end
@@ -5718,7 +5718,7 @@ classdef GNSS_Station < handle
             Core_UI.beautifyFig(f);
             Core_UI.addExportMenu(f);
             Core_UI.addBeautifyMenu(f);
-            f.Visible = 'on'; drawnow;            
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;            
         end
 
         function [tropo_az, tropo_modulus, gne, time_grad, time_grad_ref] = getTropoGradients(sta_list, max_n_val)
@@ -5843,7 +5843,7 @@ classdef GNSS_Station < handle
                 
                 Core_UI.addExportMenu(f);
                 Core_UI.addBeautifyMenu(f);
-                f.Visible = 'on'; drawnow;
+                f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                 
                 colormap(flipud(Cmap.get('RdBu')));
             end
@@ -5920,14 +5920,14 @@ classdef GNSS_Station < handle
                     if new_fig
                         cc = Core.getState.getConstellationCollector;
                         drawnow;
-                        f = figure('Visible', 'off'); f.Name = sprintf('%03d: %s %s', f.Number, par_name, cc.sys_c); f.NumberTitle = 'off';
-                        Core_UI.beautifyFig(f);
+                        fh = figure('Visible', 'off'); fh.Name = sprintf('%03d: %s %s', fh.Number, par_name, cc.sys_c); fh.NumberTitle = 'off';
+                        Core_UI.beautifyFig(fh);
                         drawnow;                        
                     else
-                        f = gcf;
+                        fh = gcf;
                     end
                     
-                    fh_list = [fh_list; f];
+                    fh_list = [fh_list; fh];
                     if numel(sta_list) == 1 
                         % If I have only one receiver use as name the name of the receiver
                         fig_name = sprintf('%s_%s_%s', upper(par_name), sta_list.getMarkerName4Ch, sta_list.getTime.first.toString('yyyymmdd_HHMM'));
@@ -5935,7 +5935,7 @@ classdef GNSS_Station < handle
                         % If I have more than one receiver use as name the name of the project
                         fig_name = sprintf('%s_%s', upper(par_name), strrep(Core.getState.getPrjName,' ', '_'));
                     end
-                    f.UserData = struct('fig_name', fig_name);
+                    fh.UserData = struct('fig_name', fig_name);
                     
                     if new_fig
                         if sub_plot_nsat
@@ -5945,7 +5945,7 @@ classdef GNSS_Station < handle
                         end
                     else
                         try
-                            ax1 = f.Children(end);
+                            ax1 = fh.Children(end);
                             subplot(ax1);
                         catch
                             ax1 = axes();
@@ -5957,12 +5957,12 @@ classdef GNSS_Station < handle
                     else
                         l = legend;
                         old_legend = get(l,'String');
-                        f = gcf();
+                        fh = gcf();
                     end
                     
                     drawnow;
                     e = 0;
-                    figure(f);
+                    set(0, 'CurrentFigure', fh);
                     for r = 1 : numel(sta_list)
                         rec = sta_list(r);
                         data_tmp = tropo{r};
@@ -6026,7 +6026,7 @@ classdef GNSS_Station < handle
                     catch ex
                         % Grrr MATLAB is out of sync
                         Core_Utils.printEx(ex);
-                        delete(f);
+                        delete(fh);
                         keyboard;
                     end
 
@@ -6111,10 +6111,10 @@ classdef GNSS_Station < handle
                         lh.Visible = 'off';
                     end
                 end
-                Core_UI.beautifyFig(f);
-                Core_UI.addExportMenu(f);
-                Core_UI.addBeautifyMenu(f);
-                f.Visible = 'on'; drawnow;
+                Core_UI.beautifyFig(fh);
+                Core_UI.addExportMenu(fh);
+                Core_UI.addBeautifyMenu(fh);
+                fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
             end
         end
 
@@ -6145,7 +6145,7 @@ classdef GNSS_Station < handle
                         
             Core_UI.addExportMenu(f);
             Core_UI.addBeautifyMenu(f);
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
         
         function fh_list = showZwdProcStatus(sta_list)
@@ -6197,7 +6197,7 @@ classdef GNSS_Station < handle
                         
             Core_UI.addExportMenu(f);
             Core_UI.addBeautifyMenu(f);
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
         
         function fh_list = showNSat(sta_list, new_fig)
@@ -6479,7 +6479,7 @@ classdef GNSS_Station < handle
             Core_UI.beautifyFig(gcf);
             Core_UI.addExportMenu(gcf);             
             Core_UI.addBeautifyMenu(gcf);             
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
 
         function fh_list = showZwdVsHeight(sta_list, degree)
@@ -6528,7 +6528,7 @@ classdef GNSS_Station < handle
             Core_UI.beautifyFig(gcf);
             Core_UI.addExportMenu(gcf);             
             Core_UI.addBeautifyMenu(gcf);             
-            f.Visible = 'on'; drawnow;
+            f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
 
         function fh_list = showMedianTropoPar(this, par_name, new_fig)
@@ -6631,7 +6631,7 @@ classdef GNSS_Station < handle
                 Core_UI.beautifyFig(gcf);
                 Core_UI.addExportMenu(gcf);             
                 Core_UI.addBeautifyMenu(gcf);             
-                f.Visible = 'on'; drawnow;
+                f.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
             end
         end
 
@@ -7021,7 +7021,7 @@ classdef GNSS_Station < handle
                             zhd_corr = -Atmosphere.getZenithDelayCorrection(coo2, pr2(idt_gnss), coo1);
                         end
                         pause(0.1);
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);
                         Core_Utils.plotSep(s_time.getMatlabTime, (s_ztd - interp1q(time_corr, zhd_corr, s_time.getMatlabTime)) * 1e2, '.-', 'LineWidth', 2);
 
                         [ztd_diff_sta, ztd_diff_sta_hcorr, id_mean] = deal(nan(time_rds.length, 1));
@@ -7040,7 +7040,7 @@ classdef GNSS_Station < handle
                         log.addMonoMessage(sprintf('%2d)  %6.2f cm    %6.2f cm      %4s  %9.1f   %9.1f   "%s"', s, m_diff_sta_hcorr(s), s_diff_sta_hcorr(s), sta_list(id_rec(s)).getMarkerName4Ch, round(d3d(s) / 1e3), dup(s), rds(s).getName()));
                         
                         pause(0.1);
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);
                         plot(time_rds.getMatlabTime, ztd_rds, '.k', 'MarkerSize', 30, 'LineWidth', 2);
                         plot(time_rds.getMatlabTime, ztd_rds, '.w', 'MarkerSize', 40, 'LineWidth', 2);
                         plot(time_rds.getMatlabTime, ztd_rds, '.k', 'MarkerSize', 30, 'LineWidth', 2);
@@ -7068,7 +7068,7 @@ classdef GNSS_Station < handle
                         Core_UI.beautifyFig(fh);
                         Core_UI.addExportMenu(fh);             
                         Core_UI.addBeautifyMenu(fh);             
-                        fh.Visible = 'on'; drawnow;
+                        fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                         
                         % % Histogram
                         % pause(0.1);
@@ -7084,7 +7084,7 @@ classdef GNSS_Station < handle
                         % Core_UI.beautifyFig(fh);
                         % Core_UI.addExportMenu(fh);             
                         % Core_UI.addBeautifyMenu(fh);             
-                        % fh.Visible = 'on'; drawnow;                        
+                        % fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;                        
                     end                     
                 end
                 
@@ -7129,7 +7129,7 @@ classdef GNSS_Station < handle
                     end
                                         
                     [x, y] = m_ll2xy(data_lon, data_lat);
-                    figure(fh);
+                    set(0, 'CurrentFigure', fh);
                     plot(x(:), y(:),'.k', 'MarkerSize', 5);
                     % Label BG (in background w.r.t. the point)
                     for r = 1 : numel(rds)
@@ -7151,7 +7151,7 @@ classdef GNSS_Station < handle
                             'HorizontalAlignment','left');
                     end
                                         
-                    figure(fh);
+                    set(0, 'CurrentFigure', fh);
                     %col_data = Cmap.getColor(round(data_mean * 10) + n_col, 2 * n_col, 'RdBu');
                     col_data = Cmap.getColor(max(1, round(abs(data_mean) * 10) + 1), n_col + 1, 'linspaced');
                     plot(x, y, 's', ...
@@ -7213,7 +7213,7 @@ classdef GNSS_Station < handle
                         coo_igs = Coordinates.fromXYZ(xyz_igs, coo_gogps.time);
                         if flag_plot && coo_igs.time.length > 1
                             fh = Coordinates.showCompareENU([coo_igs; coo_gogps]);
-                            figure(fh);
+                            set(0, 'CurrentFigure', fh);
                             ax = subplot(3,1,1);
                             ax.Title.String{1} = [sta_list(r).getMarkerName4Ch  ax.Title.String{1}(9:end)];
                             % If I have only one receiver use as name the name of the receiver
@@ -7378,7 +7378,7 @@ classdef GNSS_Station < handle
                 Core_UI.addExportMenu(fh);
                 Core_UI.addBeautifyMenu(fh);
                 Core_UI.beautifyFig(fh, 'dark');
-                fh.Visible = 'on';
+                fh.Visible = iif(Core_UI.isHideFig, 'off', 'on');
             end
         end
         
@@ -7532,7 +7532,7 @@ classdef GNSS_Station < handle
                         coo_igs = Coordinates.fromXYZ(tsc.results.r2.(['r' gnss_list(s).getMarkerName4Ch]).xyz, tsc.results.r2.(['r' gnss_list(s).getMarkerName4Ch]).coord_time);
                         
                         fh = Coordinates.showCompareENU([coo_igs, coo_gogps]);
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);
                         ax = subplot(3,1,1);
                         ax.Title.String{1} = [gnss_list(s).getMarkerName4Ch  ax.Title.String{1}(9:end)];
                         fig_name = sprintf('IGS_TropoCoo_vs_goGPS_%s_%s', gnss_list(s).getMarkerName4Ch, state.getSessionsStart.toString('yyyymmdd_HHMM'));
@@ -7588,7 +7588,7 @@ classdef GNSS_Station < handle
                         Core_UI.beautifyFig(gcf);
                         Core_UI.addExportMenu(gcf);
                         Core_UI.addBeautifyMenu(gcf);
-                        fh.Visible = 'on'; drawnow;
+                        fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                     end
                 end
                 
@@ -7749,7 +7749,7 @@ classdef GNSS_Station < handle
                     Core_UI.addExportMenu(fh);
                     Core_UI.addBeautifyMenu(fh);
                     Core_UI.beautifyFig(fh);
-                    fh.Visible = 'on';
+                    fh.Visible = iif(Core_UI.isHideFig, 'off', 'on');
                     Core.getLogger.addStatusOk('The map is ready ^_^');
                 end
             end

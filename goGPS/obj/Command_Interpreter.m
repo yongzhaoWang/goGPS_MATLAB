@@ -367,7 +367,7 @@ classdef Command_Interpreter < handle
 
             this.PAR_CLOSE.name = 'close';
             this.PAR_CLOSE.descr = '-c                 Close figure after export (valid only if export is present)';
-            this.PAR_CLOSE.par = '(\-c)|(\-\-close)'; % (regexp) parameter prefix: -c --close
+            this.PAR_CLOSE.par = '^((\-c)|(\-\-close))$'; % (regexp) parameter prefix: -c --close
             this.PAR_CLOSE.class = '';
             this.PAR_CLOSE.limits = [];
             this.PAR_CLOSE.accepted_values = [];
@@ -2528,6 +2528,8 @@ classdef Command_Interpreter < handle
             [id_trg, found_trg] = this.getMatchingRec(rec, tok, 'T');
             [sys_list, sys_found] = this.getConstellation(tok);
             show_ok = 0;
+            [export_file_name, export_found, flag_close] = this.getExportFig(tok);
+            Core_UI.isHideFig(flag_close);
             if ~found_trg
                 for t = 1 : numel(tok) % global for all target
                     try
@@ -2841,7 +2843,6 @@ classdef Command_Interpreter < handle
             end
             
             if ~isempty(fh_list)
-                [export_file_name, export_found, flag_close] = this.getExportFig(tok);
                 telebot_chat_id = this.getTeleBotChatId(tok);
                 if Core.isGReD && ~isempty(telebot_chat_id)
                     export_found = true; % If telebot needs to be used, the image must be saved first
@@ -2894,6 +2895,7 @@ classdef Command_Interpreter < handle
             if show_ok == 0
                 Core.getLogger.addError('No valid command show found');
             end
+            Core_UI.isHideFig(false);
         end
         
         function runValidation(this, rec, tok, sss_lev)
@@ -3297,7 +3299,12 @@ classdef Command_Interpreter < handle
             if ~isempty(tmp)
                 file_name = tmp;
             end
-            flag_close = ~isempty(regexp([tok{:}], this.PAR_CLOSE.par, 'match', 'once'));            
+            flag_close = false;
+            for i = 1 : numel(tok)
+                if ~isempty(regexp(tok{i}, this.PAR_CLOSE.par, 'match', 'once'));
+                    flag_close = true;
+                end
+            end
         end
         
         function [sys_list, found] = getConstellation(this, tok)

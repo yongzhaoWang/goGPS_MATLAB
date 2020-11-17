@@ -1716,7 +1716,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     
                     id = 0;
                     if flag_debug
-                        for ff=100:106; figure(ff); clf; end
+                        for ff=100:106; set(0, 'CurrentFigure', ff); clf; end
                     end
                     % for each frequency
                     for f = sort(unique(ss_obs_code(:,2)'))
