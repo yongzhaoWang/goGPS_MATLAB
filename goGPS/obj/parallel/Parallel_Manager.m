@@ -858,9 +858,9 @@ classdef Parallel_Manager < Com_Interface
                                         s0 = tmp.rec(1).work.quality_info.s0_ip;
                                     end
                                     if s0 * 1e2 > 2
-                                        this.log.addWarning(sprintf('s0 = %.3f of the residuals for parallel job %d (session %d)', s0, job_id, tmp.rec.state.getCurSession()));
+                                        this.log.addWarning(sprintf('s0 = %.3f of the residuals for parallel job %d (session %d)', s0, job_id, Core.getState.getCurSession()));
                                     else
-                                        this.log.addMessage(this.log.indent(sprintf('job %d residuals s0 = %.3f from parallel execution (session %d)', job_id, s0, tmp.rec.state.getCurSession), 9));
+                                        this.log.addMessage(this.log.indent(sprintf('job %d residuals s0 = %.3f from parallel execution (session %d)', job_id, s0, Core.getState.getCurSession), 9));
                                     end
                                     if core.rec(job_id).out.isEmpty
                                         % import all
@@ -882,7 +882,6 @@ classdef Parallel_Manager < Com_Interface
                                         core.rec(job_id).out.initHandles();
                                         % relink singletons
                                         core.rec(job_id).log = Core.getLogger;
-                                        core.rec(job_id).state = Core.getState;
                                         % import results in out
                                     else
                                         % import only work
