@@ -693,9 +693,9 @@ classdef Coordinates < Exportable & handle
                                                 
                         subplot(3,1,1);                       
                         e = enu_diff(1:numel(t),1);
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
-                        ax(3) = gca();
+                        ax(3) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -718,9 +718,9 @@ classdef Coordinates < Exportable & handle
                         subplot(3,1,2);
                         
                         n = enu_diff(:,2);                        
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
-                        ax(2) = gca();
+                        ax(2) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -743,9 +743,9 @@ classdef Coordinates < Exportable & handle
                         subplot(3,1,3);
                         
                         up = enu_diff(:,3);                        
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
-                        ax(1) = gca();
+                        ax(1) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -774,7 +774,7 @@ classdef Coordinates < Exportable & handle
             end
             Core_UI.beautifyFig(fh);
             Core_UI.addBeautifyMenu(fh);
-            fh.Visible = 'on'; drawnow;
+            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
         
         function fh = showPositionXYZ(coo_list)
@@ -858,9 +858,9 @@ classdef Coordinates < Exportable & handle
                         
                         subplot(3,1,1);
                         e = xyz_diff(:,1);
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
-                        ax(3) = gca();
+                        ax(3) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -877,9 +877,9 @@ classdef Coordinates < Exportable & handle
                         subplot(3,1,2);
                         
                         n = xyz_diff(:,2);                        
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
-                        ax(2) = gca();
+                        ax(2) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -896,9 +896,9 @@ classdef Coordinates < Exportable & handle
                         subplot(3,1,3);
                         
                         up = xyz_diff(:,3);                        
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
-                        ax(1) = gca();
+                        ax(1) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -921,7 +921,7 @@ classdef Coordinates < Exportable & handle
             end
             Core_UI.beautifyFig(fh);
             Core_UI.addBeautifyMenu(fh);
-            fh.Visible = 'on'; drawnow;
+            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
         
         function fh = showPositionPlanarUp(coo_list)
@@ -1062,11 +1062,11 @@ classdef Coordinates < Exportable & handle
                         h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         h.FontWeight = 'bold';
                         
-                        figure(fh);
+                        set(0, 'CurrentFigure', fh);;
                         ax = axes('Parent', tmp_box2);
                         up = enu_diff(:,3);                        
                         Core_Utils.plotSep(t, up + trend_u(:), '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
-                        ax(1) = gca();
+                        ax(1) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
@@ -1077,7 +1077,7 @@ classdef Coordinates < Exportable & handle
                         drawnow;                        
                         Core_UI.beautifyFig(fh);
                         Core_UI.addBeautifyMenu(fh);
-                        fh.Visible = 'on'; 
+                        fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); 
                     else
                         log.addMessage('Plotting a single point static coordinates is not yet supported');
                     end
