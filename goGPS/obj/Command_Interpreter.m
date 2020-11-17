@@ -2231,7 +2231,7 @@ classdef Command_Interpreter < handle
             else
                 for r = id_trg
                     if ~isempty(rec(r)) && ~(rec(r).isEmptyWork_mr)
-                        if rec(r).state.flag_out_quality
+                        if Core.getState.flag_out_quality
                             id_rem = rec(r).work.obs_code(:,1) ~= 'S';
                             rec(r).work.obs(id_rem, :) = [];
                             rec(r).work.obs_code = [rec(r).work.obs_code(rec(r).work.obs_code(:,1) == 'S', :); ...
