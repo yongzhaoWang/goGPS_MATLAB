@@ -104,7 +104,7 @@ classdef Command_Interpreter < handle
         KEY_PAR         % For each target (parallel) keyword
         KEY_END         % For/Par marker end
         
-        PAR_STR       % Dummy PArameter
+        PAR_STR         % Dummy PArameter
         
         PAR_NEWSET      % Parameter new setting
         
@@ -131,12 +131,12 @@ classdef Command_Interpreter < handle
         
         PAR_R_FIX_APR   % Parameter to indicate to use position as approximate coordinate        
         
-        PAR_M_UNCOMBINED  % Parameter to force the usage if the new uncombined engine
+        PAR_M_UNCOMBINED % Parameter to force the usage if the new uncombined engine
         
-        PAR_M_CLK         % Parameter to estimate clock
-        PAR_M_FREE_NET    % Parameter to let the network free
+        PAR_M_CLK        % Parameter to estimate clock
+        PAR_M_FREE_NET   % Parameter to let the network free
         
-        PAR_M_SEID_PLANE  % Use old approach plane based        
+        PAR_M_SEID_PLANE % Use old approach plane based        
         
         PAR_S_ALL       % show all plots
         PAR_S_DA        % Data availability
@@ -145,11 +145,12 @@ classdef Command_Interpreter < handle
         PAR_S_ENUBSL    % Baseline ENU positions
         PAR_S_PUPBSL    % Baseline EN U positions (Planar Up)
         PAR_S_XYZ       % XYZ positions
+        PAR_N_OBS       % Parameter select n_obs
         PAR_S_MAP       % positions on map GoogleMaps background
         PAR_S_MAPG      % positions on map GoogleMaps background
         PAR_S_MAPDTM    % positions on map on DTM
-        PAR_S_MAPRG      % positions on map GoogleMaps background
-        PAR_S_MAPRDTM    % positions on map on DTM
+        PAR_S_MAPRG     % positions on map GoogleMaps background
+        PAR_S_MAPRDTM   % positions on map on DTM
         PAR_S_MAPL      % positions on map legacy (no borders)
         PAR_S_CK        % Clock Error
         PAR_S_CKW       % Clock Error of the last session
@@ -294,6 +295,13 @@ classdef Command_Interpreter < handle
             this.PAR_N_DAYS.limits = [0 1e5];
             this.PAR_N_DAYS.accepted_values = [];
             
+            this.PAR_N_OBS.name = 'n_obs';
+            this.PAR_N_OBS.descr = '-n=<n_obs>         Number of obs starting from the last session';
+            this.PAR_N_OBS.par = '(\-n\=)|(\-\-ndays\=)';
+            this.PAR_N_OBS.class = 'double';
+            this.PAR_N_OBS.limits = [0 1e5];
+            this.PAR_N_OBS.accepted_values = [];
+            
             this.PAR_OFFSET.name = 'offset';
             this.PAR_OFFSET.descr = '-o=<offset>        Number of days of offset from the current session (-1 means yesterday)';
             this.PAR_OFFSET.par = '(\-o\=)|(\-\-offset\=)';
@@ -323,7 +331,7 @@ classdef Command_Interpreter < handle
             this.PAR_OTYPE.accepted_values = [];
             
             this.PAR_CTYPE.name = 'coordinates type';
-            this.PAR_CTYPE.descr = '-c=<type>          Modifier: change coordinate type (0 coordinates of the sessions, 1 first additional coordinates, 2 second additional coordinates, 3 third additional coordinates)';
+            this.PAR_CTYPE.descr = '-c=<type>          Modifier: change coordinate type (-1 external coo file, 0 coordinates of the sessions, 1 first additional coordinates, 2 second additional coordinates, 3 third additional coordinates)';
             this.PAR_CTYPE.par = '(\-c\=)|(\-\-ctype\=)|(\-C\=)|(\-\-CTYPE\=)'; % (regexp) parameter prefix:  -c= | --ctype= 
             this.PAR_CTYPE.class = 'int';
             this.PAR_CTYPE.limits = [0 3];
@@ -982,7 +990,7 @@ classdef Command_Interpreter < handle
             this.CMD_SHOW.descr = 'Display various plots / images';
             this.CMD_SHOW.rec = 'T';
             this.CMD_SHOW.par = [this.PAR_SS this.PAR_EXPORT this.PAR_TELEBOT this.PAR_CLOSE this.PAR_S_MAP this.PAR_S_MAPL this.PAR_S_MAPG this.PAR_S_MAPDTM this.PAR_S_MAPRG this.PAR_S_MAPRDTM ...
-                this.PAR_S_DA this.PAR_S_ENU this.PAR_S_PUP this.PAR_S_ENUBSL this.PAR_CTYPE...
+                this.PAR_S_DA this.PAR_S_ENU this.PAR_S_PUP this.PAR_S_ENUBSL this.PAR_CTYPE this.PAR_N_OBS...
                 this.PAR_S_PUPBSL this.PAR_S_XYZ this.PAR_S_CKW this.PAR_S_CK ...
                 this.PAR_S_MPN this.PAR_S_SNR this.PAR_S_SNRI ...
                 this.PAR_S_OSTAT this.PAR_S_PSTAT this.PAR_S_OCS this.PAR_S_OCSP this.PAR_S_RES_PR this.PAR_S_RES_PH this.PAR_S_RES_PR_STAT this.PAR_S_RES_PH_STAT this.PAR_S_RES_PR_SKY this.PAR_S_RES_PH_SKY ...
@@ -2612,10 +2620,11 @@ classdef Command_Interpreter < handle
                                 id_ref = intersect(id_ref, id_trg);
                                 any_ok = false;
                                 [coo_type, found] = this.getNumericPar(tok, this.PAR_CTYPE.par);
+                                [n_obs, found_n] = this.getNumericPar(tok, this.PAR_N_OBS.par);
                                 for i = 1 : numel(id_ref)
                                     id_bsl = [id_ref(i) .* ones(numel(id_trg) - 1, 1) serialize(id_trg(id_trg ~= id_ref(i)))];
                                     if ~isempty(id_bsl)
-                                        fh_list = [fh_list; rec.showBaselineENU(id_bsl, coo_type)]; %#ok<AGROW>
+                                        fh_list = [fh_list; rec.showBaselineENU(id_bsl, coo_type, n_obs)]; %#ok<AGROW>
                                         any_ok = true;
                                     end
                                 end
@@ -2630,10 +2639,12 @@ classdef Command_Interpreter < handle
                                 end
                                 id_ref = intersect(id_ref, id_trg);
                                 any_ok = false;
+                                [coo_type, found] = this.getNumericPar(tok, this.PAR_CTYPE.par);
+                                [n_obs, found_n] = this.getNumericPar(tok, this.PAR_N_OBS.par);
                                 for i = 1 : numel(id_ref)
                                     id_bsl = [id_ref(i) .* ones(numel(id_trg) - 1, 1) serialize(id_trg(id_trg ~= id_ref(i)))];
                                     if ~isempty(id_bsl)
-                                        fh_list = [fh_list; rec.showBaselinePlanarUp(id_bsl)]; %#ok<AGROW>
+                                        fh_list = [fh_list; rec.showBaselinePlanarUp(id_bsl, coo_type, n_obs)]; %#ok<AGROW>
                                         any_ok = true;
                                     end
                                 end
@@ -2669,29 +2680,20 @@ classdef Command_Interpreter < handle
                             elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_ENU.par ')*$'], 'once'))
                                 if Core_Utils.isHold; hold off; end
                                 [coo_type, found] = this.getNumericPar(tok, this.PAR_CTYPE.par);
-                                if ~found
-                                    fh_list = [fh_list; trg.showPositionENU()]; %#ok<AGROW>
-                                else
-                                    fh_list = [fh_list; trg.showPositionENU(coo_type)]; %#ok<AGROW>
-                                end
+                                [n_obs, found_n] = this.getNumericPar(tok, this.PAR_N_OBS.par);
+                                fh_list = [fh_list; trg.showPositionENU(coo_type, n_obs)]; %#ok<AGROW>
                                 show_ok  = show_ok + 1;
                             elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_PUP.par ')*$'], 'once'))
                                 if Core_Utils.isHold; hold off; end
                                 [coo_type, found] = this.getNumericPar(tok, this.PAR_CTYPE.par);
-                                if ~found
-                                    fh_list = [fh_list; trg.showPositionPlanarUp()]; %#ok<AGROW>
-                                else
-                                    fh_list = [fh_list; trg.showPositionPlanarUp(coo_type)]; %#ok<AGROW>
-                                end
+                                [n_obs, found_n] = this.getNumericPar(tok, this.PAR_N_OBS.par);
+                                fh_list = [fh_list; trg.showPositionPlanarUp(coo_type, n_obs)]; %#ok<AGROW>
                                 show_ok  = show_ok + 1;
                             elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_XYZ.par ')*$'], 'once'))
                                 if Core_Utils.isHold; hold off; end
                                 [coo_type, found] = this.getNumericPar(tok, this.PAR_CTYPE.par);
-                                if ~found
-                                    fh_list = [fh_list; trg.showPositionXYZ()]; %#ok<AGROW>
-                                else
-                                    fh_list = [fh_list; trg.showPositionXYZ(coo_type)]; %#ok<AGROW>
-                                end
+                                [n_obs, found_n] = this.getNumericPar(tok, this.PAR_N_OBS.par);
+                                fh_list = [fh_list; trg.showPositionXYZ(coo_type, n_obs)]; %#ok<AGROW>
                                 show_ok  = show_ok + 1;
                             elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_CKW.par ')*$'], 'once'))
                                 if Core_Utils.isHold; hold off; end
