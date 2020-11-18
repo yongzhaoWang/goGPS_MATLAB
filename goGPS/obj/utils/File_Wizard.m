@@ -568,6 +568,7 @@ classdef File_Wizard < handle
             % list_preferred_res = list_res(state.getPreferredVMFRes());
             list_preferred_source = list_source(state.getPreferredVMFSource());
             state = Core.getCurrentSettings();
+            res = [];
             if state.mapping_function == 2
                 vers = '1';
                 res = '2.5x2';
@@ -578,25 +579,27 @@ classdef File_Wizard < handle
                 vers = '3';
                 res = '5x5';
             end
-            for j = 1 : length(list_preferred_source)
-                this.vmf_res = res;
-                this.vmf_source = list_preferred_source{j};
-                state.vmf_res = res;
-                state.vmf_source = list_preferred_source{j};
-                status = this.conjureResource(['vmf' vers '_' res '_' list_preferred_source{j}], date_start, date_stop);
-                if status
-                    switch list_preferred_source{j}
-                        case {'op'}
-                            log.addStatusOk('Operational atmospheric loading files are present ^_^');
-                        case {'ei'}
-                            log.addStatusOk('ERA-interim atmospheric loading files are present ^_^');
-                        case {'fc'}
-                            log.addStatusOk('Forecast atmospheric loading files are present ^_^');
+            if not(isempty(res))
+                for j = 1 : length(list_preferred_source)
+                    this.vmf_res = res;
+                    this.vmf_source = list_preferred_source{j};
+                    state.vmf_res = res;
+                    state.vmf_source = list_preferred_source{j};
+                    status = this.conjureResource(['vmf' vers '_' res '_' list_preferred_source{j}], date_start, date_stop);
+                    if status
+                        switch list_preferred_source{j}
+                            case {'op'}
+                                log.addStatusOk('Operational atmospheric loading files are present ^_^');
+                            case {'ei'}
+                                log.addStatusOk('ERA-interim atmospheric loading files are present ^_^');
+                            case {'fc'}
+                                log.addStatusOk('Forecast atmospheric loading files are present ^_^');
+                        end
+                        break
                     end
-                    break
                 end
             end
-  
+            
             if status
                 err_code = 0;
                 log.addStatusOk('Vienna Mapping Function files are present ^_^');
@@ -632,6 +635,7 @@ classdef File_Wizard < handle
             log.addMarkedMessage('Checking ephemerides / clocks / ERPs');
             list_preferred = Core.getState.getPreferredEph();
             err_code = ones(1, length(list_preferred));
+            status = '';
             for i = 1 : length(list_preferred)
                 status = this.conjureResource(list_preferred{i}, date_start, date_stop);
                 err_code(i) = ~status; %#ok<AGROW>
