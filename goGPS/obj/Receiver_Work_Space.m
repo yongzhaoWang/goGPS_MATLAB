@@ -486,11 +486,12 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 this.importAntModel();
             end
-            rf = Core.getReferenceFrame(true);
+            
             if (this.getTime.isEmpty)
                 coo = [];
                 std_pup = [];
             else
+                rf = Core.getReferenceFrame(false);
                 [coo, status, std_pup] = rf.getCoo(this.parent.getMarkerName4Ch, this.getCentralTime);
             end
             if ~isempty(coo)

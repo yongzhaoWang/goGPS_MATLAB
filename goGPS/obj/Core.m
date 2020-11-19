@@ -1059,6 +1059,7 @@ classdef Core < handle
                     end
                 end
             end
+            Core.getReferenceFrame(true); % re-read CRD file every session in case it is changed
         end  
         
         function initSkySession(this, time_lim, flag_no_clock)
