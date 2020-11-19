@@ -1537,7 +1537,12 @@ classdef Command_Interpreter < handle
                     if ~isempty(telebot_chat_id)
                         if Core.isGReD
                             tb = Telebot();
-                            tb.sendText(telebot_chat_id, strrep(tok{t}(2:end-1), this.SUB_KEY, ' '), 'md');
+                            msg = strrep(tok{t}(2:end-1), this.SUB_KEY, ' ');
+                            if any(msg == '$') % a key might be present
+                                msg = strrep(msg, '${SSS_ID}', sprintf('%d/%d', Core.getCurrentSession, Core.getState.getSessionCount));
+                                msg = strrep(msg, '${SSS_INTERVAL}', sprintf('from %s to %s', Core.getState.getSessionLimits.first.toString('yyyy/mm/dd HH:MM'), Core.getState.getSessionLimits.last.toString('yyyy/mm/dd HH:MM')));
+                            end
+                            tb.sendText(telebot_chat_id, msg, 'md');
                         else
                             log = Core.getLogger;
                             log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send message "%s"', strrep(tok{t}(2:end-1), this.SUB_KEY, ' ')));
@@ -3278,7 +3283,7 @@ classdef Command_Interpreter < handle
             telebot_chat_id = ~isempty(regexp([tok{:}], this.PAR_TELEBOT.par, 'match', 'once'));
             if telebot_chat_id
                 found = true;
-                telebot_chat_id = strrep(regexp([tok{:}], ['(?<=' this.PAR_TELEBOT.par ')(?<=(=))''.*'''], 'match', 'once'),'''', '');
+                telebot_chat_id = strrep(regexp(strrep([tok{:}], '"', ''''), ['(?<=' this.PAR_TELEBOT.par ')(?<=(=))''.*'''], 'match', 'once'),'''', '');
             else
                 telebot_chat_id = '';
             end
