@@ -178,7 +178,9 @@ classdef Com_Interface < handle
                     msg_type = [msg_type this.id];
                 end
                 msg_type = strrep(msg_type, '**', '*');
+                warning off; % I don't care if the file does not exist
                 delete(fullfile(this.getComDir, this.working_dir, msg_type));
+                warning on;
             end            
         end
 

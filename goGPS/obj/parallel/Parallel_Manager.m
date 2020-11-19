@@ -334,6 +334,10 @@ classdef Parallel_Manager < Com_Interface
             if nargin < 1 || isempty(flag_send_sky)
                 flag_send_sky = true;
             end
+            warning off;
+            delete(fullfile(this.getComDir, 'rec_list.mat'));
+            delete(fullfile(this.getComDir, 's*.mat'));
+            warning on;
             this.deleteMsg('*'); % delete all master massages
             this.deleteMsg(Go_Slave.MSG_DIE, true);
             this.deleteMsg(Go_Slave.MSG_ACK, true);
@@ -393,10 +397,10 @@ classdef Parallel_Manager < Com_Interface
                     this.sendSkyData();
                 end
                 n_workers = this.waitForWorkerAck(n_workers);
-                this.deleteMsg('*');
+                this.deleteMsg(Parallel_Manager.BRD_SKY);
+                this.deleteMsg(Parallel_Manager.BRD_STATE);
                 this.deleteMsg([Go_Slave.MSG_ACK, Go_Slave.SLAVE_READY_PREFIX, slave_type '*'], true);
                 delete(fullfile(this.getComDir, 's*.mat'));
-                delete(fullfile(this.getComDir, 'rec_list.mat'));
             end
             this.log.addMarkedMessage(sprintf('Parallel init took %.3f seconds', toc(t0)));
         end
@@ -469,6 +473,8 @@ classdef Parallel_Manager < Com_Interface
                 Core.getLogger.addError('All workers has been lost. Stopping parallel execution');
             end
             delete(fullfile(this.getComDir, 'cmd_list.mat'));
+            this.deleteMsg(Parallel_Manager.BRD_REC);
+            delete(fullfile(this.getComDir, 'rec_list.mat'));
             this.sendMsg(this.MSG_RESTART, 'My slaves, your job is done!\n        > There is no time for resting!\n        > Wait for other jobs!');
         end
         
