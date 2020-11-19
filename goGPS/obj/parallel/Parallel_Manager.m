@@ -655,7 +655,7 @@ classdef Parallel_Manager < Com_Interface
             %   this.sendCommandList()
             %
             
-            % Save state on file
+            % Save command list on file
             state = Core.getCurrentSettings();
             save(fullfile(this.getComDir, 'cmd_list.mat'), 'cmd_list');
             this.sendMsg(this.BRD_CMD, 'Broadcast state');
@@ -677,8 +677,9 @@ classdef Parallel_Manager < Com_Interface
             state = Core.getCurrentSettings();
             atx = Core.getAntennaManager();
             cur_session = Core.getCurrentSession();
+            reference_frame = Core.getReferenceFrame();
             [rin_list, met_list] = Core.getRinLists();
-            save(fullfile(this.getComDir, 'state.mat'), 'geoid', 'state', 'atx', 'cur_session', 'rin_list', 'met_list', 'slave_type');
+            save(fullfile(this.getComDir, 'state.mat'), 'geoid', 'state', 'reference_frame', 'atx', 'cur_session', 'rin_list', 'met_list', 'slave_type');
             this.sendMsg(this.BRD_STATE, 'Broadcast state');
         end
         
