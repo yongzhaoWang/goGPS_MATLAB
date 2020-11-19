@@ -43,8 +43,6 @@
 classdef Network < handle
     properties
         rec_list
-        state
-        cc
         net_id           % id of the receiver in core, this uniquely identify the network
         
         common_time      % gps_time
@@ -85,8 +83,6 @@ classdef Network < handle
         end
         
         function init(this)
-            this.state = Core.getState;
-            this.cc = this.state.cc;
             this.log = Core.getLogger();
         end
         
@@ -121,6 +117,7 @@ classdef Network < handle
             %
             % SYNATAX
             %    this. adjustNetwork(id_ref, <coo_rate>, <reduce_iono>)
+            state = Core.getState;
             if nargin < 3
                 coo_rate = [];
             end
@@ -163,7 +160,7 @@ classdef Network < handle
             else
                 % if iono reduction is requested take off single frequency
                 % receiver
-                if this.state.flag_iono_net
+                if state.flag_iono_net
                     r = 1;
                     while (r <= length(this.rec_list))
                         if ~this.rec_list(r).work.isMultiFreq
@@ -196,7 +193,7 @@ classdef Network < handle
                 id_ref = find(lid_ref);
                 this.id_ref = id_ref;
                 
-                if this.state.getReweightNET() < 2
+                if state.getReweightNET() < 2
                     n_clean = 0;
                 else
                     this.log.addMessage(this.log.indent('Network solution performing 4 loops of outlier detection on the residuals'), 2);
@@ -215,8 +212,7 @@ classdef Network < handle
                     else
                         param_selection =  [];
                     end
-                    state = this.state;
-                    if this.state.flag_coo_net
+                    if state.flag_coo_net
                         param_selection = [param_selection;
                             LS_Manipulator_new.PAR_REC_X;
                             LS_Manipulator_new.PAR_REC_Y;
@@ -243,16 +239,16 @@ classdef Network < handle
                      
                     end
                     
-                    %if this.state.flag_iono_net
+                    %if state.flag_iono_net
                     param_selection = [param_selection;
                         ls.PAR_IONO;];
                     %end
-                    if this.state.flag_ztd_net
+                    if state.flag_ztd_net
                         param_selection = [param_selection;
                             ls.PAR_TROPO;];
                     end
                     
-                    if this.state.flag_grad_net
+                    if state.flag_grad_net
                         param_selection = [param_selection;
                             ls.PAR_TROPO_N;
                             ls.PAR_TROPO_E;];
@@ -336,7 +332,7 @@ classdef Network < handle
                     
                     
                     
-                    if ~this.state.flag_iono_net
+                    if ~state.flag_iono_net
                         parametrization.iono(2) = LS_Parametrization.ALL_REC;
                     end
                     if state.tparam_ztd_net == 1
@@ -397,7 +393,7 @@ classdef Network < handle
                         ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization);
                     end
                     
-                    if this.state.flag_free_net_tropo
+                    if state.flag_free_net_tropo
                         ls.free_tropo = true;
                     end
                     
@@ -410,7 +406,7 @@ classdef Network < handle
                         ls.timeRegularization(ls.PAR_SAT_Z, 0.001);
                     end
                     
-                    this.is_tropo_decorrel = this.state.isReferenceTropoEnabled;
+                    this.is_tropo_decorrel = state.isReferenceTropoEnabled;
                     this.is_coo_decorrel = free_net;
                     
                     
@@ -520,7 +516,7 @@ classdef Network < handle
             n_time = this.common_time.length;
             n_rec = length(this.rec_list);
             n_set_coo = length(ls.getCommonPosIdx);
-            if this.state.isSepCooAtBoundaries
+            if Core.getState.isSepCooAtBoundaries
                 n_set_coo = 1;
             end
             this.pos_indexs_tc = ls.pos_indexs_tc;
@@ -537,7 +533,7 @@ classdef Network < handle
             n_time = ls.unique_time.length;
             n_rec = length(this.rec_list);
             n_set_coo = size(unique(ls.time_par(ls.class_par == ls.PAR_REC_X & ls.rec_par == 1,1)),1);
-            if this.state.isSepCooAtBoundaries
+            if Core.getState.isSepCooAtBoundaries
                 n_set_coo = 1;
             end
             this.clock = zeros(n_time, n_rec);
@@ -550,6 +546,7 @@ classdef Network < handle
         
         
         function addAdjValuesNew(this, ls)
+            state = Core.getState;
             n_rec = length(this.rec_list);
             % --- fill the correction values in the network
             rec_vcv = ls.rec_par([find(ls.class_par == ls.PAR_REC_X); find(ls.class_par == ls.PAR_REC_Y); find(ls.class_par == ls.PAR_REC_Z)]);
@@ -564,11 +561,11 @@ classdef Network < handle
                 end
                 % for all paramter take the apriori in the receiver and sum the netwrok estimated correction
                 idx_rec = ls.rec_par == i;
-                [~, int_lim] = this.state.getSessionLimits();
+                [~, int_lim] = state.getSessionLimits();
                 
                 if i > 0 & sum(ls.class_par == ls.PAR_REC_X ) >0 % coordiantes are always zero on first receiver
                     coo_vcv = [];
-                    if this.state.isSepCooAtBoundaries
+                    if Core.getState.isSepCooAtBoundaries
                         % Push coordinates from LS object to rec
                         idx_x = ls.class_par == ls.PAR_REC_X & idx_rec;
                         if sum(idx_x) > 0
@@ -629,8 +626,8 @@ classdef Network < handle
                 time_clk = ls.time_par(idx_clk);
                 [~,idx_time_clk] = ismember(round(time_clk), round(this.common_time.getNominalTime.getRefTime(ls.time_min.getMatlabTime)));
                 this.clock(idx_time_clk,i) = nan2zero(this.clock(idx_time_clk,i)) + clk;
-                state = this.state;
-                if this.state.flag_ztd_net
+                state = Core.getState;
+                if state.flag_ztd_net
                     if state.tparam_ztd_net > 1
                         if state.tparam_ztd_net == 2
                             spline_order = 1;
@@ -640,9 +637,9 @@ classdef Network < handle
                         idx_trp = ls.class_par == LS_Manipulator_new.PAR_TROPO & idx_rec;
                         if sum(idx_trp) > 0
                             tropo = ls.x(idx_trp);
-                            tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp).minimum, this.state.rate_ztd_net)/ this.state.rate_ztd_net;
-                            tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp).minimum)/this.state.rate_ztd_net);
-                            [~,tropo_idx] = ismember(tropo_idx*this.state.rate_ztd_net, ls.getTimePar(idx_trp).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_trp).minimum.getMatlabTime));
+                            tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp).minimum, state.rate_ztd_net)/ state.rate_ztd_net;
+                            tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp).minimum)/state.rate_ztd_net);
+                            [~,tropo_idx] = ismember(tropo_idx*state.rate_ztd_net, ls.getTimePar(idx_trp).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_trp).minimum.getMatlabTime));
                             valid_ep = tropo_idx ~=0 & tropo_idx <= (length(tropo)-3);
                             spline_base = Core_Utils.spline(tropo_dt(valid_ep),spline_order);
                             
@@ -659,7 +656,7 @@ classdef Network < handle
                     end
                 end
                 
-                if this.state.flag_grad_net
+                if state.flag_grad_net
                     if state.tparam_grad_net > 1
                            if state.tparam_grad_net == 2
                             spline_order = 1;
@@ -672,9 +669,9 @@ classdef Network < handle
                         idx_trp_e = ls.class_par == LS_Manipulator_new.PAR_TROPO_N & idx_rec;
                         
                         tropo_e = ls.x(idx_trp_e);
-                        tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp_n).minimum, this.state.rate_grad_net)/ this.state.rate_grad_net;
-                        tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp_n).minimum)/this.state.rate_grad_net);
-                        [~,tropo_idx] = ismember(tropo_idx*this.state.rate_grad_net, ls.getTimePar(idx_trp_n).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_trp_n).minimum.getMatlabTime));
+                        tropo_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp_n).minimum, state.rate_grad_net)/ state.rate_grad_net;
+                        tropo_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_trp_n).minimum)/state.rate_grad_net);
+                        [~,tropo_idx] = ismember(tropo_idx*state.rate_grad_net, ls.getTimePar(idx_trp_n).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_trp_n).minimum.getMatlabTime));
                             valid_ep = tropo_idx ~=0 & tropo_idx <= (length(tropo_n)-3);
                         spline_base = Core_Utils.spline(tropo_dt(valid_ep),spline_order);
                         
@@ -723,6 +720,7 @@ classdef Network < handle
                     this.coo(:,3,i) = S * this.coo(:,3,i);
                 end
                 
+                state = Core.getState;
                 % apply the S transform to the epochwise parameters
                 for i = 1 : n_time
                     id_present = ~isnan(this.clock(i,:));
@@ -739,11 +737,11 @@ classdef Network < handle
                     this.clock(i,:) = (S*this.clock(i,:)')';
                     % ztd
                     if ~this.is_tropo_decorrel
-                        if this.state.flag_ztd_net
+                        if state.flag_ztd_net
                             this.ztd(i,:) = (S*this.ztd(i,:)')';
                         end
                         % gradients
-                        if this.state.flag_grad_net
+                        if state.flag_grad_net
                             this.ztd_gn(i,:) = (S*this.ztd_gn(i,:)')';
                             this.ztd_ge(i,:) = (S*this.ztd_ge(i,:)')';
                         end
@@ -754,6 +752,7 @@ classdef Network < handle
         
         function addAprValues(this)
             n_rec = length(this.rec_list);
+            state = Core.getState;
             % --- add the apriori values
             for i = 1 : n_rec
                 % if all value in the receiver are set to nan initilaize them to zero
@@ -772,14 +771,14 @@ classdef Network < handle
                 clk_rec = this.rec_list(i).work.getDt();
                 this.clock(idx_pos,i) = this.clock(idx_pos,i) + clk_rec(idx_is);
                 
-                if this.state.flag_ztd_net
+                if state.flag_ztd_net
                     ztd_rec = this.rec_list(i).work.getZtd();
                     ztd_rec_apr = this.rec_list(i).work.getZwd() + this.rec_list(i).work.getAprZhd();
                     ztd_rec(ztd_rec == 0) = ztd_rec_apr(ztd_rec == 0);
                     this.ztd(idx_pos,i) = this.ztd(idx_pos,i) + ztd_rec(idx_is);
                 end
                 
-                if this.state.flag_grad_net
+                if state.flag_grad_net
                     [gn_rec, ge_rec] = this.rec_list(i).work.getGradient();
                     
                     this.ztd_gn(idx_pos,i) = this.ztd_gn(idx_pos,i) + gn_rec(idx_is);
@@ -807,6 +806,7 @@ classdef Network < handle
             end
             n_rec = length(this.rec_list);
             cc = Core.getConstellationCollector();
+            state = Core.getState;
             % --- push back the results in the receivers
             for i = 1 : n_rec
                 if sum(ls.param_class == ls.PAR_REC_X | ls.param_class == ls.PAR_REC_Y  | ls.param_class == ls.PAR_REC_Z )>0
@@ -818,13 +818,13 @@ classdef Network < handle
                 idx_pos = idx_pos(idx_pos > 0);
                 clk = this.clock(idx_res_av, i);
                 this.rec_list(i).work.dt(idx_pos) = this.rec_list(i).work.dt(idx_pos) + clk(idx_is) ./ Core_Utils.V_LIGHT;
-                if this.state.flag_ztd_net
+                if state.flag_ztd_net
                     ztd = this.ztd(idx_res_av, i);
                     this.rec_list(i).work.ztd(idx_pos) = ztd(idx_is);
                     %zhd = this.rec_list(i).work.getAprZhd();
                     this.rec_list(i).work.zwd(idx_pos) = ztd(idx_is) - this.rec_list(i).work.apr_zhd(idx_pos);
                 end
-                if this.state.flag_grad_net
+                if state.flag_grad_net
                     gn = this.ztd_gn(idx_res_av, i);
                     this.rec_list(i).work.tgn(idx_pos) = gn(idx_is);
                     ge = this.ztd_ge(idx_res_av, i);
@@ -1066,18 +1066,19 @@ classdef Network < handle
             %
             % SYNTAX:
             % this.exportCrd(this)
+            state = Core.getState;
             if nargin < 2 || isempty(file_prefix)
-                %[~,file_prefix] =fileparts( rec.state.getHomeDir);
-                file_prefix = [this.state.getOutPrefix '_'];
+                %[~,file_prefix] =fileparts( Core.getState.getHomeDir);
+                file_prefix = [state.getOutPrefix '_'];
             end
             if ndims(this.coo) < 3
                 st_time  = this.common_time.first;
                 en_time = this.common_time.last;
                 coo = this.coo;
             else
-                st_time = this.state.getSessionLimits.first;
+                st_time = state.getSessionLimits.first;
                 st_time.addSeconds(this.coo_rate * (size(this.coo,3) - 1));
-                en_time = this.state.getSessionLimits.first;
+                en_time = state.getSessionLimits.first;
                 en_time.addSeconds(this.coo_rate * size(this.coo,3));
                 coo = this.coo(:,:,end);
             end
@@ -1087,7 +1088,7 @@ classdef Network < handle
                 sod_f = '86400';
             end
             [~,doy] = st_time.getDOY();
-            fpath  = sprintf('%s/%s%02d%03d.%05d-%05d.CRD',this.state.getOutDir, file_prefix, st_time.getYY, doy, sod_s,sod_f);
+            fpath  = sprintf('%s/%s%02d%03d.%05d-%05d.CRD', state.getOutDir, file_prefix, st_time.getYY, doy, sod_s,sod_f);
             fid = fopen(fpath,'Wb');
             now_time = GPS_Time.now();
             fprintf(fid, ['                                                                 ' upper(now_time.toString('dd-mmm-yy HH:MM')) ' \n']);
