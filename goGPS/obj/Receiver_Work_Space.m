@@ -10462,29 +10462,31 @@ classdef Receiver_Work_Space < Receiver_Commons
                     this.dt = zeros(this.time.length,1);
                     try
                         this.dt(ls.true_epoch,1) = dt ./ Core_Utils.V_LIGHT;
+                        isb = x(x(:,2) == 4,1);
+                        
+                        id_sync = ls.true_epoch;
+                        this.id_sync = id_sync;
+                        
+                        [sys, prn] = cc.getSysPrn(ls.sat_go_id);
+                        obs_code = ls.obs_code;
+                        rec_coo = Coordinates.fromXYZ(this.getMedianPosXYZ, this.getTime.getCentralTime);
+                        this.sat.res = Residuals();
+                        this.sat.res.import(2, this.time.getEpoch(id_sync), res(id_sync, ls.sat_go_id), prn, obs_code, rec_coo);
+                        
+                        this.quality_info.s0_ip = s0;
+                        this.quality_info.n_epochs = ls.n_epochs;
+                        this.quality_info.n_obs = size(ls.epoch, 1);
+                        this.quality_info.n_out = sum(this.sat.outliers_ph_by_ph(:));
+                        this.quality_info.n_spe = length(sum(~isnan(res)));
+                        this.quality_info.n_sat = length(unique(ls.sat));
+                        this.quality_info.n_sat_max = max(hist(unique(ls.epoch * 1000 + ls.sat), ls.n_epochs));
+                        this.quality_info.fixing_ratio = 0;
+                        this.generateNumSatPerEpochU1(ls ,res, id_sync)
                     catch ex
-                        keyboard
+                        % keyboard
+                        Core_Utils.printEx(ex);
+                        s0 = 0;
                     end
-                    isb = x(x(:,2) == 4,1);
-                    
-                    id_sync = ls.true_epoch;
-                    this.id_sync = id_sync;
-                    
-                    [sys, prn] = cc.getSysPrn(ls.sat_go_id);
-                    obs_code = ls.obs_code;
-                    rec_coo = Coordinates.fromXYZ(this.getMedianPosXYZ, this.getTime.getCentralTime);
-                    this.sat.res = Residuals();
-                    this.sat.res.import(2, this.time.getEpoch(id_sync), res(id_sync, ls.sat_go_id), prn, obs_code, rec_coo);
-                    
-                    this.quality_info.s0_ip = s0;
-                    this.quality_info.n_epochs = ls.n_epochs;
-                    this.quality_info.n_obs = size(ls.epoch, 1);
-                    this.quality_info.n_out = sum(this.sat.outliers_ph_by_ph(:));
-                    this.quality_info.n_spe = length(sum(~isnan(res)));
-                    this.quality_info.n_sat = length(unique(ls.sat));
-                    this.quality_info.n_sat_max = max(hist(unique(ls.epoch * 1000 + ls.sat), ls.n_epochs));
-                    this.quality_info.fixing_ratio = 0;
-                    this.generateNumSatPerEpochU1(ls ,res, id_sync)
                 end
             end
         end
