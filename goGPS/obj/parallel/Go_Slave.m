@@ -272,13 +272,6 @@ classdef Go_Slave < Com_Interface
                         end
                         
                         % Check for receiver to load
-                        msg = this.checkMsg([Parallel_Manager.BRD_REC Parallel_Manager.ID], false, true, false); % CHECK REC PASSING MESSAGE
-                        rec_pass = [];
-                        if ~isempty(msg) && ~isnumeric(msg)
-                            % I received a rec_list to load
-                            rec_pass = load(fullfile(this.getComDir, 'rec_list.mat'), 'rec_info', 'rec_work', 'rec_out', 'id_target', 'id_work', 'id_out');
-                            this.log.addMarkedMessage('Passed receiver have been read');
-                        end
                         this.sendMsg(this.MSG_ACK, sprintf('Everything loaded'));
                         this.sendMsg(this.MSG_BORN, sprintf('Helo! My new name is "%s", gimme work', this.id));
                         
@@ -306,6 +299,13 @@ classdef Go_Slave < Com_Interface
                                     core.rec = rec;
                                     
                                     % Import pass receivers
+                                    msg = this.checkMsg([Parallel_Manager.BRD_REC Parallel_Manager.ID], false, true, false); % CHECK REC PASSING MESSAGE
+                                    rec_pass = [];
+                                    if ~isempty(msg) && ~isnumeric(msg)
+                                        % I received a rec_list to load
+                                        rec_pass = load(fullfile(this.getComDir, 'rec_list.mat'), 'rec_info', 'rec_work', 'rec_out', 'id_target', 'id_work', 'id_out');
+                                        this.log.addMarkedMessage('Passed receiver have been read');
+                                    end
                                     if ~isempty(rec_pass)
                                         for r = 1 : numel(rec_pass.rec_info)
                                             filed_names = fieldnames(rec_pass.rec_info(r));
@@ -370,43 +370,6 @@ classdef Go_Slave < Com_Interface
                                         % Export work
                                         rec = core.rec(req_id);
                                         rec.out = []; % do not want to save out
-                                        
-                                        % Clear what is not needed
-                                        % too risky!!!
-                                        % if not(core.state.flag_out_dt)
-                                        %     rec.work.dt = [];
-                                        %     rec.work.desync = [];
-                                        %     rec.work.dt_ip = [];
-                                        %     rec.work.dt_ph = [];
-                                        %     rec.work.dt_pr = [];
-                                        % end
-                                        % if not(core.state.flag_out_apr_tropo)
-                                        %     rec.work.apr_zhd = [];
-                                        %     rec.work.apr_zwd = [];
-                                        % end
-                                        % if not(core.state.flag_out_ztd)
-                                        %     rec.work.ztd = [];
-                                        % end
-                                        % if not(core.state.flag_out_zwd)
-                                        %     rec.work.zwd = [];
-                                        % end
-                                        % if not(core.state.flag_out_pwv)
-                                        %     rec.work.pwv = [];
-                                        % end
-                                        % if not(core.state.flag_out_tropo_g)
-                                        %     rec.work.tgn = [];
-                                        %     rec.work.tge = [];
-                                        % end
-                                        % if not(core.state.isResOut)
-                                        %     rec.work.sat.res = Residuals();
-                                        % end
-                                        % if not(core.state.flag_out_azel)
-                                        %     rec.work.sat.az = [];
-                                        %     rec.work.sat.el = [];
-                                        % end
-                                        % if not(core.state.flag_out_quality)
-                                        %     rec.work.sat.quality = [];
-                                        % end
                                         
                                         save(fullfile(this.getComDir, sprintf('job%04d_%s.mat', req_id, this.id)), 'rec');
                                     elseif this.isSessionWorker()
