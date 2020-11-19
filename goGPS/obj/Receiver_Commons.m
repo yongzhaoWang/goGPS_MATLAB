@@ -1633,12 +1633,14 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             %   showBaselineENU(sta_list, <baseline_ids = []>, flag_add_coo, n_obs))
             if nargin < 2 || isempty(baseline_ids)
                 % remove empty receivers
-                recs = recs(~recs.isEmpty_mr);
+                if flag_add_coo >= 0
+                    recs = recs(~recs.isEmpty_mr);
+                end
                 
                 n_rec = numel(recs);
                 baseline_ids = GNSS_Station.getBaselineId(n_rec);
             end
-
+            baseline_ids = baseline_ids(~any(isnan(baseline_ids)'),:);
             if numel(baseline_ids) == 1
                 n_rec = numel(recs);
                 ref_rec = setdiff((1 : n_rec)', baseline_ids);
@@ -1648,7 +1650,9 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 flag_add_coo = 0;
             end
             
-            recs = recs(~recs.isEmpty_mr);
+            if flag_add_coo >= 0
+                recs = recs(~recs.isEmpty_mr);
+            end
             log = Core.getLogger();
             
             fh_list =  [];
@@ -1713,13 +1717,19 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 if flag_ready
                     fh = coo_trg.showCoordinatesENU(coo_ref, n_obs);
                     set(0, 'CurrentFigure', fh);
-                    ax = subplot(3,1,1);
+                    ax = fh.Children(end);
+                    set(fh, 'CurrentAxes', ax);
                     bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
-                    ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
+                    if numel(ax.Title.String) == 2
+                        ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
+                    else
+                        ax.Title.String{1} = bsl_str;
+                    end
                     fig_name = sprintf('BSL_EN_U_%s-%s_%s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch,recs(baseline_ids(b, 2)).parent.getMarkerName4Ch, recs(baseline_ids(b, 1)).getTime.first.toString('yyyymmdd_HHMM'));
                     fh.UserData = struct('fig_name', fig_name);
                     fh.Name = ['dENU ' bsl_str];
                     Core_UI.addExportMenu(fh);
+                    drawnow
                     fh_list = [fh_list; fh];
                 end
             end
@@ -1735,7 +1745,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             %   n_obs                    use only the last n_obs
             %   
             % SYNTAX
-            %   showBaselineENU(sta_list, <baseline_ids = []>, flag_add_coo, n_obs)
+            %   showBaselinePlanarUp(sta_list, <baseline_ids = []>, flag_add_coo, n_obs)
             if nargin < 2 || isempty(baseline_ids)
                 % remove empty receivers
                 recs = recs(~recs.isEmpty_mr);
@@ -1822,12 +1832,19 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     fh = coo_trg.showCoordinatesPlanarUp(coo_ref, n_obs);
                     set(0, 'CurrentFigure', fh);
                     ax = fh.Children(end).Children(end).Children;
+                    set(fh, 'CurrentAxes', ax);
                     bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
+                    if numel(ax.Title.String) == 2
+                        ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
+                    else
+                        ax.Title.String{1} = bsl_str;
+                    end
                     ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
                     fig_name = sprintf('BSL_EN_U_%s-%s_%s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch,recs(baseline_ids(b, 2)).parent.getMarkerName4Ch, recs(baseline_ids(b, 1)).getTime.first.toString('yyyymmdd_HHMM'));
                     fh.UserData = struct('fig_name', fig_name);
                     fh.Name = ['dENU ' bsl_str];
                     Core_UI.addExportMenu(fh);
+                    drawnow
                     fh_list = [fh_list; fh];
                 end
             end
