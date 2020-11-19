@@ -1292,9 +1292,11 @@ classdef LS_Manipulator_new < handle
                     wl_par = this.wl_id_par(idx_par);
                     oi_apr = this.obs_codes_id_par(idx_par);
                     u_wl_par = unique(wl_par);
-                    for w = u_wl_par(1)
-                        idx_par_wl = idx_par(wl_par == w);
-                        idx_rm = [idx_rm; uint32(idx_par_wl(1))];
+                    if not(isempty(u_wl_par));
+                        for w = u_wl_par(1)
+                            idx_par_wl = idx_par(wl_par == w);
+                            idx_rm = [idx_rm; uint32(idx_par_wl(1))];
+                        end
                     end
                 end
                 idx_rm_rec_eb = idx_rm(this.class_par(idx_rm) ==  this.PAR_REC_EB);
@@ -1390,9 +1392,11 @@ classdef LS_Manipulator_new < handle
             end
             
             for p = [this.PAR_REC_CLK this.PAR_REC_CLK_PH this.PAR_REC_CLK_PR ]
-                if sum(this.param_class == p) > 0 & sum(this.param_class == this.PAR_SAT_EB) > 0
+                if sum(this.param_class == p) > 0 && sum(this.param_class == this.PAR_SAT_EB) > 0
                     idx_par = find(this.class_par == p & this.rec_par == 1);
-                    idx_rm = [idx_rm; idx_par(1)];
+                    if not(isempty(idx_par))
+                        idx_rm = [idx_rm; idx_par(1)];
+                    end
                 end
             end
             
@@ -1692,446 +1696,447 @@ classdef LS_Manipulator_new < handle
             class_par([this.idx_rd; find(this.out_par)]) = [];
             
             zero_pars = sum(A~=0) == 0;
-            A(:,zero_pars) = [];
-            class_par(zero_pars) = [];
-            
-            
-            rec_par = this.rec_par;
-            rec_par([this.idx_rd; find(this.out_par)]) = [];
-            rec_par(zero_pars) = [];
-            
-            sat_par = this.sat_par;
-            sat_par([this.idx_rd; find(this.out_par)]) = [];
-            sat_par(zero_pars) = [];
-            
-            oid_par = this.obs_codes_id_par;
-            oid_par([this.idx_rd; find(this.out_par)]) = [];
-            oid_par(zero_pars) = [];
-            
-            time_par = this.time_par;
-            time_par([this.idx_rd; find(this.out_par)],:) = [];
-            time_par(zero_pars,:) = [];
-            
-            valid_pars = find(~Core_Utils.ordinal2logical([this.idx_rd; find(this.out_par)],n_par)); % sometimes with splines spme paramter have a zero entry
-            this.idx_rd = [this.idx_rd; valid_pars(zero_pars)];
-            if isempty(this.reweight_obs)
-                this.reweight_obs = ones(size(this.variance_obs));
-            end
-            vars = [1./this.variance_obs(~this.outlier_obs).*this.reweight_obs(~this.outlier_obs); 1./this.variance_pseudo];
-            mean_vars = 1 ; %mean(vars);
-            vars = vars ./ mean_vars;
-            Cyy =  spdiags(vars,0,n_obs - n_out,n_obs - n_out);
-            x_est = zeros(n_par -length(this.idx_rd) - sum(this.out_par),1);
-            y = sparse([this.obs(~this.outlier_obs); zeros(size(this.A_pseudo,1),1)]);
-            
-            Aw = A'*Cyy;
-            
-            clearvars Cyy
-            % ------ reduce for sat clock, rec clock and iono
-            idx_reduce_sat_clk = class_par == this.PAR_SAT_CLK | class_par == this.PAR_SAT_CLK_PH | class_par == this.PAR_SAT_CLK_PR;
-            prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EB);
-            if prm(1) == LS_Parametrization.EP_WISE
-                idx_reduce_sat_clk = idx_reduce_sat_clk | class_par == this.PAR_SAT_EB;
-            end
-            prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EBFR);
-            if prm(1) == LS_Parametrization.EP_WISE
-                idx_reduce_sat_clk = idx_reduce_sat_clk | class_par == this.PAR_SAT_EBFR;
-            end
-            idx_reduce_rec_clk = class_par == this.PAR_REC_CLK | class_par == this.PAR_REC_CLK_PH | class_par == this.PAR_REC_CLK_PR;
-            prm = this.ls_parametrization.getParametrization(this.PAR_REC_EB);
-            if prm(1) == LS_Parametrization.EP_WISE
-                idx_reduce_rec_clk = idx_reduce_rec_clk | class_par == this.PAR_REC_EB;
-                qr_flag = true;
-            end
-            prm = this.ls_parametrization.getParametrization(this.PAR_REC_EBFR);
-            if prm(1) == LS_Parametrization.EP_WISE
-                idx_reduce_rec_clk = idx_reduce_rec_clk | class_par == this.PAR_REC_EBFR;
-                qr_flag = true;
+            if isempty(A)
+                Core.getLogger.addError('Network solution failed, something bad happened :-(');
+            else
+                A(:,zero_pars) = [];
+                class_par(zero_pars) = [];
                 
-            end
-            idx_reduce_iono = class_par == this.PAR_IONO;
-            
-            idx_reduce = idx_reduce_rec_clk | idx_reduce_sat_clk | idx_reduce_iono;
-            
-            N = Aw(~idx_reduce,:)*A(:,~idx_reduce);
-            B = Aw(~idx_reduce,:)*y;
-            
-            max_ep = max(this.ref_time_obs);
-            if this.time_pseudo.length > 0
-                ref_time_obs = [this.ref_time_obs(~this.outlier_obs); this.time_pseudo.getNominalTime(this.rate_obs).getRefTime(this.time_min.getMatlabTime)];
-            else
-                ref_time_obs = [this.ref_time_obs(~this.outlier_obs);];
-            end
-            step = 7200;
-            time_par_red = time_par(idx_reduce,1);
-            
-            iono = sum(idx_reduce_iono) > 0;
-            sat_clk = sum(idx_reduce_sat_clk) > 0;
-            rec_clk = sum(idx_reduce_rec_clk) > 0;
-            
-            cross_terms = {};
-            ii  = 1;
-            for i = 0 : step : floor(max_ep / step) * step % sparse matrix library became very slow in case of big/huge matrix the reduction can be applyed dividing the matrices in parts
-                idx_time_obs = ref_time_obs > (i-this.obs_rate/10) &  ref_time_obs < (i + step -this.obs_rate/10 );
-                idx_time_par_red = time_par_red > (i-this.obs_rate/10)  &  time_par_red < (i + step -this.obs_rate/10 );
-                if any(idx_time_par_red)
-                    idx_red_cycle = idx_reduce;
-                    idx_red_cycle(idx_red_cycle) = idx_time_par_red;
-                    
-                    cp_cycle = class_par(idx_red_cycle);
-                    rp_cycle = rec_par(idx_red_cycle);
-                    
-                    idx_reduce_cycle_sat_clk = cp_cycle == this.PAR_SAT_CLK | cp_cycle == this.PAR_SAT_CLK_PH | cp_cycle == this.PAR_SAT_CLK_PR;
-                    prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EB);
-                    
-                    if prm(1) == LS_Parametrization.EP_WISE
-                        idx_reduce_cycle_sat_clk = idx_reduce_cycle_sat_clk | cp_cycle == this.PAR_SAT_EB;
-                    end
-                    prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EBFR);
-                    if prm(1) == LS_Parametrization.EP_WISE
-                        idx_reduce_cycle_sat_clk = idx_reduce_cycle_sat_clk | cp_cycle == this.PAR_SAT_EBFR;
-                    end
-                    idx_reduce_cycle_rec_clk = cp_cycle == this.PAR_REC_CLK | cp_cycle == this.PAR_REC_CLK_PH | cp_cycle == this.PAR_REC_CLK_PR;
-                    prm = this.ls_parametrization.getParametrization(this.PAR_REC_EB);
-                    if prm(1) == LS_Parametrization.EP_WISE
-                        idx_reduce_cycle_rec_clk = idx_reduce_cycle_rec_clk | cp_cycle == this.PAR_REC_EB;
-                        qr_flag = true;
-                    end
-                    prm = this.ls_parametrization.getParametrization(this.PAR_REC_EBFR);
-                    if prm(1) == LS_Parametrization.EP_WISE
-                        idx_reduce_cycle_rec_clk = idx_reduce_cycle_rec_clk | cp_cycle == this.PAR_REC_EBFR;
-                        qr_flag = true;
-                        
-                    end
-                    
-                    idx_reduce_cycle_iono = cp_cycle == this.PAR_IONO;
-                    
-                    
-                    
-                    
-                    Awr_t = Aw( idx_red_cycle, idx_time_obs);
-                    Ar_t = A(idx_time_obs, idx_red_cycle);
-                    Ae_t = A(idx_time_obs, ~idx_reduce);
-                    y_t = y(idx_time_obs);
-                    
-                    Nr_t = Awr_t*Ar_t;
-                    Br_t = Awr_t*y_t;
-                    
-                    Ner_t = Awr_t*Ae_t;
-                    
-                    if iono
-                        n_iono = sum(idx_reduce_cycle_iono);
-                        diagonal = 1./diag(Nr_t(idx_reduce_cycle_iono, idx_reduce_cycle_iono));
-                        diagonal(diagonal == Inf) = 0;
-                        iIono = spinv(Nr_t(idx_reduce_cycle_iono, idx_reduce_cycle_iono),[],'qr');
-                        Nx_iono = Ner_t(idx_reduce_cycle_iono, :); % cross term reduce iono
-                        Nx_iono_cycle = Nr_t(~idx_reduce_cycle_iono, idx_reduce_cycle_iono); % cross term reduce iono
-                        Nt = Nx_iono' * iIono;
-                        Nt_cycle = Nx_iono_cycle * iIono;
-                        N = N - Nt * Nx_iono;
-                        Nr_t = Nr_t(~idx_reduce_cycle_iono,~idx_reduce_cycle_iono) - Nt_cycle * Nr_t(idx_reduce_cycle_iono,~idx_reduce_cycle_iono);
-                        Ner_t(~idx_reduce_cycle_iono, :) = Ner_t(~idx_reduce_cycle_iono, :) - Nt_cycle*Nx_iono;
-                        Ner_t(idx_reduce_cycle_iono, :) = [];
-                        
-                        B_iono = Br_t(idx_reduce_cycle_iono);
-                        B = B - Nt * B_iono;
-                        Br_t = Br_t(~idx_reduce_cycle_iono) - Nt_cycle*B_iono;
-                        
-                        cross_terms_t{1} = {iIono B_iono [Nx_iono Nx_iono_cycle'] idx_reduce_cycle_iono};
-                    end
-                    
-                    if sat_clk
-                        i_sat_clk_tmp = idx_reduce_cycle_sat_clk(~idx_reduce_cycle_iono);
-                        n_sat_clk = sum(i_sat_clk_tmp);
-                        cp = cp_cycle( ~idx_reduce_cycle_iono);
-                        idx_1 = cp(i_sat_clk_tmp) == this.PAR_SAT_CLK | cp(i_sat_clk_tmp) == this.PAR_SAT_CLK_PR;
-                        idx_2 = cp(i_sat_clk_tmp) == this.PAR_SAT_CLK_PH;
-                        if true; %sum(idx_2) > 0 & iono
-                            iSatClk = spinv(Nr_t(i_sat_clk_tmp,i_sat_clk_tmp),[],'qr');%Core_Utils.inverseByPartsDiag(Nr_t(i_sat_clk_tmp,i_sat_clk_tmp),idx_1, idx_2);%inv(N(i_sat_clk_tmp,i_sat_clk_tmp))  ;%;%spdiags(1./diag(N(i_sat_clk_tmp,i_sat_clk_tmp)),0,n_clk_sat,n_clk_sat);
-                        else
-                            diagonal = 1./diag(Nr_t(i_sat_clk_tmp, i_sat_clk_tmp));
-                            diagonal(diagonal == Inf) = 0;
-                            iSatClk = spdiags(diagonal,0,n_sat_clk,n_sat_clk);
-                        end
-                        Nx_satclk = Ner_t(i_sat_clk_tmp, :);
-                        Nx_satclk_cyle = Nr_t(~i_sat_clk_tmp, i_sat_clk_tmp);
-                        idx_full = sum(Nx_satclk~=0,1) >0;
-                        Nt = Nx_satclk(:,idx_full)' * iSatClk;
-                        Nt_cycle = Nx_satclk_cyle * iSatClk;
-                        
-                        N(idx_full,idx_full) = N(idx_full,idx_full) - sparse(full(Nt) * full(Nx_satclk(:,idx_full)));
-                        Nr_t = Nr_t(~i_sat_clk_tmp,~i_sat_clk_tmp) - Nt_cycle * Nr_t(i_sat_clk_tmp, ~i_sat_clk_tmp);
-                        Ner_t(~i_sat_clk_tmp, :) = Ner_t(~i_sat_clk_tmp, :) - Nt_cycle*Nx_satclk;
-                        Ner_t(i_sat_clk_tmp, :) = [];
-                        
-                        
-                        B_satclk =  Br_t(i_sat_clk_tmp);
-                        B(idx_full) = B(idx_full) - Nt * B_satclk;
-                        Br_t = Br_t(~i_sat_clk_tmp) - Nt_cycle * B_satclk;
-                        
-                        cross_terms_t{2} = {iSatClk B_satclk [Nx_satclk Nx_satclk_cyle'] idx_reduce_cycle_sat_clk};
-                        
-                    end
-                    
-                    if rec_clk
-                        i_rec_clk_tmp = idx_reduce_cycle_rec_clk(~idx_reduce_cycle_iono & ~idx_reduce_cycle_sat_clk);
-                        n_rec_clk = sum(i_rec_clk_tmp);
-                        
-                        iRecClk = spinv(Nr_t(i_rec_clk_tmp,i_rec_clk_tmp),[],'qr');
-                        
-                        Nx_recclk = Ner_t(i_rec_clk_tmp, :);
-                        idx_full = sum(Nx_recclk~=0,1) >0;
-                        
-                        Nt = Nx_recclk(:,idx_full)' * iRecClk;
-                        N(idx_full,idx_full) = N(idx_full,idx_full) - sparse(full(Nt) * full(Nx_recclk(:,idx_full)));
-                        
-                        B_recclk = Br_t(i_rec_clk_tmp);
-                        B(idx_full) = B(idx_full) - Nt * B_recclk;
-                        
-                        cross_terms_t{3} = {iRecClk B_recclk Nx_recclk idx_reduce_cycle_rec_clk};
-                        cross_terms{ii} = {cross_terms_t idx_red_cycle};
-                    end
-                    
-                    ii = ii +1;
+                
+                rec_par = this.rec_par;
+                rec_par([this.idx_rd; find(this.out_par)]) = [];
+                rec_par(zero_pars) = [];
+                
+                sat_par = this.sat_par;
+                sat_par([this.idx_rd; find(this.out_par)]) = [];
+                sat_par(zero_pars) = [];
+                
+                oid_par = this.obs_codes_id_par;
+                oid_par([this.idx_rd; find(this.out_par)]) = [];
+                oid_par(zero_pars) = [];
+                
+                time_par = this.time_par;
+                time_par([this.idx_rd; find(this.out_par)],:) = [];
+                time_par(zero_pars,:) = [];
+                
+                valid_pars = find(~Core_Utils.ordinal2logical([this.idx_rd; find(this.out_par)],n_par)); % sometimes with splines spme paramter have a zero entry
+                this.idx_rd = [this.idx_rd; valid_pars(zero_pars)];
+                if isempty(this.reweight_obs)
+                    this.reweight_obs = ones(size(this.variance_obs));
                 end
-            end
-            clearvars Aw Ae_t Ar_t Awr_t Nt Nt_cycle
-            clearvars cross_terms_t idx_red_cycle
-            clearvars iRecClk B_recclk Nx_recclk idx_reduce_cycle_rec_clk
-            clearvars iSatClk B_satclk Nx_satclk Nx_satclk_cyle idx_reduce_cycle_sat_clk
-            clearvars iIono B_iono Nx_iono Nx_iono_cycle idx_reduce_cycle_iono diagonal
-            clearvars Awr_t  Ar_t Ae_t y_t Nr_t Br_t Ner_t
-            % ------- fix the ambiguities
-            c_p = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
-            idx_amb = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) == this.PAR_AMB;
-              svd_strat = true;
-            if sum(this.param_class == this.PAR_AMB) > 0 && fix && any(idx_amb)
-              
-                if svd_strat
-                    % svd startegy
-                    % reduce all other paramter than ambiguoties
-                    
-                    idx_bias = c_p ==  this.PAR_REC_EB | c_p == this.PAR_REC_EB_LIN | c_p == this.PAR_REC_EBFR | c_p == this.PAR_REC_PPB  | c_p == this.PAR_SAT_PPB | c_p == this.PAR_SAT_EB | c_p == this.PAR_SAT_EBFR | c_p == this.PAR_REC_EBFR;
-                    c_p2 = c_p(~idx_bias);
-                    if any(idx_bias)
-                        [U,D,V] = svds(N(idx_bias, idx_bias),sum(idx_bias));
-                        d = diag(D);
-                        tol = max(size(N(idx_bias, idx_bias))) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                        if sum(d < tol) > 2
-                            d_d = diff(log10(d));
-                            [~,idx_min] = min(d_d(d(2:end) < tol));
-                            last_valid = find(d > tol,1,'last') + idx_min -1;
-                            keep_id = 1:sum(idx_bias) <= last_valid;
-                        else
-                            keep_id = d > (tol/1e4);
-                        end
-                        real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
-                        clearvars U V D
-                        pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
-                        clearvars real_space d
-                        BB = N(~idx_bias ,idx_bias)*pinvB;
-                        N_ap_ap = N(~idx_bias, ~idx_bias) - BB*N(idx_bias, ~idx_bias);
-                        B_ap_ap = B(~idx_bias) -  BB*B(idx_bias);
-                    else
-                        N_ap_ap = N;
-                        B_ap_ap = B;
-                    end
-                    idx_amb = c_p2 == this.PAR_AMB;
-                    if any(~idx_amb)
-                        [U,D,V] = svds(N_ap_ap(~idx_amb, ~idx_amb),sum(~idx_amb));
-                        d = diag(D);
-                        tol = max(size(N(~idx_amb, ~idx_amb))) * eps(norm(d,inf))*10;%
-                        miscl = abs(sum(U.*V)-1);
-                        last_valid = find(miscl > 1e-4 | d' < tol ,1,'first');
-                        if isempty(last_valid)
-                            last_valid = sum(~idx_amb);
-                        end
-                        keep_id = 1:sum(~idx_amb) <= last_valid;
-                        real_space = (U(:, keep_id) + V(:, keep_id)) / 2;  % prevent asimmetryin reducing
-                        clearvars U V D
-                        C_bb = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
-                        clearvars real_space d
-                        BB = N_ap_ap(idx_amb, ~idx_amb)*C_bb;
-                        N_amb_amb = N_ap_ap(idx_amb, idx_amb) - BB*N_ap_ap(~idx_amb, idx_amb);
-                        B_amb_amb = B_ap_ap(idx_amb) -  BB*B_ap_ap(~idx_amb);
-                    else
-                        C_bb = 1;
-                        N_amb_amb = N_ap_ap(idx_amb, idx_amb);
-                        B_amb_amb = B_ap_ap(idx_amb);
-                    end
-                    sat_amb = sat_par(class_par == this.PAR_AMB);
-                    rec_amb = rec_par(class_par == this.PAR_AMB);
-                    oid_amb = oid_par(class_par == this.PAR_AMB);
-                    [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
-                   
-                    
-                    B_ap_ap(~idx_amb) = B_ap_ap(~idx_amb) - N_ap_ap(~idx_amb,idx_amb)*ambs;
-                    clearvars N_ap_ap
-                    x_reduced = zeros(size(N,1),1);
-                    
-                    if any(~idx_amb)
-                        phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
-                    end
-                    phys_par_amb(idx_amb) = ambs;
-                    x_reduced(~idx_bias) = phys_par_amb;
-                    if any(idx_bias)
-                        B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*phys_par_amb';
-                        x_reduced(idx_bias) = pinvB*B(idx_bias);
-                    end
-                else
-                    idx_bias = c_p ~= this.PAR_AMB; %| c_p == this.PAR_SAT_EBFR
-                    disp('factorize')
-                    F = factorization_lu_sparse(N(idx_bias, idx_bias),false);
-                    disp('solving')
-                    tic
-                    red_par = F \ ([N(idx_bias, ~idx_bias) B(idx_bias)]);
-                    N_amb_amb = N(~idx_bias, ~idx_bias) - N(~idx_bias, idx_bias)*red_par(:,1:sum(~idx_bias));
-                    B_amb_amb = B(~idx_bias)  - N(~idx_bias, idx_bias)*red_par(:,end);
-                    
-                    sat_amb = sat_par(class_par == this.PAR_AMB);
-                    rec_amb = rec_par(class_par == this.PAR_AMB);
-                    oid_amb = oid_par(class_par == this.PAR_AMB);
-                    [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
-                    x_reduced = zeros(size(N,1),1);
-                    x_reduced(~idx_bias) = ambs;
-                    B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*ambs;
-                    x_reduced(idx_bias) = F \ B(idx_bias);
-                    clearvars F
+                vars = [1./this.variance_obs(~this.outlier_obs).*this.reweight_obs(~this.outlier_obs); 1./this.variance_pseudo];
+                mean_vars = 1 ; %mean(vars);
+                vars = vars ./ mean_vars;
+                Cyy =  spdiags(vars,0,n_obs - n_out,n_obs - n_out);
+                x_est = zeros(n_par -length(this.idx_rd) - sum(this.out_par),1);
+                y = sparse([this.obs(~this.outlier_obs); zeros(size(this.A_pseudo,1),1)]);
+                
+                Aw = A'*Cyy;
+                
+                clearvars Cyy
+                % ------ reduce for sat clock, rec clock and iono
+                idx_reduce_sat_clk = class_par == this.PAR_SAT_CLK | class_par == this.PAR_SAT_CLK_PH | class_par == this.PAR_SAT_CLK_PR;
+                prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EB);
+                if prm(1) == LS_Parametrization.EP_WISE
+                    idx_reduce_sat_clk = idx_reduce_sat_clk | class_par == this.PAR_SAT_EB;
                 end
-            else
-                cp_red = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
-                idx_x = find(cp_red  == this.PAR_REC_X);
-                idx_y = find(cp_red  == this.PAR_REC_Y);
-                idx_z = find(cp_red  == this.PAR_REC_Z);
-                if sum(  cp_red  == this.PAR_REC_X)> 0 & (length(idx_x) == length(idx_y))& (length(idx_x) == length(idx_z)) & this.ls_parametrization.rec_x(1) == LS_Parametrization.CONST && false
-                    coo_vcv_B = sparse(zeros(size(N,1),length(idx_x)*3));
-                    for c = 1 : length(idx_x)
-                        coo_vcv_B( idx_x(c),(c-1)*3+1) = 1;
-                        coo_vcv_B(  idx_y(c),(c-1)*3+2) = 1;
-                        coo_vcv_B(  idx_z(c),(c)*3) = 1;
-                    end
-                    result  = N\[B coo_vcv_B];
-                    x_reduced = result(:,1);
-                    this.coo_vcv = result([idx_x; idx_y; idx_z] ,2 : end);
+                prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EBFR);
+                if prm(1) == LS_Parametrization.EP_WISE
+                    idx_reduce_sat_clk = idx_reduce_sat_clk | class_par == this.PAR_SAT_EBFR;
+                end
+                idx_reduce_rec_clk = class_par == this.PAR_REC_CLK | class_par == this.PAR_REC_CLK_PH | class_par == this.PAR_REC_CLK_PR;
+                prm = this.ls_parametrization.getParametrization(this.PAR_REC_EB);
+                if prm(1) == LS_Parametrization.EP_WISE
+                    idx_reduce_rec_clk = idx_reduce_rec_clk | class_par == this.PAR_REC_EB;
+                    qr_flag = true;
+                end
+                prm = this.ls_parametrization.getParametrization(this.PAR_REC_EBFR);
+                if prm(1) == LS_Parametrization.EP_WISE
+                    idx_reduce_rec_clk = idx_reduce_rec_clk | class_par == this.PAR_REC_EBFR;
+                    qr_flag = true;
+                    
+                end
+                idx_reduce_iono = class_par == this.PAR_IONO;
+                
+                idx_reduce = idx_reduce_rec_clk | idx_reduce_sat_clk | idx_reduce_iono;
+                
+                N = Aw(~idx_reduce,:)*A(:,~idx_reduce);
+                B = Aw(~idx_reduce,:)*y;
+                
+                max_ep = max(this.ref_time_obs);
+                if this.time_pseudo.length > 0
+                    ref_time_obs = [this.ref_time_obs(~this.outlier_obs); this.time_pseudo.getNominalTime(this.rate_obs).getRefTime(this.time_min.getMatlabTime)];
                 else
-                    if svd_strat
-                        [U,D,V] = svds(N,sum(size(N,1)));
-                        d = diag(D);
-                        tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                        if sum(d<tol) > 1
-                              d_d = diff(log10(d));
-                            [~,idx_min] = min(d_d(d(2:end) < tol));
-                            last_valid = find(d > tol,1,'last') + idx_min -1;
-                            keep_id = 1:sum(size(N,1)) <= last_valid;
+                    ref_time_obs = [this.ref_time_obs(~this.outlier_obs);];
+                end
+                step = 7200;
+                time_par_red = time_par(idx_reduce,1);
+                
+                iono = sum(idx_reduce_iono) > 0;
+                sat_clk = sum(idx_reduce_sat_clk) > 0;
+                rec_clk = sum(idx_reduce_rec_clk) > 0;
+                
+                cross_terms = {};
+                ii  = 1;
+                for i = 0 : step : floor(max_ep / step) * step % sparse matrix library became very slow in case of big/huge matrix the reduction can be applyed dividing the matrices in parts
+                    idx_time_obs = ref_time_obs > (i-this.obs_rate/10) &  ref_time_obs < (i + step -this.obs_rate/10 );
+                    idx_time_par_red = time_par_red > (i-this.obs_rate/10)  &  time_par_red < (i + step -this.obs_rate/10 );
+                    if any(idx_time_par_red)
+                        idx_red_cycle = idx_reduce;
+                        idx_red_cycle(idx_red_cycle) = idx_time_par_red;
+                        
+                        cp_cycle = class_par(idx_red_cycle);
+                        rp_cycle = rec_par(idx_red_cycle);
+                        
+                        idx_reduce_cycle_sat_clk = cp_cycle == this.PAR_SAT_CLK | cp_cycle == this.PAR_SAT_CLK_PH | cp_cycle == this.PAR_SAT_CLK_PR;
+                        prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EB);
+                        
+                        if prm(1) == LS_Parametrization.EP_WISE
+                            idx_reduce_cycle_sat_clk = idx_reduce_cycle_sat_clk | cp_cycle == this.PAR_SAT_EB;
+                        end
+                        prm = this.ls_parametrization.getParametrization(this.PAR_SAT_EBFR);
+                        if prm(1) == LS_Parametrization.EP_WISE
+                            idx_reduce_cycle_sat_clk = idx_reduce_cycle_sat_clk | cp_cycle == this.PAR_SAT_EBFR;
+                        end
+                        idx_reduce_cycle_rec_clk = cp_cycle == this.PAR_REC_CLK | cp_cycle == this.PAR_REC_CLK_PH | cp_cycle == this.PAR_REC_CLK_PR;
+                        prm = this.ls_parametrization.getParametrization(this.PAR_REC_EB);
+                        if prm(1) == LS_Parametrization.EP_WISE
+                            idx_reduce_cycle_rec_clk = idx_reduce_cycle_rec_clk | cp_cycle == this.PAR_REC_EB;
+                            qr_flag = true;
+                        end
+                        prm = this.ls_parametrization.getParametrization(this.PAR_REC_EBFR);
+                        if prm(1) == LS_Parametrization.EP_WISE
+                            idx_reduce_cycle_rec_clk = idx_reduce_cycle_rec_clk | cp_cycle == this.PAR_REC_EBFR;
+                            qr_flag = true;
                             
-                        else
-                            keep_id = d > max(size(N)) * sqrt(eps(norm(diag(D),inf)));
                         end
-                        real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
-                        clearvars U V D
-                        pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
-                        x_reduced = pinvB * B;
-                    else
-                        [L,D,P] = ldl(N);
-                        [d,idx_sort] = sort(diag(D),'descend');
-                        d(d<0) = d(find(d>0,1,'last'));
-                        tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                        [~,idx_min] = min(diff(log10(d(d<tol))));
-                        last_valid = find(d < tol,1,'first') + idx_min -1;
-                        keep_id = (1:sum(size(N,1)))' <= last_valid;
-                        keep_id(idx_sort) = keep_id;
-                        x_reduced = Core_Utils.solveLDL(L,D,B,P,keep_id);
                         
-                    end
-                    clearvars pinvB
-                end
-            end
-            % ------- substitute back
-            ii = 1;
-            x_est(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) = x_reduced;
-            for i = 0 : step : floor(max_ep / step) * step
-                % receiver clock
-                if ii <= length(cross_terms)
-                    if rec_clk
-                        B_recclk = cross_terms{ii}{1}{3}{2};
-                        Nx_recclk = cross_terms{ii}{1}{3}{3};
-                        iRecClk = cross_terms{ii}{1}{3}{1};
-                        idx_reduce_cycle_rec_clk = cross_terms{ii}{2};
-                        idx_reduce_cycle_rec_clk(idx_reduce_cycle_rec_clk) = cross_terms{ii}{1}{3}{4};
-                        B_recclk = B_recclk - sum(Nx_recclk * spdiags(x_reduced,0,length(x_reduced),length(x_reduced)),2);
-                        x_rec_clk = iRecClk * B_recclk;
-                        x_est(idx_reduce_cycle_rec_clk) = x_rec_clk;
-                    end
-                    
-                    % satellite clcok
-                    if sat_clk
-                        B_satclk = cross_terms{ii}{1}{2}{2};
-                        Nx_satclk = cross_terms{ii}{1}{2}{3};
-                        iSatClk = cross_terms{ii}{1}{2}{1};
-                        idx_reduce_cycle_sat_clk = cross_terms{ii}{2};
-                        idx_reduce_cycle_sat_clk(idx_reduce_cycle_sat_clk) = cross_terms{ii}{1}{2}{4};
-                        idx_est1 = ~idx_reduce ;
-                        idx_est2 = idx_reduce_cycle_rec_clk;
-                        n_est = sum(idx_est1) + sum(idx_est2);
-                        B_satclk = B_satclk -   sum(Nx_satclk * spdiags([x_est(idx_est1); x_est(idx_est2)],0,n_est,n_est),2);
-                        x_sat_clk = iSatClk * B_satclk;
-                        x_est(idx_reduce_cycle_sat_clk) = x_sat_clk;
-                    end
-                    
-                    % iono
-                    if iono
-                        B_iono = cross_terms{ii}{1}{1}{2};
-                        Nx_iono = cross_terms{ii}{1}{1}{3};
-                        iIono = cross_terms{ii}{1}{1}{1};
-                        idx_reduce_cycle_iono = cross_terms{ii}{2};
-                        idx_reduce_cycle_iono(idx_reduce_cycle_iono) = cross_terms{ii}{1}{1}{4};
-                        idx_est1 = ~idx_reduce ;
-                        if sat_clk
-                            idx_est2 = idx_reduce_cycle_rec_clk | idx_reduce_cycle_sat_clk;
-                        else
-                            idx_est2 = idx_reduce_cycle_rec_clk;
+                        idx_reduce_cycle_iono = cp_cycle == this.PAR_IONO;
+                        
+                        
+                        
+                        
+                        Awr_t = Aw( idx_red_cycle, idx_time_obs);
+                        Ar_t = A(idx_time_obs, idx_red_cycle);
+                        Ae_t = A(idx_time_obs, ~idx_reduce);
+                        y_t = y(idx_time_obs);
+                        
+                        Nr_t = Awr_t*Ar_t;
+                        Br_t = Awr_t*y_t;
+                        
+                        Ner_t = Awr_t*Ae_t;
+                        
+                        if iono
+                            n_iono = sum(idx_reduce_cycle_iono);
+                            diagonal = 1./diag(Nr_t(idx_reduce_cycle_iono, idx_reduce_cycle_iono));
+                            diagonal(diagonal == Inf) = 0;
+                            iIono = spinv(Nr_t(idx_reduce_cycle_iono, idx_reduce_cycle_iono),[],'qr');
+                            Nx_iono = Ner_t(idx_reduce_cycle_iono, :); % cross term reduce iono
+                            Nx_iono_cycle = Nr_t(~idx_reduce_cycle_iono, idx_reduce_cycle_iono); % cross term reduce iono
+                            Nt = Nx_iono' * iIono;
+                            Nt_cycle = Nx_iono_cycle * iIono;
+                            N = N - Nt * Nx_iono;
+                            Nr_t = Nr_t(~idx_reduce_cycle_iono,~idx_reduce_cycle_iono) - Nt_cycle * Nr_t(idx_reduce_cycle_iono,~idx_reduce_cycle_iono);
+                            Ner_t(~idx_reduce_cycle_iono, :) = Ner_t(~idx_reduce_cycle_iono, :) - Nt_cycle*Nx_iono;
+                            Ner_t(idx_reduce_cycle_iono, :) = [];
+                            
+                            B_iono = Br_t(idx_reduce_cycle_iono);
+                            B = B - Nt * B_iono;
+                            Br_t = Br_t(~idx_reduce_cycle_iono) - Nt_cycle*B_iono;
+                            
+                            cross_terms_t{1} = {iIono B_iono [Nx_iono Nx_iono_cycle'] idx_reduce_cycle_iono};
                         end
-                        n_est = sum(idx_est1) + sum(idx_est2);
-                        B_iono = B_iono -   sum(Nx_iono * spdiags([x_est(idx_est1); x_est(idx_est2)],0,n_est,n_est),2);
-                        x_iono = iIono * B_iono;
-                        x_est(idx_reduce_cycle_iono) = x_iono;
+                        
+                        if sat_clk
+                            i_sat_clk_tmp = idx_reduce_cycle_sat_clk(~idx_reduce_cycle_iono);
+                            n_sat_clk = sum(i_sat_clk_tmp);
+                            cp = cp_cycle( ~idx_reduce_cycle_iono);
+                            idx_1 = cp(i_sat_clk_tmp) == this.PAR_SAT_CLK | cp(i_sat_clk_tmp) == this.PAR_SAT_CLK_PR;
+                            idx_2 = cp(i_sat_clk_tmp) == this.PAR_SAT_CLK_PH;
+                            if true; %sum(idx_2) > 0 & iono
+                                iSatClk = spinv(Nr_t(i_sat_clk_tmp,i_sat_clk_tmp),[],'qr');%Core_Utils.inverseByPartsDiag(Nr_t(i_sat_clk_tmp,i_sat_clk_tmp),idx_1, idx_2);%inv(N(i_sat_clk_tmp,i_sat_clk_tmp))  ;%;%spdiags(1./diag(N(i_sat_clk_tmp,i_sat_clk_tmp)),0,n_clk_sat,n_clk_sat);
+                            else
+                                diagonal = 1./diag(Nr_t(i_sat_clk_tmp, i_sat_clk_tmp));
+                                diagonal(diagonal == Inf) = 0;
+                                iSatClk = spdiags(diagonal,0,n_sat_clk,n_sat_clk);
+                            end
+                            Nx_satclk = Ner_t(i_sat_clk_tmp, :);
+                            Nx_satclk_cyle = Nr_t(~i_sat_clk_tmp, i_sat_clk_tmp);
+                            idx_full = sum(Nx_satclk~=0,1) >0;
+                            Nt = Nx_satclk(:,idx_full)' * iSatClk;
+                            Nt_cycle = Nx_satclk_cyle * iSatClk;
+                            
+                            N(idx_full,idx_full) = N(idx_full,idx_full) - sparse(full(Nt) * full(Nx_satclk(:,idx_full)));
+                            Nr_t = Nr_t(~i_sat_clk_tmp,~i_sat_clk_tmp) - Nt_cycle * Nr_t(i_sat_clk_tmp, ~i_sat_clk_tmp);
+                            Ner_t(~i_sat_clk_tmp, :) = Ner_t(~i_sat_clk_tmp, :) - Nt_cycle*Nx_satclk;
+                            Ner_t(i_sat_clk_tmp, :) = [];
+                            
+                            
+                            B_satclk =  Br_t(i_sat_clk_tmp);
+                            B(idx_full) = B(idx_full) - Nt * B_satclk;
+                            Br_t = Br_t(~i_sat_clk_tmp) - Nt_cycle * B_satclk;
+                            
+                            cross_terms_t{2} = {iSatClk B_satclk [Nx_satclk Nx_satclk_cyle'] idx_reduce_cycle_sat_clk};
+                            
+                        end
+                        
+                        if rec_clk
+                            i_rec_clk_tmp = idx_reduce_cycle_rec_clk(~idx_reduce_cycle_iono & ~idx_reduce_cycle_sat_clk);
+                            n_rec_clk = sum(i_rec_clk_tmp);
+                            
+                            iRecClk = spinv(Nr_t(i_rec_clk_tmp,i_rec_clk_tmp),[],'qr');
+                            
+                            Nx_recclk = Ner_t(i_rec_clk_tmp, :);
+                            idx_full = sum(Nx_recclk~=0,1) >0;
+                            
+                            Nt = Nx_recclk(:,idx_full)' * iRecClk;
+                            N(idx_full,idx_full) = N(idx_full,idx_full) - sparse(full(Nt) * full(Nx_recclk(:,idx_full)));
+                            
+                            B_recclk = Br_t(i_rec_clk_tmp);
+                            B(idx_full) = B(idx_full) - Nt * B_recclk;
+                            
+                            cross_terms_t{3} = {iRecClk B_recclk Nx_recclk idx_reduce_cycle_rec_clk};
+                            cross_terms{ii} = {cross_terms_t idx_red_cycle};
+                        end
+                        
+                        ii = ii +1;
                     end
-                    ii = ii + 1;
+                end
+                clearvars Aw Ae_t Ar_t Awr_t Nt Nt_cycle
+                clearvars cross_terms_t idx_red_cycle
+                clearvars iRecClk B_recclk Nx_recclk idx_reduce_cycle_rec_clk
+                clearvars iSatClk B_satclk Nx_satclk Nx_satclk_cyle idx_reduce_cycle_sat_clk
+                clearvars iIono B_iono Nx_iono Nx_iono_cycle idx_reduce_cycle_iono diagonal
+                clearvars Awr_t  Ar_t Ae_t y_t Nr_t Br_t Ner_t
+                % ------- fix the ambiguities
+                c_p = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
+                idx_amb = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) == this.PAR_AMB;
+                svd_strat = true;
+                if sum(this.param_class == this.PAR_AMB) > 0 && fix && any(idx_amb)
+                    
+                    if svd_strat
+                        % svd startegy
+                        % reduce all other paramter than ambiguoties
+                        
+                        idx_bias = c_p ==  this.PAR_REC_EB | c_p == this.PAR_REC_EB_LIN | c_p == this.PAR_REC_EBFR | c_p == this.PAR_REC_PPB  | c_p == this.PAR_SAT_PPB | c_p == this.PAR_SAT_EB | c_p == this.PAR_SAT_EBFR | c_p == this.PAR_REC_EBFR;
+                        c_p2 = c_p(~idx_bias);
+                        if any(idx_bias)
+                            [U,D,V] = svds(N(idx_bias, idx_bias),sum(idx_bias));
+                            d = diag(D);
+                            tol = max(size(N(idx_bias, idx_bias))) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                            if sum(d < tol) > 2
+                                d_d = diff(log10(d));
+                                [~,idx_min] = min(d_d(d(2:end) < tol));
+                                last_valid = find(d > tol,1,'last') + idx_min -1;
+                                keep_id = 1:sum(idx_bias) <= last_valid;
+                            else
+                                keep_id = d > (tol/1e4);
+                            end
+                            real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
+                            clearvars U V D
+                            pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
+                            clearvars real_space d
+                            BB = N(~idx_bias ,idx_bias)*pinvB;
+                            N_ap_ap = N(~idx_bias, ~idx_bias) - BB*N(idx_bias, ~idx_bias);
+                            B_ap_ap = B(~idx_bias) -  BB*B(idx_bias);
+                        else
+                            N_ap_ap = N;
+                            B_ap_ap = B;
+                        end
+                        idx_amb = c_p2 == this.PAR_AMB;
+                        if any(~idx_amb)
+                            [U,D,V] = svds(N_ap_ap(~idx_amb, ~idx_amb),sum(~idx_amb));
+                            d = diag(D);
+                            tol = max(size(N(~idx_amb, ~idx_amb))) * eps(norm(d,inf))*10;%
+                            miscl = abs(sum(U.*V)-1);
+                            last_valid = find(miscl > 1e-4 | d' < tol ,1,'first');
+                            if isempty(last_valid)
+                                last_valid = sum(~idx_amb);
+                            end
+                            keep_id = 1:sum(~idx_amb) <= last_valid;
+                            real_space = (U(:, keep_id) + V(:, keep_id)) / 2;  % prevent asimmetryin reducing
+                            clearvars U V D
+                            C_bb = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
+                            clearvars real_space d
+                            BB = N_ap_ap(idx_amb, ~idx_amb)*C_bb;
+                            N_amb_amb = N_ap_ap(idx_amb, idx_amb) - BB*N_ap_ap(~idx_amb, idx_amb);
+                            B_amb_amb = B_ap_ap(idx_amb) -  BB*B_ap_ap(~idx_amb);
+                        else
+                            C_bb = 1;
+                            N_amb_amb = N_ap_ap(idx_amb, idx_amb);
+                            B_amb_amb = B_ap_ap(idx_amb);
+                        end
+                        sat_amb = sat_par(class_par == this.PAR_AMB);
+                        rec_amb = rec_par(class_par == this.PAR_AMB);
+                        oid_amb = oid_par(class_par == this.PAR_AMB);
+                        [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
+                        
+                        
+                        B_ap_ap(~idx_amb) = B_ap_ap(~idx_amb) - N_ap_ap(~idx_amb,idx_amb)*ambs;
+                        clearvars N_ap_ap
+                        x_reduced = zeros(size(N,1),1);
+                        
+                        if any(~idx_amb)
+                            phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
+                        end
+                        phys_par_amb(idx_amb) = ambs;
+                        x_reduced(~idx_bias) = phys_par_amb;
+                        if any(idx_bias)
+                            B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*phys_par_amb';
+                            x_reduced(idx_bias) = pinvB*B(idx_bias);
+                        end
+                    else
+                        idx_bias = c_p ~= this.PAR_AMB; %| c_p == this.PAR_SAT_EBFR
+                        disp('factorize')
+                        F = factorization_lu_sparse(N(idx_bias, idx_bias),false);
+                        disp('solving')
+                        tic
+                        red_par = F \ ([N(idx_bias, ~idx_bias) B(idx_bias)]);
+                        N_amb_amb = N(~idx_bias, ~idx_bias) - N(~idx_bias, idx_bias)*red_par(:,1:sum(~idx_bias));
+                        B_amb_amb = B(~idx_bias)  - N(~idx_bias, idx_bias)*red_par(:,end);
+                        
+                        sat_amb = sat_par(class_par == this.PAR_AMB);
+                        rec_amb = rec_par(class_par == this.PAR_AMB);
+                        oid_amb = oid_par(class_par == this.PAR_AMB);
+                        [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
+                        x_reduced = zeros(size(N,1),1);
+                        x_reduced(~idx_bias) = ambs;
+                        B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*ambs;
+                        x_reduced(idx_bias) = F \ B(idx_bias);
+                        clearvars F
+                    end
+                else
+                    cp_red = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
+                    idx_x = find(cp_red  == this.PAR_REC_X);
+                    idx_y = find(cp_red  == this.PAR_REC_Y);
+                    idx_z = find(cp_red  == this.PAR_REC_Z);
+                    if sum(  cp_red  == this.PAR_REC_X)> 0 & (length(idx_x) == length(idx_y))& (length(idx_x) == length(idx_z)) & this.ls_parametrization.rec_x(1) == LS_Parametrization.CONST && false
+                        coo_vcv_B = sparse(zeros(size(N,1),length(idx_x)*3));
+                        for c = 1 : length(idx_x)
+                            coo_vcv_B( idx_x(c),(c-1)*3+1) = 1;
+                            coo_vcv_B(  idx_y(c),(c-1)*3+2) = 1;
+                            coo_vcv_B(  idx_z(c),(c)*3) = 1;
+                        end
+                        result  = N\[B coo_vcv_B];
+                        x_reduced = result(:,1);
+                        this.coo_vcv = result([idx_x; idx_y; idx_z] ,2 : end);
+                    else
+                        if svd_strat
+                            [U,D,V] = svds(N,sum(size(N,1)));
+                            d = diag(D);
+                            tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                            if sum(d<tol) > 1
+                                d_d = diff(log10(d));
+                                [~,idx_min] = min(d_d(d(2:end) < tol));
+                                last_valid = find(d > tol,1,'last') + idx_min -1;
+                                keep_id = 1:sum(size(N,1)) <= last_valid;
+                                
+                            else
+                                keep_id = d > max(size(N)) * sqrt(eps(norm(diag(D),inf)));
+                            end
+                            real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
+                            clearvars U V D
+                            pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
+                            x_reduced = pinvB * B;
+                        else
+                            [L,D,P] = ldl(N);
+                            [d,idx_sort] = sort(diag(D),'descend');
+                            d(d<0) = d(find(d>0,1,'last'));
+                            tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                            [~,idx_min] = min(diff(log10(d(d<tol))));
+                            last_valid = find(d < tol,1,'first') + idx_min -1;
+                            keep_id = (1:sum(size(N,1)))' <= last_valid;
+                            keep_id(idx_sort) = keep_id;
+                            x_reduced = Core_Utils.solveLDL(L,D,B,P,keep_id);
+                            
+                        end
+                        clearvars pinvB
+                    end
+                end
+                % ------- substitute back
+                ii = 1;
+                x_est(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) = x_reduced;
+                for i = 0 : step : floor(max_ep / step) * step
+                    % receiver clock
+                    if ii <= length(cross_terms)
+                        if rec_clk
+                            B_recclk = cross_terms{ii}{1}{3}{2};
+                            Nx_recclk = cross_terms{ii}{1}{3}{3};
+                            iRecClk = cross_terms{ii}{1}{3}{1};
+                            idx_reduce_cycle_rec_clk = cross_terms{ii}{2};
+                            idx_reduce_cycle_rec_clk(idx_reduce_cycle_rec_clk) = cross_terms{ii}{1}{3}{4};
+                            B_recclk = B_recclk - sum(Nx_recclk * spdiags(x_reduced,0,length(x_reduced),length(x_reduced)),2);
+                            x_rec_clk = iRecClk * B_recclk;
+                            x_est(idx_reduce_cycle_rec_clk) = x_rec_clk;
+                        end
+                        
+                        % satellite clcok
+                        if sat_clk
+                            B_satclk = cross_terms{ii}{1}{2}{2};
+                            Nx_satclk = cross_terms{ii}{1}{2}{3};
+                            iSatClk = cross_terms{ii}{1}{2}{1};
+                            idx_reduce_cycle_sat_clk = cross_terms{ii}{2};
+                            idx_reduce_cycle_sat_clk(idx_reduce_cycle_sat_clk) = cross_terms{ii}{1}{2}{4};
+                            idx_est1 = ~idx_reduce ;
+                            idx_est2 = idx_reduce_cycle_rec_clk;
+                            n_est = sum(idx_est1) + sum(idx_est2);
+                            B_satclk = B_satclk -   sum(Nx_satclk * spdiags([x_est(idx_est1); x_est(idx_est2)],0,n_est,n_est),2);
+                            x_sat_clk = iSatClk * B_satclk;
+                            x_est(idx_reduce_cycle_sat_clk) = x_sat_clk;
+                        end
+                        
+                        % iono
+                        if iono
+                            B_iono = cross_terms{ii}{1}{1}{2};
+                            Nx_iono = cross_terms{ii}{1}{1}{3};
+                            iIono = cross_terms{ii}{1}{1}{1};
+                            idx_reduce_cycle_iono = cross_terms{ii}{2};
+                            idx_reduce_cycle_iono(idx_reduce_cycle_iono) = cross_terms{ii}{1}{1}{4};
+                            idx_est1 = ~idx_reduce ;
+                            if sat_clk
+                                idx_est2 = idx_reduce_cycle_rec_clk | idx_reduce_cycle_sat_clk;
+                            else
+                                idx_est2 = idx_reduce_cycle_rec_clk;
+                            end
+                            n_est = sum(idx_est1) + sum(idx_est2);
+                            B_iono = B_iono -   sum(Nx_iono * spdiags([x_est(idx_est1); x_est(idx_est2)],0,n_est,n_est),2);
+                            x_iono = iIono * B_iono;
+                            x_est(idx_reduce_cycle_iono) = x_iono;
+                        end
+                        ii = ii + 1;
+                    end
+                end
+                
+                
+                x = zeros(n_par,1);
+                idx_est = true(n_par,1);
+                idx_est([this.idx_rd ; find(this.out_par)]) = false;
+                x(idx_est) = x_est;
+                res = nan(size(this.obs));
+                
+                % generate esatimations also for the out par (to get a residual)
+                if n_out > 0 && false % to be debugged
+                    res_out = this.obs(this.outlier_obs) - A_out(:,~this.out_par & ~Core_Utils.ordinal2logical(this.idx_rd,n_par))*x_est;
+                    red_out = res_out;
+                    A_res_red = A_out(:,this.out_par);
+                    idx_empty = sum(A_res_red,2) == 0;
+                    red_out(idx_empty) = [];
+                    A_res_red(idx_empty,:) = [];
+                    x_out = A_res_red \ red_out;
+                    res_out(~idx_empty) = red_out - A_res_red * x_out;
+                    x(this.out_par) = x_out;
+                    res(this.outlier_obs) = res_out;
+                end
+                
+                res(~this.outlier_obs) = this.obs(~this.outlier_obs) - A(1:sum(~this.outlier_obs),:)*x_est;
+                this.res = res;
+                this.x = x;
+                state = Core.getCurrentSettings;
+                if state.isResOut
+                    exclude_res = this.simpleRedundancyCheck(A, class_par, vars);
+                    this.outlier_obs(this.outlier_obs == 0) = exclude_res(1: (size(this.A,1) - n_out));
                 end
             end
-            
-            
-            x = zeros(n_par,1);
-            idx_est = true(n_par,1);
-            idx_est([this.idx_rd ; find(this.out_par)]) = false;
-            x(idx_est) = x_est;
-            res = nan(size(this.obs));
-            
-            % generate esatimations also for the out par (to get a residual)
-            if n_out > 0 && false % to be debugged
-                res_out = this.obs(this.outlier_obs) - A_out(:,~this.out_par & ~Core_Utils.ordinal2logical(this.idx_rd,n_par))*x_est;
-                red_out = res_out;
-                A_res_red = A_out(:,this.out_par);
-                idx_empty = sum(A_res_red,2) == 0;
-                red_out(idx_empty) = [];
-                A_res_red(idx_empty,:) = [];
-                x_out = A_res_red \ red_out;
-                res_out(~idx_empty) = red_out - A_res_red * x_out;
-                x(this.out_par) = x_out;
-                res(this.outlier_obs) = res_out;
-            end
-            
-            res(~this.outlier_obs) = this.obs(~this.outlier_obs) - A(1:sum(~this.outlier_obs),:)*x_est;
-            this.res = res;
-            this.x = x;
-            state = Core.getCurrentSettings;
-            if state.isResOut
-                exclude_res = this.simpleRedundancyCheck(A, class_par, vars);
-                this.outlier_obs(this.outlier_obs == 0) = exclude_res(1: (size(this.A,1) - n_out));
-            end
-        end
-        
-        function applyWeightingStrategy()
         end
         
         function res = getResiduals(this)
