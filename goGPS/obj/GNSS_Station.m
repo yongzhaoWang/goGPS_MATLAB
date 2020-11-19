@@ -3800,7 +3800,9 @@ classdef GNSS_Station < handle
                 flag_add_coo = 0;
             end
             
-            sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            if flag_add_coo >= 0
+                sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            end
             out_list = [sta_list.out];
             if numel(out_list) > 0
                 fh_list = out_list.showPositionENU(flag_add_coo, n_obs);
@@ -3825,7 +3827,9 @@ classdef GNSS_Station < handle
                 flag_add_coo = 0;
             end
             
-            sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            if flag_add_coo >= 0
+                sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            end
             out_list = [sta_list.out];
             fh_list = out_list.showPositionPlanarUp(flag_add_coo, n_obs);
         end
@@ -3846,7 +3850,9 @@ classdef GNSS_Station < handle
                 flag_add_coo = 0;
             end
             
-            sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            if flag_add_coo >= 0
+                sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            end
             out_list = [sta_list.out];
             fh_list = out_list.showPositionXYZ(flag_add_coo, n_obs);
         end
@@ -6692,10 +6698,16 @@ classdef GNSS_Station < handle
             % SYNTAX
             %   sta_list.showBaselineENU(<baseline_ids = []>, <flag_add_coo>, <n_obs>)
             
-            tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            if flag_add_coo < 0
+                tmp_id = 1:numel(sta_list); % find valid
+            else
+                tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            end
             id2valid = nan(numel(sta_list), 1);
             id2valid(tmp_id) = 1:numel(tmp_id);
-            sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            if flag_add_coo >= 0
+                sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            end
             out_list = [sta_list.out];
             if nargin < 4 || isempty(n_obs)
                 n_obs = 0;
@@ -6722,10 +6734,16 @@ classdef GNSS_Station < handle
             %
             % SYNTAX
             %   sta_list.showBaselinePlanarUp(<baseline_ids = []>, <flag_add_coo>, <n_obs>)
-            tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            if flag_add_coo < 0
+                tmp_id = 1:numel(sta_list); % find valid
+            else
+                tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            end
             id2valid = nan(numel(sta_list), 1);
             id2valid(tmp_id) = 1:numel(tmp_id);
-            sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            if flag_add_coo >= 0
+                sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            end
             out_list = [sta_list.out];
             if nargin < 4 || isempty(n_obs)
                 n_obs = 0;
