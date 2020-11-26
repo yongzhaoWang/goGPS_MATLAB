@@ -1471,33 +1471,34 @@ classdef Command_Interpreter < handle
                                     case this.CMD_MPEST.name                % CMD_MPEST
                                         this.runMPEst(core.rec, tok(2:end));
                                 end
-                                if not(core.getCoreSky.isEmpty())
-                                    switch upper(tok{1})
-                                        case this.CMD_AZEL.name                 % AZEL
-                                            this.runUpdateAzEl(core.rec, tok(2:end));
-                                        case this.CMD_MASK.name                 % AZEL
-                                            this.runApplyMask(core.rec, tok(2:end));
-                                        case this.CMD_BASICPP.name              % BASICPP
-                                            this.runBasicPP(core.rec, tok(2:end));
-                                        case this.CMD_PREPRO.name               % PREP
-                                            this.runPrePro(core.rec, tok(2:end));
-                                        case this.CMD_CODEPP.name               % CODEPP
-                                            this.runCodePP(core.rec, tok(2:end));
-                                        case this.CMD_PPP.name                  % PPP
-                                            this.runPPP(core.rec, tok(2:end));
-                                        case this.CMD_NET.name                  % NET
-                                            this.runNet(core.rec, tok(2:end));
-                                        case this.CMD_SEID.name                 % SEID
-                                            this.runSEID(core.rec, tok(2:end));
-                                        case this.CMD_SID.name                  % SID
-                                            this.runSID(core.rec, tok(2:end));
-                                        case this.CMD_REMIONO.name              % REMIONO
-                                            this.runRemIono(core.rec, tok(2:end));
-                                        case this.CMD_SYNC.name                 % SYNC
-                                            this.runSync(core.rec, tok(2:end));
-                                        case this.CMD_OUTDET.name               % OUTDET
-                                            this.runOutDet(core.rec, tok);
-                                    end
+                                if (core.getCoreSky.isEmpty())
+                                    core.sky.initSession(core.state.getSessionLimits);
+                                end
+                                switch upper(tok{1})
+                                    case this.CMD_AZEL.name                 % AZEL
+                                        this.runUpdateAzEl(core.rec, tok(2:end));
+                                    case this.CMD_MASK.name                 % AZEL
+                                        this.runApplyMask(core.rec, tok(2:end));
+                                    case this.CMD_BASICPP.name              % BASICPP
+                                        this.runBasicPP(core.rec, tok(2:end));
+                                    case this.CMD_PREPRO.name               % PREP
+                                        this.runPrePro(core.rec, tok(2:end));
+                                    case this.CMD_CODEPP.name               % CODEPP
+                                        this.runCodePP(core.rec, tok(2:end));
+                                    case this.CMD_PPP.name                  % PPP
+                                        this.runPPP(core.rec, tok(2:end));
+                                    case this.CMD_NET.name                  % NET
+                                        this.runNet(core.rec, tok(2:end));
+                                    case this.CMD_SEID.name                 % SEID
+                                        this.runSEID(core.rec, tok(2:end));
+                                    case this.CMD_SID.name                  % SID
+                                        this.runSID(core.rec, tok(2:end));
+                                    case this.CMD_REMIONO.name              % REMIONO
+                                        this.runRemIono(core.rec, tok(2:end));
+                                    case this.CMD_SYNC.name                 % SYNC
+                                        this.runSync(core.rec, tok(2:end));
+                                    case this.CMD_OUTDET.name               % OUTDET
+                                        this.runOutDet(core.rec, tok);
                                 end
                             catch ex
                                 log.addError(sprintf('Command "%s" failed with error message: %s\nDebug starting from Command_Interpreter.exec()', tok{1}, ex.message));
