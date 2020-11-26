@@ -120,7 +120,7 @@ classdef Core_Sky < handle
             is_empty = isempty(this.coord);
         end
         
-        function initSession(this, start_date, stop_date, cc, flag_no_clock)
+        function initSession(this, start_date, stop_date, cc, flag_eph_only)
             % Load and precompute all the celestial parameted needed in a session delimited by an interval of dates
             % SYNTAX:
             %    this.initSession(this, start_date, stop_time)
@@ -141,8 +141,8 @@ classdef Core_Sky < handle
             end
             this.cc = new_cc;
             
-            if nargin <= 4 || isempty(flag_no_clock)
-                flag_no_clock = false;
+            if nargin <= 4 || isempty(flag_eph_only)
+                flag_eph_only = false;
             end
             
             flag_coo_loaded = ~isempty(this.getFirstEpochCoord) && this.getFirstEpochCoord <= start_date && this.getLastEpochCoord >= stop_date;
@@ -230,7 +230,7 @@ classdef Core_Sky < handle
                     this.importIono(f_name{1}, central_time);
                 end
                 
-                if not(clock_in_eph) && ~flag_no_clock
+                if not(clock_in_eph) && ~flag_eph_only
                     Core.getLogger.addMarkedMessage('Importing satellite clock files...');
                     for i = 1:length(clock_f_name)
                         [~,name,ext] = fileparts(clock_f_name{i});
@@ -262,16 +262,18 @@ classdef Core_Sky < handle
                     % end
                 end
                 
-                % Interp clock
-                this.fillClockGaps(10, 'spline'); % try to save small interval of missing clocks
-                
-                % load erp
-                Core.getLogger.addMarkedMessage('Importing Earth Rotation Parameters');
-                this.importERP(Core.getState.getErpFileName(start_date, stop_date),start_date);
-                
-                % load biases
-                Core.getLogger.addMarkedMessage('Importing Differential code biases');
-                this.importBiases(Core.getState.getBiasFileName(start_date, stop_date));
+                if not(flag_eph_only)
+                    % Interp clock
+                    this.fillClockGaps(10, 'spline'); % try to save small interval of missing clocks
+                    
+                    % load erp
+                    Core.getLogger.addMarkedMessage('Importing Earth Rotation Parameters');
+                    this.importERP(Core.getState.getErpFileName(start_date, stop_date),start_date);
+                    
+                    % load biases
+                    Core.getLogger.addMarkedMessage('Importing Differential code biases');
+                    this.importBiases(Core.getState.getBiasFileName(start_date, stop_date));
+                end
             end
         end
         
