@@ -483,19 +483,30 @@ classdef Core_Utils < handle
         function id_ok = polarCleaner(az, el, data, step_deg)
             % Remove observations above 3 sigma 
             %
+            % INPUT 
+            %   az          azimuth [rad]
+            %   el          elevation [rad]
+            %  data
+            %  step_deg     horizontal array with max two lines [2x2]
+            %               step_deg(1,:) size of cells - flag everything below 3 sigma 
+            %               step_deg(2,:) size of cells - unflag everything below 3 sigma 
+            %
             % SYNTAX
             %   id_ok = Core_Utils.polarCleaner(az, el, data, step_deg)
             
             % az -180 : 180
-            % el 0 : 90
-            az_grid = ((-180 + (step_deg(1) / 2)) : step_deg(1) : (180 - step_deg(1) / 2)) .* (pi/180);
-            el_grid = flipud(((step_deg(end) / 2) : step_deg(end) : 90 - (step_deg(end) / 2))' .* (pi/180));
+            %% el 0 : 90
+            %figure; polarScatter(az, pi/2-el, 5, data); colormap(gat);
+            step_deg = [360, 1; 3, 3];
+            
+            az_grid = ((-180 + (step_deg(1, 1) / 2)) : step_deg(1, 1) : (180 - step_deg(1, 1) / 2)) .* (pi/180);
+            el_grid = flipud(((step_deg(1, end) / 2) : step_deg(1, end) : 90 - (step_deg(1, end) / 2))' .* (pi/180));
             n_az = numel(az_grid);
             n_el = numel(el_grid);
             
             % Find map indexes
-            col = max(1, min(floor((az + pi) / (step_deg(1) / 180 * pi) ) + 1, length(az_grid)));
-            row = max(1, min(floor((pi/2 - el) / (step_deg(end) / 180 * pi)) + 1, length(el_grid)));
+            col = max(1, min(floor((az + pi) / (step_deg(1, 1) / 180 * pi) ) + 1, length(az_grid)));
+            row = max(1, min(floor((pi/2 - el) / (step_deg(1, end) / 180 * pi)) + 1, length(el_grid)));
             
             uid = row + (col-1) * numel(el_grid);
             id_ok = true(size(data));
@@ -505,6 +516,33 @@ classdef Core_Utils < handle
                 sigma = std(dset);
                 id_ok(id_set(abs(dset) > 3 * sigma)) = false;
             end
+            %figure; polarScatter(az(id_ok == 0), pi/2-el(id_ok == 0), 5, data(id_ok == 0)); colormap(gat);
+            
+            if size(step_deg, 1) == 2
+                step_deg = step_deg(2,:);
+                
+                az_grid = ((-180 + (step_deg(1, 1) / 2)) : step_deg(1, 1) : (180 - step_deg(1, 1) / 2)) .* (pi/180);
+                el_grid = flipud(((step_deg(1, end) / 2) : step_deg(1, end) : 90 - (step_deg(1, end) / 2))' .* (pi/180));
+                n_az = numel(az_grid);
+                n_el = numel(el_grid);
+                
+                % Find map indexes
+                col = max(1, min(floor((az + pi) / (step_deg(1) / 180 * pi) ) + 1, length(az_grid)));
+                row = max(1, min(floor((pi/2 - el) / (step_deg(end) / 180 * pi)) + 1, length(el_grid)));
+                
+                uid = row + (col-1) * numel(el_grid);
+                for b = unique(uid)'
+                    id_set = find(uid == b);
+                    dset = data(id_set) - median(serialize(data(id_set)));
+                    %data(id_set) = median(serialize(data(id_set)));
+                    sigma = min(0.01, std(dset));
+                    id_ok(id_set(abs(dset) < 3 * sigma)) = true;
+                end
+                
+                %figure; polarScatter(az(id_ok), pi/2-el(id_ok), 5, data(id_ok)); colormap(gat);
+                %figure; polarScatter(az(id_ok == 0), pi/2-el(id_ok == 0), 5, data(id_ok == 0)); colormap(gat);
+            end
+            
         end
         
                

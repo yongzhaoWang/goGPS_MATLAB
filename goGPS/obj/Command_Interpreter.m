@@ -119,7 +119,9 @@ classdef Command_Interpreter < handle
         PAR_OTYPE       % Parameter select observation type (i.e. CPLSD)
         PAR_BAND        % Parameter of the band to be used in the adjustment
         PAR_CTYPE       % Parameter coordinate type
-
+        
+        PAR_P_MPN       % Apply MP during processing (PPP or Network)
+        
         PAR_EXPORT      % Export figure
         PAR_CLOSE       % Close figure after export
         PAR_TELEBOT     % Telebot export
@@ -361,7 +363,7 @@ classdef Command_Interpreter < handle
             this.PAR_TELEBOT.name = 'telesend';
             this.PAR_TELEBOT.descr = '-tg=<"name">       send using telegram to the channel "name" (GReD only), imply -e';
             this.PAR_TELEBOT.par = '(\-tg\=)|(\-\-telegram\=)'; % (regexp) parameter postfix: -e --export
-            this.PAR_TELEBOT.class = 'char';
+            this.PAR_TELEBOT.class = 'chzar';
             this.PAR_TELEBOT.limits = [];
             this.PAR_TELEBOT.accepted_values = [];
 
@@ -373,7 +375,14 @@ classdef Command_Interpreter < handle
             this.PAR_CLOSE.accepted_values = [];
 
             %  Method parameter
-                                   
+            
+            this.PAR_P_MPN.name = 'Multipath map';
+            this.PAR_P_MPN.descr = '-MP<N>             Apply Multipath map (1: Zernike, 2: Zernike + hi-res, 3: gridded, 4: congruent cell grid, 5: gridded lo-res, 6: congruent cell grid lo-res)';
+            this.PAR_P_MPN.par = '(-mp[1-6])|(-MP[1-6])';
+            this.PAR_P_MPN.class = '';
+            this.PAR_P_MPN.limits = [];
+            this.PAR_P_MPN.accepted_values = [];
+
             this.PAR_M_UNCOMBINED.name = 'Use the uncombined engine';
             this.PAR_M_UNCOMBINED.descr = '-u                 (flag) use the uncombined engine';
             this.PAR_M_UNCOMBINED.par = '(-u)|(-U)|(--uncombined)|(--UNCOMBINED)';
@@ -524,7 +533,7 @@ classdef Command_Interpreter < handle
             this.PAR_S_CKW.accepted_values = [];
 
             this.PAR_S_MPN.name = 'Multipath map';
-            this.PAR_S_MPN.descr = 'MP<N>              Show multipath map (1: Zernike, 2: Zernike + res, 3: gridded, 4: congruent cell grid, 5: gridded 1x1, 6: congruent cell grid 1x1)';
+            this.PAR_S_MPN.descr = 'MP<N>              Multipath map (1: Zernike, 2: Zernike + hires, 3: gridded, 4: congruent cell grid, 5: gridded lo-res, 6: congruent cell grid lo-res)';
             this.PAR_S_MPN.par = '(mp[1-6])|(MP[1-6])';
             this.PAR_S_MPN.class = '';
             this.PAR_S_MPN.limits = [];
@@ -944,12 +953,12 @@ classdef Command_Interpreter < handle
             this.CMD_PPP.name = {'PPP', 'precise_point_positioning'};
             this.CMD_PPP.descr = 'Precise Point Positioning using carrier phase observations';
             this.CMD_PPP.rec = 'T';
-            this.CMD_PPP.par = [this.PAR_SS this.PAR_M_UNCOMBINED];
+            this.CMD_PPP.par = [this.PAR_SS this.PAR_M_UNCOMBINED this.PAR_P_MPN];
             
             this.CMD_NET.name = {'NET', 'network'};
             this.CMD_NET.descr = 'Network solution using undifferenced carrier phase observations';
             this.CMD_NET.rec = 'TR';
-            this.CMD_NET.par = [this.PAR_RATE this.PAR_SS  this.PAR_BAND this.PAR_M_FREE_NET this.PAR_E_COO_CRD this.PAR_M_CLK this.PAR_M_UNCOMBINED];
+            this.CMD_NET.par = [this.PAR_RATE this.PAR_SS  this.PAR_BAND this.PAR_M_FREE_NET this.PAR_E_COO_CRD this.PAR_M_CLK this.PAR_M_UNCOMBINED this.PAR_P_MPN];
                         
             this.CMD_SEID.name = {'SEID', 'synthesise_L2'};
             this.CMD_SEID.descr = ['Generate a Synthesised L2 on a target receiver ' new_line 'using n (dual frequencies) reference stations' new_line 'SEID (Satellite specific Epoch differenced Ionospheric Delay model)'];
@@ -1539,6 +1548,7 @@ classdef Command_Interpreter < handle
                             tb = Telebot();
                             msg = strrep(tok{t}(2:end-1), this.SUB_KEY, ' ');
                             if any(msg == '$') % a key might be present
+                                msg = strrep(msg, '${PRJ_NAME}', Core.getState.getPrjName);
                                 msg = strrep(msg, '${SSS_ID}', sprintf('%d/%d', Core.getCurrentSession, Core.getState.getSessionCount));
                                 msg = strrep(msg, '${SSS_INTERVAL}', sprintf('from %s to %s', Core.getState.getSessionLimits.first.toString('yyyy/mm/dd HH:MM'), Core.getState.getSessionLimits.last.toString('yyyy/mm/dd HH:MM')));
                             end
@@ -1586,7 +1596,7 @@ classdef Command_Interpreter < handle
                     end
                 end             
             end
-                
+            state.check(); % Check the modified parameters
         end
         
         function runParInit(this, tok)
@@ -2116,11 +2126,9 @@ classdef Command_Interpreter < handle
                     if isempty(id_ref)
                         log.addWarning('No reference have been found, using the mean of the receiver for the computation');
                     end
+                    [mp_type] = this.getMatchingMP(tok);
                     net = this.core.getNetwork(id_trg, rec);
                     net.reset();
-                    flag_iono_reduce = false;
-                    flag_clk_export = false;
-                    flag_uncombined = false;
                     flag_free_network = false;
                     coo_rate = [];
                     fr_id = 1;
@@ -2136,10 +2144,6 @@ classdef Command_Interpreter < handle
                         if ~isempty(regexp(tok{t}, ['^(' this.PAR_M_FREE_NET.par ')*$'], 'once'))
                             flag_free_network = true;
                         end
-                        if ~isempty(regexp(tok{t}, ['^(' this.PAR_M_UNCOMBINED.par ')*$'], 'once'))
-                            % use the original plane based interpolation
-                            flag_uncombined = true;
-                        end
                         if ~isempty(regexp(tok{t}, ['^(' this.PAR_BAND.par ')*$'], 'once'))
                             fr_id  = regexp(tok{t}, ['^(' this.PAR_BAND.par ')*$'], 'once');
                             fr_id = str2num(tok{t}(fr_id+1));
@@ -2148,7 +2152,7 @@ classdef Command_Interpreter < handle
                     try
                         %if flag_uncombined
                         log.addMarkedMessage('Uncombined engine enabled');
-                        net.adjustNew(id_ref, coo_rate, flag_iono_reduce, flag_clk_export, flag_free_network);
+                        net.adjustNew(id_ref, coo_rate, flag_free_network, mp_type);
                         %else % the old network is deprecate
                         %    net.adjust(id_ref, coo_rate, flag_iono_reduce, flag_clk_export, fr_id, flag_free_network);
                         %end
@@ -3158,6 +3162,25 @@ classdef Command_Interpreter < handle
             [id_rec, found] = getMatchingKey(this, tok, type, n_rec);
         end
         
+        function [mp_type, found] = getMatchingMP(this, tok)
+            % Extract from a set of tokens the session to be used
+            %
+            % INPUT
+            %   tok     list of tokens(parameters) from command line (cell array)
+            %
+            % SYNTAX
+            %   [id_sss, found] = this.getMatchingSession(tok)
+            found = false;
+            mp_type = 0; % no mp
+            for t = 1 : numel(tok)
+                if any(regexp(tok{t}, ['^-MP']))
+                    mp_type = str2double(tok{t}(end));
+                elseif any(regexp(tok{t}, ['^MP']))
+                    mp_type = str2double(tok{t}(end));
+                end
+            end
+        end
+        
         function [id_sss, found] = getMatchingSession(this, tok)
             % Extract from a set of tokens the session to be used
             %
@@ -3198,7 +3221,7 @@ classdef Command_Interpreter < handle
             while ~found && t < numel(tok)
                 t = t + 1;
                 % Search receiver identified after the key character "type"
-                if ~isempty(tok{t}) && tok{t}(1) == type
+                if ~isempty(tok{t}) && any(regexp(tok{t}, ['^' type])) 
                     % Analyse all the receiver identified on the string
                     % e.g. T*        all the receivers
                     %      T1,3:5    receiver 1,3,4,5
@@ -3210,7 +3233,7 @@ classdef Command_Interpreter < handle
                     
                     % Zero means the current receiver
                     str_rec = strrep(str_rec, '$', '0');
-                    if (type == 'S')
+                    if (type(1) == 'S')
                         str_rec = strrep(str_rec, 'CUR', sprintf('%d', Core.getCurrentSession));
                     end
                     take_all = ~isempty(regexp(str_rec,'[\*]*', 'once'));
