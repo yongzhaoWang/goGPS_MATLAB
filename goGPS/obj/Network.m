@@ -111,7 +111,7 @@ classdef Network < handle
             % Adjust the GNSS network
             %
             % INPUT
-            %     id_ref : [1,n_rec]  receivers numeric index to be choosen as reference, their value mean will be set to zero
+            %   id_ref : [1,n_rec]  receivers numeric index to be choosen as reference, their value mean will be set to zero
             %   coo_rate : rate of the solution
             %   free_net : process in free net mode
             %   mp_tye   : apply multipath to baselines 

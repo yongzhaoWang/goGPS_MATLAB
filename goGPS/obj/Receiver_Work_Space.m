@@ -486,18 +486,6 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 this.importAntModel();
             end
-            
-            if (this.getTime.isEmpty)
-                coo = [];
-                std_pup = [];
-            else
-                rf = Core.getReferenceFrame(false);
-                [coo, status, std_pup] = rf.getCoo(this.parent.getMarkerName4Ch, this.getCentralTime);
-            end
-            if ~isempty(coo)
-                this.xyz = coo;
-                this.std_pup = std_pup;
-            end
         end
         
         function prepareAppending(this, time_start, time_stop)
@@ -549,6 +537,18 @@ classdef Receiver_Work_Space < Receiver_Commons
                     rin.copyFrom(rin_list, i);
                     this.appendRinex(rin, time_start, time_stop, rate, sys_c_list, otype_list)
                 end
+            end
+            
+            if (this.time.isEmpty)
+                coo = [];
+                std_pup = [];
+            else
+                rf = Core.getReferenceFrame();
+                [coo, status, std_pup] = rf.getCoo(this.parent.getMarkerName4Ch, this.getCentralTime);
+            end
+            if ~isempty(coo)
+                this.xyz = coo;
+                this.std_pup = std_pup;
             end
         end
         

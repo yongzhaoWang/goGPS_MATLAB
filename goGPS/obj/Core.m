@@ -438,6 +438,9 @@ classdef Core < handle
             if nargin == 1 && flag_reset
                 rf.init();
             end
+            if isempty(rf.xyz)
+                rf.init(core.state.getCrdFile);
+            end
         end
         
         function sky = getCoreSky()

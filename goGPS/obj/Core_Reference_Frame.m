@@ -182,7 +182,7 @@ classdef Core_Reference_Frame < handle
             % SYNTAX:
             %  [xyz, is_valid] = this.getCoo(sta_name, epoch)
             xyz = [];
-            
+            std_pup = [];
             % load RF if not loaded
             is_valid = false;
             if ~this.isValid()
