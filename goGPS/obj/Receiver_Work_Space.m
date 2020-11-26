@@ -3265,7 +3265,8 @@ classdef Receiver_Work_Space < Receiver_Commons
             
             t0 = tic;
             
-            this.log.addMessage(this.log.indent(sprintf('Reading observations of %s', file_name)));
+            log = Core.getLogger;
+            log.addMessage(log.indent(sprintf('Reading observations of %s', file_name)));
             
             if isempty(this.file) || ~strcmp(this.file.getFileName, file_name)
                 this.file =  File_Rinex(file_name, 9);
@@ -3273,150 +3274,154 @@ classdef Receiver_Work_Space < Receiver_Commons
             
             if this.file.isValid()
                 if ~isempty(this.file.first_epoch)
-                    this.log.addMessage(this.log.indent(sprintf(' - first epoch found at: %s', this.file.first_epoch.last.toString())));
+                    log.addMessage(log.indent(sprintf(' - first epoch found at: %s', this.file.first_epoch.last.toString())));
                 end
                 if ~isempty(this.file.last_epoch)
-                    this.log.addMessage(this.log.indent(sprintf(' - last  epoch found at: %s', this.file.last_epoch.last.toString())));
+                    log.addMessage(log.indent(sprintf(' - last  epoch found at: %s', this.file.last_epoch.last.toString())));
                 end
                 % open RINEX observation file
                 fid = fopen(file_name,'rt');
-                txt = fread(fid,'*char')';
-                % try to see if carriage return is present in the file (Windows stupid standard)
-                % On Windows file lines ends with char(13) char(10)
-                % instead of just using char(10)
-                if ~isempty(find(txt(1:min(1000,numel(txt))) == 13, 1, 'first'))
-                    has_cr = true;  % The file has carriage return - I hate you Bill!
+                if fid < 0
+                    log.addError(sprintf('The file "%s" cannot be accessed!!!', file_name));
                 else
-                    has_cr = false;  % The file is UNIX standard
-                end
-                % txt = txt(txt ~= 13);  % remove carriage return - I hate you Bill!
-                fclose(fid);
-                
-                % get new line separators
-                nl = regexp(txt, '\n')';
-                if nl(end) <  (numel(txt) - double(has_cr))
-                    nl = [nl; numel(txt)];
-                end
-                lim = [[1; nl(1 : end - 1) + 1] (nl - 1 - double(has_cr))];
-                lim = [lim lim(:,2) - lim(:,1)];
-                while lim(end,3) < 3
-                    lim(end,:) = [];
-                end
-                
-                % removing empty lines at end of file
-                while (lim(end,1) - lim(end-1,1))  < 2
-                    lim(end,:) = [];
-                end
-                
-                % importing header informations
-                eoh = this.file.eoh;
-                flag_corrupt = false;
-                try
-                    this.parseRinHead(txt, lim, eoh);
-                catch
-                    % The header is corrupt
-                    Core.getLogger.addError('The header is corrupt! Loading of the RINEX is not possible');
-                    flag_corrupt = true;
-                end
-                
-                if not(flag_corrupt)
-                    if (this.rin_type < 3)
-                        % considering rinex 2
-                        this.parseRin2Data(txt, has_cr, lim, eoh, t_start, t_stop, rate, sys_c_list, otype_list);
+                    txt = fread(fid,'*char')';
+                    % try to see if carriage return is present in the file (Windows stupid standard)
+                    % On Windows file lines ends with char(13) char(10)
+                    % instead of just using char(10)
+                    if ~isempty(find(txt(1:min(1000,numel(txt))) == 13, 1, 'first'))
+                        has_cr = true;  % The file has carriage return - I hate you Bill!
                     else
-                        % considering rinex 3
-                        while lim(end,3) < 32
-                            lim(end,:) = [];
+                        has_cr = false;  % The file is UNIX standard
+                    end
+                    % txt = txt(txt ~= 13);  % remove carriage return - I hate you Bill!
+                    fclose(fid);
+                    
+                    % get new line separators
+                    nl = regexp(txt, '\n')';
+                    if nl(end) <  (numel(txt) - double(has_cr))
+                        nl = [nl; numel(txt)];
+                    end
+                    lim = [[1; nl(1 : end - 1) + 1] (nl - 1 - double(has_cr))];
+                    lim = [lim lim(:,2) - lim(:,1)];
+                    while lim(end,3) < 3
+                        lim(end,:) = [];
+                    end
+                    
+                    % removing empty lines at end of file
+                    while (lim(end,1) - lim(end-1,1))  < 2
+                        lim(end,:) = [];
+                    end
+                    
+                    % importing header informations
+                    eoh = this.file.eoh;
+                    flag_corrupt = false;
+                    try
+                        this.parseRinHead(txt, lim, eoh);
+                    catch
+                        % The header is corrupt
+                        Core.getLogger.addError('The header is corrupt! Loading of the RINEX is not possible');
+                        flag_corrupt = true;
+                    end
+                    
+                    if not(flag_corrupt)
+                        if (this.rin_type < 3)
+                            % considering rinex 2
+                            this.parseRin2Data(txt, has_cr, lim, eoh, t_start, t_stop, rate, sys_c_list, otype_list);
+                        else
+                            % considering rinex 3
+                            while lim(end,3) < 32
+                                lim(end,:) = [];
+                            end
+                            this.parseRin3Data(txt, lim, eoh, t_start, t_stop, rate, sys_c_list, otype_list);
                         end
-                        this.parseRin3Data(txt, lim, eoh, t_start, t_stop, rate, sys_c_list, otype_list);
-                    end
-                    
-                    % guess rinex3 flag for incomplete flag (probably coming from rinex2 or converted rinex2 -> rinex3)
-                    % WARNING!! (C/A) + (P2-P1) semi codeless tracking (flag C2D) receiver not supporter (in rinex 2) convert them
-                    % using cc2noncc converter https://github.com/ianmartin/cc2noncc (not tested)
-                    
-                    % GPS C1 -> C1C
-                    idx = this.findObservableByFlag('C1 ','G');
-                    this.obs_code(idx,:) = repmat('C1C',length(idx),1);
-                    % GPS C2 -> C2C
-                    idx = this.findObservableByFlag('C2 ','G');
-                    this.obs_code(idx,:) = repmat('C2C',length(idx),1);
-                     % GPS S1 -> S1C
-                    idx = this.findObservableByFlag('S1 ','G');
-                    this.obs_code(idx,:) = repmat('S1C',length(idx),1);
-                    % GPS S2 -> S2C
-                    idx = this.findObservableByFlag('S2 ','G');
-                    this.obs_code(idx,:) = repmat('S2C',length(idx),1);
-                    % GPS L1 -> L1C
-                    idx = this.findObservableByFlag('L1 ','G');
-                    this.obs_code(idx,:) = repmat('L1C',length(idx),1);
-                    % GPS L2 -> L2W
-                    idx = this.findObservableByFlag('L2 ','G');
-                    this.obs_code(idx,:) = repmat('L2W',length(idx),1);
-                    % GPS C5 -> C5I
-                    idx = this.findObservableByFlag('C5 ','G');
-                    this.obs_code(idx,:) = repmat('C5I',length(idx),1);
-                    % GPS L5 -> L5I
-                    idx = this.findObservableByFlag('L5 ','G');
-                    this.obs_code(idx,:) = repmat('L5I',length(idx),1);
-                    % GPS P1 -> C1W
-                    idx = this.findObservableByFlag('P1 ','G');
-                    this.obs_code(idx,:) = repmat('C1W',length(idx),1);
-                    % GPS P2 -> C2W
-                    idx = this.findObservableByFlag('P2 ','G');
-                    this.obs_code(idx,:) = repmat('C2W',length(idx),1);
-                    % GLONASS C1 -> C1C
-                    idx = this.findObservableByFlag('C1 ','R');
-                    this.obs_code(idx,:) = repmat('C1C',length(idx),1);
-                    % GLONASS C2 -> C2C
-                    idx = this.findObservableByFlag('C2 ','R');
-                    this.obs_code(idx,:) = repmat('C2C',length(idx),1);
-                    % GLONASS C1 -> C1C
-                    idx = this.findObservableByFlag('L1 ','R');
-                    this.obs_code(idx,:) = repmat('L1C',length(idx),1);
-                    % GLONASS C2 -> C2C
-                    idx = this.findObservableByFlag('L2 ','R');
-                    this.obs_code(idx,:) = repmat('L2C',length(idx),1);
-                    % GLONASS P1 -> C1P
-                    idx = this.findObservableByFlag('P1 ','R');
-                    this.obs_code(idx,:) = repmat('C1P',length(idx),1);
-                    % GLONASS P2 -> C2P
-                    idx = this.findObservableByFlag('P2 ','R');
-                    this.obs_code(idx,:) = repmat('C2P',length(idx),1);
-                    % GALILEO C1 -> C1A
-                    idx = this.findObservableByFlag('C1 ','E');
-                    this.obs_code(idx,:) = repmat('C1A',length(idx),1);
-                    % GALILEO L1 -> L1A
-                    idx = this.findObservableByFlag('L1 ','E');
-                    this.obs_code(idx,:) = repmat('L1A',length(idx),1);
-                    % BEIDOU 1 -> 2
-                    idx = this.findObservableByFlag('?1?','C'); %some times band 2 rinex 3 is incorrectly written as band 1
-                    this.obs_code(idx,2) = '2';
-                    % other flags to be investiagated
-                    
-                    this.log.addMessage(this.log.indent(sprintf('Parsing completed in %.2f seconds', toc(t0))));
-                    this.log.newLine();
-                    
-                    % Compute the other useful status array of the receiver object
-                    if ~isempty(this.obs)
-                        this.updateStatus();
-                    end
-                    
-                    % remove empty observables
-                    this.remObs(~this.active_ids);
-                    % remove empty sets very useful when reading RINEX 2
-                    % multi-constellations files
-                    if ~isempty(this.obs)
-                        this.remObs(~(any(this.obs')));
-                        % remove unselected observations
-                        u_sys_c = unique(this.system);
-                        for i = 1 : length(u_sys_c)
-                            sys_c = u_sys_c(i);
-                            ss = cc.getSys(sys_c);
-                            active_band = ss.CODE_RIN3_2BAND(~ss.flag_f);
-                            for j = 1 : length(active_band)
-                                idx = this.findObservableByFlag(['?' active_band(j) '?'] ,sys_c);
-                                this.remObs(idx);
+                        
+                        % guess rinex3 flag for incomplete flag (probably coming from rinex2 or converted rinex2 -> rinex3)
+                        % WARNING!! (C/A) + (P2-P1) semi codeless tracking (flag C2D) receiver not supporter (in rinex 2) convert them
+                        % using cc2noncc converter https://github.com/ianmartin/cc2noncc (not tested)
+                        
+                        % GPS C1 -> C1C
+                        idx = this.findObservableByFlag('C1 ','G');
+                        this.obs_code(idx,:) = repmat('C1C',length(idx),1);
+                        % GPS C2 -> C2C
+                        idx = this.findObservableByFlag('C2 ','G');
+                        this.obs_code(idx,:) = repmat('C2C',length(idx),1);
+                        % GPS S1 -> S1C
+                        idx = this.findObservableByFlag('S1 ','G');
+                        this.obs_code(idx,:) = repmat('S1C',length(idx),1);
+                        % GPS S2 -> S2C
+                        idx = this.findObservableByFlag('S2 ','G');
+                        this.obs_code(idx,:) = repmat('S2C',length(idx),1);
+                        % GPS L1 -> L1C
+                        idx = this.findObservableByFlag('L1 ','G');
+                        this.obs_code(idx,:) = repmat('L1C',length(idx),1);
+                        % GPS L2 -> L2W
+                        idx = this.findObservableByFlag('L2 ','G');
+                        this.obs_code(idx,:) = repmat('L2W',length(idx),1);
+                        % GPS C5 -> C5I
+                        idx = this.findObservableByFlag('C5 ','G');
+                        this.obs_code(idx,:) = repmat('C5I',length(idx),1);
+                        % GPS L5 -> L5I
+                        idx = this.findObservableByFlag('L5 ','G');
+                        this.obs_code(idx,:) = repmat('L5I',length(idx),1);
+                        % GPS P1 -> C1W
+                        idx = this.findObservableByFlag('P1 ','G');
+                        this.obs_code(idx,:) = repmat('C1W',length(idx),1);
+                        % GPS P2 -> C2W
+                        idx = this.findObservableByFlag('P2 ','G');
+                        this.obs_code(idx,:) = repmat('C2W',length(idx),1);
+                        % GLONASS C1 -> C1C
+                        idx = this.findObservableByFlag('C1 ','R');
+                        this.obs_code(idx,:) = repmat('C1C',length(idx),1);
+                        % GLONASS C2 -> C2C
+                        idx = this.findObservableByFlag('C2 ','R');
+                        this.obs_code(idx,:) = repmat('C2C',length(idx),1);
+                        % GLONASS C1 -> C1C
+                        idx = this.findObservableByFlag('L1 ','R');
+                        this.obs_code(idx,:) = repmat('L1C',length(idx),1);
+                        % GLONASS C2 -> C2C
+                        idx = this.findObservableByFlag('L2 ','R');
+                        this.obs_code(idx,:) = repmat('L2C',length(idx),1);
+                        % GLONASS P1 -> C1P
+                        idx = this.findObservableByFlag('P1 ','R');
+                        this.obs_code(idx,:) = repmat('C1P',length(idx),1);
+                        % GLONASS P2 -> C2P
+                        idx = this.findObservableByFlag('P2 ','R');
+                        this.obs_code(idx,:) = repmat('C2P',length(idx),1);
+                        % GALILEO C1 -> C1A
+                        idx = this.findObservableByFlag('C1 ','E');
+                        this.obs_code(idx,:) = repmat('C1A',length(idx),1);
+                        % GALILEO L1 -> L1A
+                        idx = this.findObservableByFlag('L1 ','E');
+                        this.obs_code(idx,:) = repmat('L1A',length(idx),1);
+                        % BEIDOU 1 -> 2
+                        idx = this.findObservableByFlag('?1?','C'); %some times band 2 rinex 3 is incorrectly written as band 1
+                        this.obs_code(idx,2) = '2';
+                        % other flags to be investiagated
+                        
+                        log.addMessage(log.indent(sprintf('Parsing completed in %.2f seconds', toc(t0))));
+                        log.newLine();
+                        
+                        % Compute the other useful status array of the receiver object
+                        if ~isempty(this.obs)
+                            this.updateStatus();
+                        end
+                        
+                        % remove empty observables
+                        this.remObs(~this.active_ids);
+                        % remove empty sets very useful when reading RINEX 2
+                        % multi-constellations files
+                        if ~isempty(this.obs)
+                            this.remObs(~(any(this.obs')));
+                            % remove unselected observations
+                            u_sys_c = unique(this.system);
+                            for i = 1 : length(u_sys_c)
+                                sys_c = u_sys_c(i);
+                                ss = cc.getSys(sys_c);
+                                active_band = ss.CODE_RIN3_2BAND(~ss.flag_f);
+                                for j = 1 : length(active_band)
+                                    idx = this.findObservableByFlag(['?' active_band(j) '?'] ,sys_c);
+                                    this.remObs(idx);
+                                end
                             end
                         end
                     end
@@ -9208,6 +9213,20 @@ classdef Receiver_Work_Space < Receiver_Commons
         % MULTIPATH
         %--------------------------------------------------------
         
+        function ant_mp = getAppliedMPM(this)
+            % Get the currently applied multipath map 
+            %
+            % OUTPUT
+            %   mp.type              type of applied multipath (if 0 no mp)
+            %   mp.time_lim          reference time of the applied map
+            %   mp.(sys_c).(trk).map current map according to Core.getState.flag_rec_mp
+            %
+            % SYNTAX 
+            %   [applied_map, type] = getAppliedMPM(this,)
+            
+            ant_mp = GNSS_Station.getCurrentMPM(this.ant_mp);
+        end
+        
         function [ant_mp, flag_ok] = getDiffMP(this)
             % Get the multipath to be applied
             %
@@ -9654,14 +9673,28 @@ classdef Receiver_Work_Space < Receiver_Commons
             % computing nominal_time
             nominal_time_zero = floor(this.time.first.getMatlabTime() * 24)/24; % start of day
             rinex_time = this.time.getRefTime(nominal_time_zero); % seconds from start of day
-            nominal_time = round(rinex_time / this.time.getRate) * this.time.getRate;
+            min_rate = min(1, this.time.getRate);
+            nominal_time = round(rinex_time / min_rate) * min_rate;
             ref_time = (nominal_time(1) : this.time.getRate : nominal_time(end))';
+            
+            [~, id_not_empty, id_ok] = intersect(round(ref_time/this.time.getRate), round(nominal_time/this.getRate));
+            
+            % if there are observations at a different rate than the
+            % nominal (median) they will be removed from the receiver to
+            % allow proper processing
+            n_out = numel(nominal_time) - numel(id_ok);
+            
+            if n_out > 0
+                nominal_time = nominal_time(id_ok);
+                this.keepEpochs(id_ok);
+                rinex_time = this.time.getRefTime(nominal_time_zero); % seconds from start of day
+                log.addWarning(sprintf('%d epochs seem out of sync, the receiver is mostly @%gs but\n some observations are at a different rate, removing them to avoid problems', n_out, this.time.getRate))
+            end
             
             % reordering observations filling empty epochs with zeros;
             this.time = GPS_Time(nominal_time_zero, ref_time, this.time.isGPS(), 2);
             this.time.toUnixTime;
             
-            [~, id_not_empty] = intersect(round(ref_time/this.time.getRate), round(nominal_time/this.getRate));
             id_empty = setdiff(1 : numel(nominal_time), id_not_empty);
             
             time_desync = nan(size(nominal_time));

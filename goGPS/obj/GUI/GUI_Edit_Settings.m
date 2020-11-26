@@ -3018,10 +3018,14 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
             % Load state settings
             
             state = Core.getCurrentSettings;
-            config_dir = state.getHomeDir();
-            if exist([config_dir filesep 'config'], 'dir')
-                config_dir = [config_dir filesep 'config'];
+            [config_dir] = fileparts(which(state.getIniPath));
+            if strcmp(Core.getInstallDir, config_dir) || not(exist(config_dir, 'dir') == 7) 
+                config_dir = state.getHomeDir();
+                if exist([config_dir filesep 'config'], 'dir') == 7
+                    config_dir = [config_dir filesep 'config'];
+                end
             end
+            
             % On MacOS this doesn't work anymore: [file_name, pathname] = uigetfile({'*.ini;','INI configuration file (*.ini)'; '*.mat;','state file goGPS < 0.5 (*.mat)'}, 'Choose file with saved settings', config_dir);
             [file_name, path_name] = uigetfile('*.ini', 'Choose file with saved settings', config_dir);
             

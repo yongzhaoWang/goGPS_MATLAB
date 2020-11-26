@@ -672,7 +672,7 @@ classdef Residuals < Exportable
                             if data_found
                                 m_max = l_max;                                
                                 % Remove outliers
-                                id_ok = Core_Utils.polarCleaner(az_all, el_all, res_all, [360, 1]) & Core_Utils.polarCleaner(az_all, el_all, res_smt, [360, 1]);
+                                id_ok = Core_Utils.polarCleaner(az_all, el_all, res_all, [360, 1; 3 3]) & Core_Utils.polarCleaner(az_all, el_all, res_smt, [360, 1; 3 3]);
                                 log.addMessage(log.indent(sprintf('1. Outlier rejection (%.3f%%)', (sum(~id_ok) / numel(id_ok)) * 100), 9));
                                 if flag_debug
                                     figure; plot(el_all/pi*180, res_all*1e3, '.'); hold on; plot(el_all(~id_ok)/pi*180, res_all(~id_ok)*1e3, 'o');
@@ -686,7 +686,6 @@ classdef Residuals < Exportable
                                 res_all = res_all(id_ok);
                                 n_obs = numel(res_all);
                                 
-                                % 3 sigma filter per latitude
                                 if flag_reg
                                     log.addMessage(log.indent('2. Preparing regularization', 9));
                                     % Get regularization points based on empty sky areas

@@ -494,7 +494,7 @@ classdef LS_Manipulator_new < handle
             else
                 this.time_obs.addEpoch(time_obs.getMatlabTime);
             end
-            this.receiver_obs = [this.receiver_obs; r*ones(size(phase_obs))];
+            this.receiver_obs = [uint16(this.receiver_obs); uint16(r)*ones(size(phase_obs), 'uint16')];
         end
         
         function bondParamsGenerateIdx(this, ls_parametrization)
@@ -1646,6 +1646,57 @@ classdef LS_Manipulator_new < handle
             % reduce for the parameter
         end
         
+        
+        function applyMPM(this, ant_mp, id_rec, sgn)
+            % Apply a multi-path map to the observations of receiver id_rec
+            %
+            % INPUT
+            %   ant_mp      antenna multipath structure
+            %   id_rec      id of the rec in LS target of MP removal
+            %   sgn         sign or magnitude of the removal
+            %
+            % SYNTAX
+            %   this.applyMP(ant_mp, id_rec, sgn);
+            
+            if ant_mp.type > 0 % MP is already applied to the data I have to remove the MP
+                sys_c_list = intersect(cell2mat(fields(ant_mp)'), 'GRECJI');
+                for sys_c = sys_c_list % for each constellation of the mp map
+                    if isfield(ant_mp, sys_c)
+                        % This constellation is already present into the applied Zernike MultiPath
+                        trk_list = fields(ant_mp.(sys_c))';
+                        for trk = trk_list % for each tracking of the mp map
+                            if isfield(ant_mp.(sys_c), trk{1})
+                                if isfield(ant_mp.(sys_c).(trk{1}), 'map')
+                                    % search for data in LS
+                                    uoc = [sys_c trk{1}(1:2)]; % build a unique observation code (3ch) from antenna map e.g. EL1
+                                    % find the uoc in the list of unique_obs_codes in ls
+                                    uoc_id = floor((strfind([this.unique_obs_codes{:}], uoc) + 3) / 4);
+                                    if not(isempty(uoc_id))
+                                        id_obs = this.obs_codes_id_obs == uoc_id & this.receiver_obs == id_rec;
+                                        
+                                        if any(id_obs)
+                                            % get link to the map
+                                            mp_map = ant_mp.(sys_c).(trk{1}).map;
+                                            
+                                            % get az el for the interpolation
+                                            az = Core_Utils.deg2rad(this.azimuth_obs(id_obs));
+                                            el = Core_Utils.deg2rad(this.elevation_obs(id_obs));
+                                            
+                                            % interpolate
+                                            [az_grid, el_grid] = Core_Utils.getPolarGrid(360 / size(mp_map, 2), 90 / size(mp_map, 1));
+                                            [az_mgrid, el_mgrid] = meshgrid(Core_Utils.deg2rad(az_grid), Core_Utils.deg2rad(el_grid));
+                                            map2scatter = griddedInterpolant(flipud([az_mgrid(:,end) - 2*pi, az_mgrid, az_mgrid(:,1) + 2*pi])', flipud([el_mgrid(:,end) el_mgrid el_mgrid(:,1)])', flipud([mp_map(:,end) mp_map mp_map(:,1)])', 'linear');
+                                            % mp_corr = map2scatter(az, el);
+                                            this.obs(id_obs) = this.obs(id_obs) - sgn * map2scatter(az, el);
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
         
         function solve(this, fix)
             % %solve the least squares

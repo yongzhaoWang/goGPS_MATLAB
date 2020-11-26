@@ -107,30 +107,31 @@ classdef Network < handle
             this.wl_comb_codes = [];
         end
                 
-        function adjustNew(this, id_ref, coo_rate, reduce_iono, export_clk, free_net)
+        function adjustNew(this, id_ref, coo_rate, free_net, mp_type)
             % Adjust the GNSS network
             %
             % INPUT
             %     id_ref : [1,n_rec]  receivers numeric index to be choosen as reference, their value mean will be set to zero
             %   coo_rate : rate of the solution
-            %reduce_iono : reduce for ionospheric delay
+            %   free_net : process in free net mode
+            %   mp_tye   : apply multipath to baselines 
             %
             % SYNATAX
             %    this. adjustNetwork(id_ref, <coo_rate>, <reduce_iono>)
+            
             state = Core.getState;
             if nargin < 3
                 coo_rate = [];
             end
-            if nargin < 4
-                reduce_iono = false;
-            end
-            if nargin < 5
-                export_clk = false;
-            end
             
-            if nargin < 6
+            if nargin < 4 || isempty(free_net)
                 free_net = false;
             end
+            
+            if nargin < 4 || isempty(mp_type)
+                mp_type = 0;
+            end
+            
             recs = Core.getRecList();
             
             for i = 1 : length(recs)
@@ -200,7 +201,9 @@ classdef Network < handle
                     n_clean = 3;
                 end
                 
-                flag_try = 2;
+                % If buffers are present perform a mximum of two iterations (one with them,
+                % one without) otherwise just loop once
+                flag_try = iif(numel(state.getBuffer) == 1 && (state.getBuffer == 0), 1, 2); 
                 while flag_try > 0
                     ls = LS_Manipulator_new();
                     phase = true;
@@ -393,6 +396,26 @@ classdef Network < handle
                         ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization);
                     end
                     
+                    % If is a baseline and MP reduction is requested,
+                    % reduce for MP
+                    if numel(this.rec_list == 2) && (mp_type > 0) && (numel(this.id_ref) == 1)
+                        
+                        % Remove eventually loaded mp map from ref data
+                        ant_mp = this.rec_list(this.id_ref).work.getAppliedMPM;
+                        ls.applyMPM(ant_mp, this.id_ref, +1);
+
+                        % Remove eventually loaded mp map from trg data
+                        i_trg = setdiff([1,2], this.id_ref);
+                        ant_mp = this.rec_list(i_trg).work.getAppliedMPM;
+                        ls.applyMPM(ant_mp, this.id_ref, +1);
+
+                      
+                        % Apply twice the MP of the trg
+                        ant_mp = this.rec_list(i_trg).getAntennaMultiPath;
+                        ant_mp = GNSS_Station.getCurrentMPM(ant_mp, mp_type); % Extract just the needed map
+                        ls.applyMPM(ant_mp, this.id_ref, -2);
+                    end
+                    
                     if state.flag_free_net_tropo
                         ls.free_tropo = true;
                     end
@@ -499,7 +522,7 @@ classdef Network < handle
                         this.pushBackInReceiver(ls);
                         flag_try = 0;
                     else
-                        if state.isSepCooAtBoundaries
+                        if state.isSepCooAtBoundaries && flag_try > 1
                             this.log.addError(sprintf('s0 ( %.4f) too high! try to repeat the solution with separate coordinates',s0));
                             flag_try = flag_try - 1;
                         else

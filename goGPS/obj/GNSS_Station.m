@@ -510,6 +510,10 @@ classdef GNSS_Station < handle
     %% METHODS ADVANCED
     % ==================================================================================================================================================
     methods
+        function getMP(this)
+            
+        end
+        
         function updateMultiPath(sta_list, day_span)
             sta_list = sta_list(~sta_list.isEmpty);
             log = Core.getLogger();
@@ -3255,6 +3259,59 @@ classdef GNSS_Station < handle
             bsl_ids = [serialize(tril(r1, -1)) serialize(tril(r2, -1))];
             bsl_ids = bsl_ids(bsl_ids(:, 1) > 0 & bsl_ids(:, 2) > 0, :);
         end
+        
+        function ant_mp = getCurrentMPM(applied_ant, type)
+            % Get the currently applied multipath map 
+            %
+            % OUTPUT
+            %   mp.type              type of applied multipath (if 0 no mp)
+            %   mp.time_lim          reference time of the applied map
+            %   mp.(sys_c).(trk).map current map according to Core.getState.flag_rec_mp
+            %
+            % SYNTAX 
+            %   [applied_map, type] = getAppliedMP(this, ant_model, <type>)
+            
+            if nargin < 2 || isempty(type)
+                ant_mp.type = Core.getState.flag_rec_mp; % get the kind of applied map
+            else
+                ant_mp.type = type;
+            end
+            
+            try
+                ant_mp.time_lim = applied_ant.time_lim;
+                % Get the satellite systems available in the zerniche multipath struct
+                sys_c_list = intersect(cell2mat(fields(applied_ant)'), 'GRECJI');
+                for sys_c = sys_c_list
+                    if isfield(applied_ant, sys_c)
+                        % This constellation is already present into the applied Zernike MultiPath
+                        trk_list = fields(applied_ant.(sys_c))';
+                        for trk = trk_list
+                            trk = trk{1};
+                            if ~isfield(ant_mp, sys_c)
+                                ant_mp.(sys_c) = struct;
+                            end
+                            if ~isfield(ant_mp.(sys_c), trk)
+                                ant_mp.(sys_c).(trk) = struct;
+                            end
+                            switch ant_mp.type
+                                case 1, ant_mp.(sys_c).(trk).map = applied_ant.(sys_c).(trk).z_map;
+                                case 2, ant_mp.(sys_c).(trk).map = applied_ant.(sys_c).(trk).r_map;
+                                case 3, ant_mp.(sys_c).(trk).map = applied_ant.(sys_c).(trk).g_map;
+                                case 4, ant_mp.(sys_c).(trk).map = applied_ant.(sys_c).(trk).c_map;
+                                case 5, ant_mp.(sys_c).(trk).map = applied_ant.(sys_c).(trk).g1_map;
+                                case 6, ant_mp.(sys_c).(trk).map = applied_ant.(sys_c).(trk).c1_map;
+                            end
+                        end
+                    end
+                end
+            catch ex
+                if ant_mp.type == 0
+                   % this could be normal 
+                else
+                    ant_mp.type = 0;
+                end
+            end
+        end
     end
     %% STATIC FUNCTIONS used as tools
     % ==================================================================================================================================================
@@ -3793,7 +3850,7 @@ classdef GNSS_Station < handle
             % SYNTAX 
             %   this.plotPositionENU(<flag_add_coo>, <n_obs>);
 
-            if nargin < 3 || isempty(n_obs)
+            if nargin < 3 || isempty(n_obs) || isnan(n_obs)
                 n_obs = 0;
             end
             if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
@@ -3820,7 +3877,7 @@ classdef GNSS_Station < handle
             % SYNTAX 
             %   this.showPositionPlanarUp(<flag_add_coo>, <n_obs>);
             
-            if nargin < 3 || isempty(n_obs)
+            if nargin < 3 || isempty(n_obs) || isnan(n_obs)
                 n_obs = 0;
             end
             if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
@@ -3843,7 +3900,7 @@ classdef GNSS_Station < handle
             %   n_obs                    use only the last n_obs
             %
             % SYNTAX this.plotPositionXYZ(<flag_add_coo>, <n_obs>);
-            if nargin < 3 || isempty(n_obs)
+            if nargin < 3 || isempty(n_obs) || isnan(n_obs)
                 n_obs = 0;
             end
             if ~(nargin >= 2 && ~isempty(flag_add_coo) && flag_add_coo ~= 0)
@@ -6709,7 +6766,7 @@ classdef GNSS_Station < handle
                 sta_list = sta_list(~sta_list.isEmptyOut_mr);
             end
             out_list = [sta_list.out];
-            if nargin < 4 || isempty(n_obs)
+            if nargin < 4 || isempty(n_obs) || isnan(n_obs)
                 n_obs = 0;
             end
             if nargin < 3
@@ -6745,7 +6802,7 @@ classdef GNSS_Station < handle
                 sta_list = sta_list(~sta_list.isEmptyOut_mr);
             end
             out_list = [sta_list.out];
-            if nargin < 4 || isempty(n_obs)
+            if nargin < 4 || isempty(n_obs) || isnan(n_obs)
                 n_obs = 0;
             end
             if nargin < 3
