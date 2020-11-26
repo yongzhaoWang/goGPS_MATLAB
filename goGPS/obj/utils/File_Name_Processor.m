@@ -131,10 +131,10 @@ classdef File_Name_Processor < handle
                 file_name_out = strrep(file_name_out, this.GPS_SESSION, sprintf('%01d', session));
             end
             if any(file_name_out == '$')
-                file_name_out = strrep(file_name_out, this.VMF_RES, vmf_res);
+                file_name_out = strrep(file_name_out, this.VMF_RES, char(vmf_res));
             end
             if any(file_name_out == '$')
-                file_name_out = strrep(file_name_out, this.VMF_SOURCE, vmf_source);
+                file_name_out = strrep(file_name_out, this.VMF_SOURCE, char(vmf_source));
             end
         end
 
