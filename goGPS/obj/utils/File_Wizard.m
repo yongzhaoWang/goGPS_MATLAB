@@ -636,9 +636,14 @@ classdef File_Wizard < handle
             list_preferred = Core.getState.getPreferredEph();
             err_code = ones(1, length(list_preferred));
             status = '';
+            % Reset current state info
+            state = Core.getState;
+            state.eph_name = '';
+            state.clk_name = '';
+            state.crd_name = '';
             for i = 1 : length(list_preferred)
                 status = this.conjureResource(list_preferred{i}, date_start, date_stop);
-                err_code(i) = ~status; %#ok<AGROW>
+                err_code(i) = ~status; 
                 if status || (this.nrt && (strcmp(list_preferred{i},'ultra') || strcmp(list_preferred{i},'broadcast')))
                     break
                 end
