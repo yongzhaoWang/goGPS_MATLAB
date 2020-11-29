@@ -696,14 +696,16 @@ classdef Coordinates < Exportable & handle
                         subplot(3,1,1);                       
                         e = enu_diff(1:numel(t),1);
                         if thr < 1
-                            [data, lid_ko] = strongFilterStaticData(e, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
+                            e = data;
                         else
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
                             lid_ko = false(numel(t), 1);
+                            trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,1))), enu_diff(~isnan(enu_diff(:,1)),1), 1, t);
                         end
                         ax(3) = gca(fh);
                         if (t(end) > t(1))
@@ -716,26 +718,28 @@ classdef Coordinates < Exportable & handle
                         end
                          h = ylabel('East [mm]'); h.FontWeight = 'bold';
                         grid on;
-                        trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,1))), enu_diff(~isnan(enu_diff(:,1)),1), 1, t);
+                        
                         if (t(end)-t(1) > 199) && flag_time
                             ttmp = t(~isnan(enu_diff(:,1)));
                             [filtered, ~, ~, splined] = splinerMat(t(~isnan(enu_diff(:,1))), enu_diff(~isnan(enu_diff(:,1)),1), 365/4, 1e-8, ttmp(1):ttmp(end));
                             plot(ttmp(1):ttmp(end), splined, 'k');
                             trend(~isnan(enu_diff(:,1))) = filtered;
                         end
-                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((enu_diff(~lid_ko,1) - trend(~lid_ko)), 'omitnan'));
+                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - trend(~lid_ko)), 'omitnan'));
                         h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         subplot(3,1,2);
                         
                         n = enu_diff(:,2);                        
                         if thr < 1
-                            [data, lid_ko] = strongFilterStaticData(n, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:));
+                            n = data;
                         else
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
+                            trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,2))), enu_diff(~isnan(enu_diff(:,2)),2), 1, t);
                         end
                         ax(2) = gca(fh);
                         if (t(end) > t(1))
@@ -747,27 +751,28 @@ classdef Coordinates < Exportable & handle
                             setTimeTicks(4);
                         end
                         h = ylabel('North [mm]'); h.FontWeight = 'bold';
-                        trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,2))), enu_diff(~isnan(enu_diff(:,2)),2), 1, t);
                         if (t(end)-t(1) > 199) && flag_time
                             ttmp = t(~isnan(enu_diff(:,2)));
                             [filtered, ~, ~, splined] = splinerMat(t(~isnan(enu_diff(:,2))), enu_diff(~isnan(enu_diff(~lid_ko,2)),2), 365/4, 1e-8, ttmp(1):ttmp(end));
                             plot(ttmp(1):ttmp(end), splined, 'k');
                             trend(~isnan(enu_diff(:,1))) = filtered;
                         end
-                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((enu_diff(~lid_ko,2) - trend(~lid_ko)), 'omitnan'));
+                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - trend(~lid_ko)), 'omitnan'));
                         h = title(str_title{2}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         grid on;
                         subplot(3,1,3);
                         
                         up = enu_diff(:,3);                        
                         if thr < 1
-                            [data, lid_ko] = strongFilterStaticData(up, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
+                            up = data;
                         else
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
+                            trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,3))), enu_diff(~isnan(enu_diff(:,3)),3), 1, t);
                         end
                         ax(1) = gca(fh);
                         if (t(end) > t(1))
@@ -779,14 +784,13 @@ classdef Coordinates < Exportable & handle
                             setTimeTicks(4);
                         end
                         h = ylabel('Up [mm]'); h.FontWeight = 'bold';
-                        trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,3))), enu_diff(~isnan(enu_diff(:,3)),3), 1, t);
                         if (t(end)-t(1) > 199) && flag_time
                             ttmp = t(~isnan(enu_diff(:,3)));
                             [filtered, ~, ~, splined] = splinerMat(t(~isnan(enu_diff(:,3))), enu_diff(~isnan(enu_diff(~lid_ko,3)),3), 365/4, 1e-8, ttmp(1):ttmp(end));
                             plot(ttmp(1):ttmp(end), splined, 'k');
                             trend(~isnan(enu_diff(:,1))) = filtered;
                         end
-                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((enu_diff(~lid_ko,3) - trend(~lid_ko)), 'omitnan'));
+                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - trend(~lid_ko)), 'omitnan'));
                         h = title(str_title{3}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         grid on;
                         linkaxes(ax, 'x');
@@ -886,14 +890,16 @@ classdef Coordinates < Exportable & handle
                         e = xyz_diff(:,1);
                         set(0, 'CurrentFigure', fh);;
                         if thr < 1
-                            [data, lid_ko] = strongFilterStaticData(e, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
+                            e = data;
                         else
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
                             lid_ko = false(numel(t), 1);
+                            trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,1))), xyz_diff(~isnan(xyz_diff(:,1)),1), 1, t);
                         end
                         ax(3) = gca(fh);
                         if (t(end) > t(1))
@@ -906,20 +912,21 @@ classdef Coordinates < Exportable & handle
                         end
                         h = ylabel('X [mm]'); h.FontWeight = 'bold';
                         grid on;
-                        trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,1))), xyz_diff(~isnan(xyz_diff(:,1)),1), 1, t);
-                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((xyz_diff(~lid_ko,1) - trend(~lid_ko)), 'omitnan'));
+                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - trend(~lid_ko)), 'omitnan'));
                         h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         subplot(3,1,2);
                         
                         n = xyz_diff(:,2);                        
                         if thr < 1
-                            [data, lid_ko] = strongFilterStaticData(n, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
+                            n = data;
                         else
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
+                            trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,2))), xyz_diff(~isnan(xyz_diff(:,2)),2), 1, t);
                         end
                         ax(2) = gca(fh);
                         if (t(end) > t(1))
@@ -931,19 +938,20 @@ classdef Coordinates < Exportable & handle
                             setTimeTicks(4);
                         end
                         h = ylabel('Y [mm]'); h.FontWeight = 'bold';
-                        trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,2))), xyz_diff(~isnan(xyz_diff(:,2)),2), 1, t);
-                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((xyz_diff(~lid_ko,2) - trend(~lid_ko)), 'omitnan'));
+                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - trend(~lid_ko)), 'omitnan'));
                         h = title(str_title{2}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         grid on;
                         subplot(3,1,3);
                         
                         up = xyz_diff(:,3);                        
                         if thr < 1
-                            [data, lid_ko] = strongFilterStaticData(up, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
+                            up = data;
                         else
+                            trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,3))), xyz_diff(~isnan(xyz_diff(:,3)),3), 1, t);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
                         end
@@ -957,8 +965,7 @@ classdef Coordinates < Exportable & handle
                             setTimeTicks(4);
                         end
                         h = ylabel('Z [mm]'); h.FontWeight = 'bold';
-                        trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,3))), xyz_diff(~isnan(xyz_diff(:,3)),3), 1, t);
-                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((xyz_diff(~lid_ko,3) - trend(~lid_ko)), 'omitnan'));
+                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - trend(~lid_ko)), 'omitnan'));
                         h = title(str_title{3}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         grid on;
                         linkaxes(ax, 'x');
@@ -1015,7 +1022,6 @@ classdef Coordinates < Exportable & handle
                             t = pos.time.first.getMatlabTime + t_comm/86400;
                             enu_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:) )*1e3;
                             flag_time = true;
-                            
                         else
                             if numel(coo_ref.xyz) == numel(pos.xyz)
                                 enu_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz - coo_ref.xyz)*1e3;
