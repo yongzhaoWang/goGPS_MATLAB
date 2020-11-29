@@ -1,4 +1,4 @@
-function [data, lid_ko] = strongFilterStaticData(data, robustness_perc)
+function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc)
 % Returns the data removing outliers (spikes)
 %
 % INPUT:
@@ -42,7 +42,7 @@ function [data, lid_ko] = strongFilterStaticData(data, robustness_perc)
     if nargin == 1
         robustness_perc = 0.8;
     end
-    tmp = strongDeTrend(data, robustness_perc, 1, 6);
+    [tmp, trend] = strongDeTrend(data, robustness_perc, 1, 6);
     thr = 6 * strongStd(tmp, robustness_perc);
 
     lid_ko = abs(tmp) > thr;

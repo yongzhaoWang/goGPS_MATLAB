@@ -271,7 +271,7 @@ classdef Core_Sky < handle
                     this.importERP(Core.getState.getErpFileName(start_date, stop_date),start_date);
                     
                     % load biases
-                    Core.getLogger.addMarkedMessage('Importing Differential code biases');
+                    Core.getLogger.addMarkedMessage('Importing code biases');
                     this.importBiases(Core.getState.getBiasFileName(start_date, stop_date));
                 end
             end
