@@ -640,7 +640,7 @@ classdef File_Wizard < handle
             state = Core.getState;
             state.eph_name = '';
             state.clk_name = '';
-            state.crd_name = '';
+            state.erp_name = '';
             for i = 1 : length(list_preferred)
                 status = this.conjureResource(list_preferred{i}, date_start, date_stop);
                 err_code(i) = ~status; 
