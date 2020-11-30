@@ -42,7 +42,7 @@ classdef Receiver_Work_Space < Receiver_Commons
         NEW_ISP = true;
         DT_CORRECTION_TIME_DESYNC = false;
         NEW_OUT_DET = true;
-        CS_REPAIR = false;
+        CS_REPAIR = true;
     end
     
     % ==================================================================================================================================================
