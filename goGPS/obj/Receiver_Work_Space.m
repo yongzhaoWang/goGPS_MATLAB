@@ -11139,7 +11139,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                 end
                 if nargin < 3
-                    id_sync = (1 : this.time.length())';
+                    id_sync = iif(isempty(this.id_sync), (1 : this.time.length())', this.id_sync);
                 end
                 
                 id_sync_in = id_sync;
