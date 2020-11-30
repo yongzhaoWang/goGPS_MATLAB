@@ -1982,12 +1982,19 @@ classdef Receiver_Work_Space < Receiver_Commons
             [ph, ~, id_ph0] = this.getPhases;
             n_obs = size(ph,1);
             phs = this.getSyntPhases();
-            clk0 = detrend(cumsum(nan2zero(median(Core_Utils.diffAndPred(ph-phs), 2, 'omitnan'))));
+            
+            % Basic estimation of residual clock to clean a bit the data
+            clk0 = (Core_Utils.diffAndPred(zero2nan(ph) - zero2nan(phs))); 
+            clk0(abs(clk0) > 3) = nan; % filter big cycle slips (or bad data)
+            clk0 = strongDeTrend(cumsum(nan2zero(median(zero2nan(clk0), 2, 'omitnan')))); 
             
             % Get all trackings available
             all_trk = Core_Utils.num2Code4Char(unique(Core_Utils.code4Char2Num(([this.system(this.obs_code(:,1)=='L')' this.obs_code(this.obs_code(:,1)=='L',:)]))));
             cc = Core.getConstellationCollector;
             i = 0;
+            
+            min_arc = ceil(Core.getState.getMinArc / this.time.getRate);
+                        
             % for each system
             for sys_c = unique(all_trk(:,1))'
                 sys = cc.getSys(sys_c);
@@ -2011,6 +2018,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                         
                         % Extract residuals
                         res = nan(n_obs, cc.getMaxNumSat(sys_c), numel(trk_avail));
+                        n_sat = zeros(numel(trk_avail), 0);
                         for t = numel(trk_avail) : -1 : 1
                             trk = ['L' f trk_avail(t)];
                             % Get phase of the current tracking in meters
@@ -2028,7 +2036,17 @@ classdef Receiver_Work_Space < Receiver_Commons
                             
                             % residual difference in cycles
                             res(:, 1 + this.go_id(id_ph) - cc.getSys(sys_c).go_ids(1), t) =  zero2nan(ph - phs);
+                            n_sat(t) = sum(any(res(:,:,t)));
+                            id_ko = find(flagMergeArcs(isnan(res(:,:,t)), min_arc));
+                            res(id_ko + (t-1) * size(res,1) * size(res,2)) = nan;
                         end
+                        
+                        % Sort based on number iof satellite per classes
+                        [~, ido] = sort(discretize(n_sat, numel(trk_avail)), 'descend');
+                        res = res(:, :, ido);
+                        trk_avail = trk_avail(ido);
+                        
+                        % sort tracking channel based on number of satellites)
                         % Move all the trackings to the first one
                         for t = 2 : numel(trk_avail)
                             status = status + 1;
@@ -2091,6 +2109,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                                                 res(id_arc, s, t) = res(id_arc, s, t) - corr;
                                                  % move all the arcs till the end - this limit the possibility to brake arcs
                                                 res((id_arc(end)+1) : end, s, t) = res((id_arc(end)+1) : end, s, t) - corr(end);
+                                            else
+                                                res(id_arc, s, t_ref) = res(id_arc, s, t);
                                             end
                                         end
                                     end
