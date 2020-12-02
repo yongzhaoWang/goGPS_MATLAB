@@ -3484,8 +3484,10 @@ classdef Core_Sky < handle
             
             fh = figure;
             subplot(16,1,1:6); Core_UI.addBeautifyMenu(fh); drawnow
-            t_clock = this.getClockTime.getMatlabTime;
-            imagesc(t_clock, 1 : size(this.clock, 2), not(isnan(zero2nan(this.clock)))');
+            if not(isempty(this.getClockTime))
+                t_clock = this.getClockTime.getMatlabTime;
+                imagesc(t_clock, 1 : size(this.clock, 2), not(isnan(zero2nan(this.clock)))');
+            end
             xlim([start_time.getMatlabTime, stop_time.getMatlabTime]);
             setTimeTicks();
             ax(1) = gca;
@@ -3495,9 +3497,11 @@ classdef Core_Sky < handle
             subplot(16,1,9:16);
             cmap = [0.2 0.2 0.2; 1 0.5 0.1; 0.3 1 0.3];
             coord_validity = not(isnan(zero2nan(this.coord(:,:,1))));
-            coord_validity = coord_validity + flagShrink(coord_validity, 5);
-            t_clock = this.getCoordTime.getMatlabTime;
-            imagesc(t_clock, 1 : size(this.coord, 2), coord_validity');
+            if not(isempty(coord_validity))
+                coord_validity = coord_validity + flagShrink(coord_validity, 5);
+                t_clock = this.getCoordTime.getMatlabTime;
+                imagesc(t_clock, 1 : size(this.coord, 2), coord_validity');
+            end
             xlim([start_time.getMatlabTime, stop_time.getMatlabTime]);
             colormap(cmap);
             setTimeTicks();
@@ -3505,6 +3509,7 @@ classdef Core_Sky < handle
             title(sprintf('Coordinates availability\\fontsize{5} \n'));
             ylabel('Satellites');
             
+            caxis([0 2]);
             cb = colorbar('Location', 'SouthOutside');
             cb.Ticks  = (1:2:5)/3;
             cb.TickLabels = {'No data', 'Polynomial border', 'Good data'};

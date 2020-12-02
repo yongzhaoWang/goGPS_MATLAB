@@ -603,6 +603,16 @@ classdef GUI_Downloader < GUI_Unique_Win
                 'TooltipString', 'Open the inspector of the resources locations', ...
                 'Callback', @this.openRRI);
             
+            uicontrol( 'Parent', but_line, ...
+                'String', 'Show orbit availability', ...
+                'TooltipString', 'Show orbits and clock that are already on the disk', ...
+                'Callback', @this.showOrbitsAvailability);
+            
+            uicontrol( 'Parent', but_line, ...
+                'String', 'Download Orbits now', ...
+                'TooltipString', 'Download orbits and clock if available', ...
+                'Callback', @this.downloadOrbits);
+            
             rr_box.Heights = [30];
             
             Core_UI.insertEmpty(bottom_box);
@@ -1013,6 +1023,16 @@ classdef GUI_Downloader < GUI_Unique_Win
         
         function openRRI(this, caller, event)
             GUI_Remote_Resources.getInstance(this.win);
+        end
+        
+        function showOrbitsAvailability(this, caller, event)
+            sky = Core.getCoreSky; 
+            sky.showOrbitsAvailability;
+        end
+        
+        function downloadOrbits(this, caller, event)
+            fw = File_Wizard;
+            fw.downloadResource('eph',Core.getState.getSessionsStartExt, Core.getState.getSessionsStopExt);
         end
         
         function resetResDir(this, caller, event)
