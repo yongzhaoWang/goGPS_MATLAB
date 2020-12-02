@@ -639,6 +639,13 @@ classdef Residuals < Exportable
                             data_found = false;
                             
                             res = zero2nan(this.value(id_span, id));
+                            
+                            % time filtering, search for badly estimated residuals
+                            tmp = movmedian(std(res', 'omitnan'), 21, 'omitnan');
+                            thr = 5 * median(tmp, 'omitnan');
+                            id_ko = flagMerge(tmp > thr, 11);
+                            res(id_ko, :) = nan;
+                            
                             res_go_id = cc.getIndex(obs_code(id, 1), this.prn(id));
                             
                             % Get all the data to interpolate
@@ -650,7 +657,7 @@ classdef Residuals < Exportable
                             % Propagate orbit nans
                             for s = 1 : numel(res_go_id)
                                 id_ko = isnan(el(:,id_sat(s))) | isnan(az(:,id_sat(s)));
-                                res(id_ko,s) = nan;
+                                res(id_ko, s) = nan;
                             end
                             
                             res_all = res(~isnan(res(:)));
