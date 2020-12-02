@@ -1,4 +1,4 @@
-function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc)
+function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc, n_sigma)
 % Returns the data removing outliers (spikes)
 %
 % INPUT:
@@ -39,11 +39,14 @@ function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc)
 % 01100111 01101111 01000111 01010000 01010011
 %--------------------------------------------------------------------------
 
-    if nargin == 1
+    if nargin < 2
         robustness_perc = 0.8;
     end
-    [tmp, trend] = strongDeTrend(data, robustness_perc, 1, 6);
-    thr = 6 * strongStd(tmp, robustness_perc);
+    if nargin < 3
+        n_sigma = 6;
+    end
+    [tmp, trend] = strongDeTrend(data, robustness_perc, 1, n_sigma);
+    thr = n_sigma * strongStd(tmp, robustness_perc);
 
     lid_ko = abs(tmp) > thr;
     % figure; plot(data, 'Color', [0.5 0.5 0.5]);
