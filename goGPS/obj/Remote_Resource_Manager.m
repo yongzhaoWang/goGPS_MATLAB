@@ -371,7 +371,10 @@ classdef Remote_Resource_Manager < Ini_Manager
             % Get the orbit type availability
             %
             % SYNTAX
-            %   [flag_frub] = this.getOrbitType(center)            
+            %   [flag_frub] = this.getOrbitType(center) 
+            if iscell(center)
+                center = center{1};
+            end
             flag_frub(1) = ~isempty(this.getData(['oc_' center], 'final'));
             flag_frub(2) = ~isempty(this.getData(['oc_' center], 'rapid'));
             flag_frub(3) = ~isempty(this.getData(['oc_' center], 'ultra'));

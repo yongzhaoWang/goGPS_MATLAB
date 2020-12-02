@@ -443,15 +443,18 @@ classdef Core < handle
             end
         end
         
-        function sky = getCoreSky()
+        function sky = getCoreSky(flag_reset)
             % Return the pointer to the Core Sky Object
             %
             % SYNTAX
             %   sky = Core.getCoreSky()
             
+            if nargin == 0
+                flag_reset = false;
+            end
             core = Core.getInstance(false, true);
             sky = core.sky;
-            if isempty(sky)
+            if isempty(sky) || flag_reset
                 sky = Core_Sky();
                 core.sky = sky;
             end            

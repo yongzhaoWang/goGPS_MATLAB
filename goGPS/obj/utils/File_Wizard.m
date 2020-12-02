@@ -62,7 +62,6 @@ classdef File_Wizard < handle
     end
     
     properties (SetAccess = private, GetAccess = private)
-        log = Core.getLogger(); % Handler to the log object
         fnp = File_Name_Processor();
         ftp_downloaders;
     end
@@ -78,8 +77,8 @@ classdef File_Wizard < handle
             this.sys_c = state.getConstellationCollector.getActiveSysChar;            
         end
         
-        function [status] = conjureResource(this, resource_name, date_start, date_stop, center_name)
-            % Conjure the deisdered resource giveng the desidered center
+        function [status] = conjureResource(this, resource_name, date_start, date_stop, center_name, flag_check_remote)
+            % Conjure the desired resource givengthe desired center
             % and the times bounds
             %
             % SYNTAX: 
@@ -94,6 +93,7 @@ classdef File_Wizard < handle
             % OUPUT:
             %     status = 1 everything has been found 0 no
             
+            log = Core.getLogger();
             if nargin < 3
                 date_start = this.date_start;
                 date_stop = this.date_stop;
@@ -104,6 +104,9 @@ classdef File_Wizard < handle
             state = Core.getState;
             if nargin < 5
                 center_name = state.getRemoteCenter;
+            end
+            if nargin < 6
+                flag_check_remote = true;
             end
             this.current_resource = resource_name;
             [file_tree, latency] = this.rm.getFileStr(center_name, resource_name);
@@ -119,33 +122,33 @@ classdef File_Wizard < handle
             end
             n_h_passed = (GPS_Time.now() - date_stop)/3600;
             % check local
-            this.log.addMessage(this.log.indent('Checking local folders ...'));
+            log.addMessage(log.indent('Checking local folders ...'));
             [status, file_tree] = this.navigateTree(file_tree, 'local_check');
             if status
-                this.log.addStatusOk('All files have been found locally', 10);
+                log.addStatusOk('All files have been found locally');
             else
-                this.log.addWarning('Some files not found locally');
+                log.addWarning('Some files not found locally');
             end
             % check remote
-            if  state.isAutomaticDownload && ~status
+            if  state.isAutomaticDownload && ~status && flag_check_remote
                 if latency(1)~=0 && n_h_passed  < latency(1)
-                    this.log.addWarning(this.log.indent(sprintf('Not enough latency for finding all the %s orbits...', resource_name)));
+                    log.addWarning(log.indent(sprintf('Not enough latency for finding all the %s orbits...', resource_name)));
                     status = false;
                 else
-                    this.log.addMessage(this.log.indent('Checking remote folders ...'));
+                    log.addMessage(log.indent('Checking remote folders ...'));
                     [status, file_tree, ext] = this.navigateTree(file_tree, 'remote_check');
                     if status
-                        this.log.addStatusOk('All files have been found remotely', 10);
+                        log.addStatusOk('All files have been found remotely', 10);
                     else
-                        this.log.addError('Some files not found remotely, starting to download what it''s available');
+                        log.addError('Some files not found remotely, starting to download what it''s available');
                         status = true;
                     end
                 
                     if status || this.nrt
-                        this.log.addMessage(this.log.indent('Downloading Resources ...'));
+                        log.addMessage(log.indent('Downloading Resources ...'));
                         [status, ~] = this.navigateTree(file_tree, 'download');
                         if not(status)
-                            this.log.addWarning('Not all file have been found or uncompressed');
+                            log.addWarning('Not all file have been found or uncompressed');
                         end
                     end
                 end
@@ -184,6 +187,7 @@ classdef File_Wizard < handle
             %     file_tree: structure containing the file tree and the
             %     logical operators
             %     mode: 'local_check' , 'remote_check' , 'download'
+            log = Core.getLogger();
             status = false;
             ext = '';
             vmf_res = this.vmf_res;
@@ -203,7 +207,7 @@ classdef File_Wizard < handle
                         dsa.addIntSeconds(-step_s);
                         dso.addIntSeconds(+step_s);
                         [file_name_lst, date_list] = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
-                        file_name_lst = flipud(file_name_lst);
+                        % file_name_lst = flipud(file_name_lst);
                         status = true;
                         f_status_lst = file_tree{4};
                         f_ext_lst = file_tree{5};
@@ -247,7 +251,7 @@ classdef File_Wizard < handle
                 elseif ~strcmp(mode, 'download')
                     f_struct = this.rm.getFileLoc(file_tree{1});
                     if isempty(f_struct.filename)
-                        this.log.addError(sprintf('File resource "%s" not found: remote_resource.ini seems to be corrupted', file_tree{1}));
+                        log.addError(sprintf('File resource "%s" not found: remote_resource.ini seems to be corrupted', file_tree{1}));
                     else
                         f_name = f_struct.filename;
                         state.setFile(f_name, this.current_resource);
@@ -259,6 +263,7 @@ classdef File_Wizard < handle
                             dsa.addIntSeconds(-step_s);
                             dso.addIntSeconds(+step_s);
                             file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
+                            %file_name_lst = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
                             % Manage ultra rapid resources (they overlap 18 hours in the future
                             try
                                 is_ultra = strcmpi(f_name(1:3), 'IGU') || strcmpi(file_tree{1}(end-4:end), 'ultra');
@@ -268,6 +273,7 @@ classdef File_Wizard < handle
                             if is_ultra
                                 dso_ur = dso.getCopy; dso_ur.addIntSeconds(-18*3600);
                                 file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
+                                %file_name_lst_ur = this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source);
                             else
                                 file_name_lst_ur = file_name_lst;
                             end
@@ -281,7 +287,7 @@ classdef File_Wizard < handle
                                     % if the file is empty delete it
                                     if (file_info.bytes == 0)
                                         f_status = false;
-                                        this.log.addError(sprintf('"%s" file is empty => deleting it...', [file_name_lst{i}]));
+                                        log.addError(sprintf('"%s" file is empty => deleting it...', [file_name_lst{i}]));
                                         delete(file_name_lst{i});
                                     else
                                         f_status = true;
@@ -292,12 +298,12 @@ classdef File_Wizard < handle
                                     f_status_lst(i) = f_status;
                                     status = status && f_status;
                                     if f_status
-                                        this.log.addStatusOk(sprintf('%s ready',this.fnp.getFileName(file_name_lst{i})), 20); % logging on 10 (default is 9, if ok do not show this)
+                                        log.addStatusOk(sprintf('%s ready',this.fnp.getFileName(file_name_lst{i})), 20); % logging on 10 (default is 9, if ok do not show this)
                                     else
-                                        this.log.addWarning(sprintf('%s have not been found locally', this.fnp.getFileName(file_name_lst{i})));
+                                        log.addWarning(sprintf('%s have not been found locally', this.fnp.getFileName(file_name_lst{i})));
                                     end
                                 %else
-                                %     this.log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
+                                %     log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
                                 %end
                             end
                             if status
@@ -314,7 +320,8 @@ classdef File_Wizard < handle
                                 dso = this.date_stop.getCopy();
                                 dsa.addIntSeconds(-step_s);
                                 dso.addIntSeconds(+step_s);
-                                file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
+                                %file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
+                                file_name_lst = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
                                 % Manage ultra rapid resources (they overlap 18 hours in the future
                                 try
                                     is_ultra = strcmpi(f_name(1:3), 'IGU') || strcmpi(file_tree{1}(end-4:end), 'ultra');
@@ -323,7 +330,8 @@ classdef File_Wizard < handle
                                 end
                                 if is_ultra
                                     dso_ur = dso.getCopy; dso_ur.addIntSeconds(-18*3600);
-                                    file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
+                                    % file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
+                                    file_name_lst_ur = this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source);
                                 else
                                     file_name_lst_ur = file_name_lst;
                                 end
@@ -335,7 +343,7 @@ classdef File_Wizard < handle
                                         file_name = file_name_lst{j};
                                         [server] = regexp(file_name,'(?<=\?{)\w*(?=})','match'); % search for ?{server_name} in paths
                                         if isempty(server)
-                                            this.log.addWarning(sprintf('No server is configured to download "%s"\nCheck remote_resources.ini', file_name));
+                                            log.addWarning(sprintf('No server is configured to download "%s"\nCheck remote_resources.ini', file_name));
                                             status = false;
                                         else
                                             server = server{1};
@@ -367,19 +375,19 @@ classdef File_Wizard < handle
                                             end
                                             f_ext_lst{j} = ext;
                                             if status
-                                                this.log.addStatusOk(sprintf('%s found (on remote server %s)', this.fnp.getFileName(file_name), server), 20);
+                                                log.addStatusOk(sprintf('%s found (on remote server %s)', this.fnp.getFileName(file_name), server), 20);
                                             else
                                                 if instr(port,'21')
-                                                    this.log.addWarning(sprintf('"ftp://%s:%s%s" have not been found remotely', s_ip, port, file_name));
+                                                    log.addWarning(sprintf('"ftp://%s:%s%s" have not been found remotely', s_ip, port, file_name));
                                                 else
-                                                    this.log.addWarning(sprintf('"http://%s:%s%s" have not been found remotely', s_ip, port, file_name));
+                                                    log.addWarning(sprintf('"http://%s:%s%s" have not been found remotely', s_ip, port, file_name));
                                                 end
                                                 if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
                                                     if ~this.nrt
                                                         break
                                                     end
                                                 else
-                                                    this.log.addWarning('File not found but precedent files cover the requested interval');
+                                                    log.addWarning('File not found but precedent files cover the requested interval');
                                                     status = true;
                                                 end
                                             end
@@ -468,9 +476,9 @@ classdef File_Wizard < handle
             if ~is_ok
                 if strcmp(center_name, 'none')
                     state.setNoResources(true);
-                    this.log.addWarning('Resource center have not been selected, orbits will not be computed!!!');                    
+                    Core.getLogger.addWarning('Resource center have not been selected, orbits will not be computed!!!');                    
                 else
-                    this.log.addError(['Selected center: ' center_name ' not compatible with selected constellations: ' this.sys_c]);
+                    Core.getLogger.addError(['Selected center: ' center_name ' not compatible with selected constellations: ' this.sys_c]);
                     error('Ending execution: missing valid orbits')
                 end
             end
@@ -501,14 +509,14 @@ classdef File_Wizard < handle
         end
         
         function err_code = conjureAtmLoadFiles(this, date_start, date_stop)
-            this.log.addMarkedMessage('Checking Athmospheric loading files');
+            Core.getLogger.addMarkedMessage('Checking Athmospheric loading files');
             status = this.conjureResource('atm_load',date_start, date_stop);
 
             if status
-                this.log.addStatusOk('Atmospheric loading files are present ^_^');
+                Core.getLogger.addStatusOk('Atmospheric loading files are present ^_^');
                 err_code = 0;
             else
-                this.log.addWarning('Not all atmospheric files founds, Atmospheric loading will not be applyied');
+                Core.getLogger.addWarning('Not all atmospheric files founds, Atmospheric loading will not be applyied');
                 err_code = 1;
             end
             
@@ -743,7 +751,7 @@ classdef File_Wizard < handle
             
             err_code = 0;
             log = Core.getLogger;
-            this.log.addMarkedMessage('Checking CRX (Satellite problems file)');
+            log.addMarkedMessage('Checking CRX (Satellite problems file)');
             date_start = date_start.getCopy();
             date_stop = date_stop.getCopy();
             gps_week = double([date_start.getGpsWeek; date_stop.getGpsWeek ]);
@@ -875,7 +883,7 @@ classdef File_Wizard < handle
             
             err_code = 0;
             log = Core.getLogger;
-            this.log.addMarkedMessage('Update ATX (IGS antex file)');
+            log.addMarkedMessage('Update ATX (IGS antex file)');
                         
             % Pointer to the global settings:
             state = Core.getCurrentSettings();

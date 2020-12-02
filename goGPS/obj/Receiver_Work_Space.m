@@ -10501,7 +10501,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                 end
                 
-                if isempty(x)
+                if isempty(x) || isinf(s0) || isempty(res)
+                    log.addMessage(log.indent(sprintf('PREPRO s0 = %.4f (iteration skipped)', s0)));
                     dpos = [0 0 0];
                     s0 = 0;
                 else
