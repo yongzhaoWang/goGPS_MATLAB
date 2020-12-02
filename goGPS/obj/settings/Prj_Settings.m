@@ -4142,15 +4142,28 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             end
         end
         
-        function preferred_eph = getPreferredEph(this)
+        function list_preferred = getPreferredEph(this, center_name)
             % get preferred ephemeris
             %
             % SYNTAX
             %   preferred_eph = getPreferredEph(this)
-            preferred_eph = this.preferred_eph;
-            if ~iscell(preferred_eph)
-                preferred_eph = {preferred_eph};
+            list_preferred = this.preferred_eph;
+            if ~iscell(list_preferred)
+                list_preferred = {list_preferred};
             end
+            if nargin < 2 || isempty(center_name)
+                center_name = this.getCurCenter;
+            end
+            list_preferred = categorical(list_preferred);
+            fw = File_Wizard;
+            list_supported = categorical(this.PREFERRED_EPH(fw.rm.getOrbitType(center_name)));
+            list_preferred = intersect(list_preferred, list_supported);
+            if isempty(list_preferred)
+                list_preferred = list_supported;
+            end
+            flag = ismember(categorical(this.PREFERRED_EPH), list_supported);
+            this.setPreferredOrbit(flag); % let's reset the preferred orbit
+            list_preferred = this.PREFERRED_EPH(flag);
         end
         
         function flag = getPreferredOrbit(this)
@@ -4935,6 +4948,12 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 center_name = {center_name};
             end
             
+            if ~strcmp(this.selected_orbit_center, center_name)
+                Core.getCoreSky(true); % Reset Core_Sky
+                fw = File_Wizard;
+                list_preferred = this.getPreferredEph(center_name);
+                fw.conjureResource(char(list_preferred{1}), this.getSessionsStartExt, this.getSessionsStopExt, center_name, false);
+            end
             this.selected_orbit_center = center_name;
         end
                 
