@@ -696,7 +696,7 @@ classdef Coordinates < Exportable & handle
                         subplot(3,1,1);                       
                         e = enu_diff(1:numel(t),1);
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 9);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
@@ -731,7 +731,7 @@ classdef Coordinates < Exportable & handle
                         
                         n = enu_diff(:,2);                        
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 9);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:));
@@ -764,7 +764,7 @@ classdef Coordinates < Exportable & handle
                         
                         up = enu_diff(:,3);                        
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 9);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
@@ -890,7 +890,7 @@ classdef Coordinates < Exportable & handle
                         e = xyz_diff(:,1);
                         set(0, 'CurrentFigure', fh);;
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 9);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
@@ -918,7 +918,7 @@ classdef Coordinates < Exportable & handle
                         
                         n = xyz_diff(:,2);                        
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 9);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
@@ -945,7 +945,7 @@ classdef Coordinates < Exportable & handle
                         
                         up = xyz_diff(:,3);                        
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8);
+                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 9);
                             set(0, 'CurrentFigure', fh);
                             Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
