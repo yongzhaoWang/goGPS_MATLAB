@@ -162,9 +162,13 @@ classdef Core_Sky < handle
                 end
             
                 clock_f_name = Core.getState.getClkFileName(start_date, stop_date);
-                clock_is_present = true;
-                for i = 1:length(clock_f_name)
-                    clock_is_present = clock_is_present && (exist(clock_f_name{i}, 'file') == 2);
+                if isempty(clock_f_name)
+                    clock_is_present = false;
+                else
+                    clock_is_present = true;
+                    for i = 1:length(clock_f_name)
+                        clock_is_present = clock_is_present && (exist(clock_f_name{i}, 'file') == 2);
+                    end
                 end
                 clock_in_eph = isempty(setdiff(eph_f_name, clock_f_name)) || ~clock_is_present; %%% condition to be tested in different cases
                 if isempty(this.time_ref_coord) || start_date < this.time_ref_coord
