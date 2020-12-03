@@ -402,18 +402,19 @@ classdef Network < handle
                         
                         % Remove eventually loaded mp map from ref data
                         ant_mp = this.rec_list(this.id_ref).work.getAppliedMPM;
-                        ls.applyMPM(ant_mp, this.id_ref, +1);
+                        ls.applyMPM(ant_mp, this.id_ref, -1);
 
                         % Remove eventually loaded mp map from trg data
                         i_trg = setdiff([1,2], this.id_ref);
                         ant_mp = this.rec_list(i_trg).work.getAppliedMPM;
-                        ls.applyMPM(ant_mp, this.id_ref, +1);
+                        ls.applyMPM(ant_mp, i_trg, -1);
 
                       
                         % Apply twice the MP of the trg
                         ant_mp = this.rec_list(i_trg).getAntennaMultiPath;
                         ant_mp = GNSS_Station.getCurrentMPM(ant_mp, mp_type); % Extract just the needed map
-                        ls.applyMPM(ant_mp, this.id_ref, -2);
+                        ls.applyMPM(ant_mp, i_trg, +2);
+                        %ls.applyMPM(ant_mp, this.id_ref, +1);
                     end
                     
                     if state.flag_free_net_tropo
