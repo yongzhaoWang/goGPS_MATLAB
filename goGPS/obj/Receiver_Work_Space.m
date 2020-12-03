@@ -2606,7 +2606,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             log.addMessage(log.indent(sprintf(' - %d phase observations marked as outlier', n_out)));
         end
         
-        function detectOutlierMarkCycleSlipNew(this)
+        function pivot_sat = detectOutlierMarkCycleSlipNew(this)
             % detectOutlierMarkCycleSlip
             %
             % SYNTAX
@@ -2617,6 +2617,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             
             log.addMarkedMessage('Cleaning observations');
             %% PARAMETRS
+            cj_thr = 0.1; % candidate jumper std
             ol_thr = 0.10; % 10cm
             cs_thr = 0.7 * this.state.getCycleSlipThr(); % CYCLE SLIP THR
             
@@ -2649,11 +2650,27 @@ classdef Receiver_Work_Space < Receiver_Commons
             n_strm = size(phr,2);
             el = this.sat.el(:, this.go_id(lid_ph));
             
+            pivot_sat = zeros(n_epoch, 1, 'uint8');
             for e = 2 : (n_epoch - 2)
                 phr_t = phr((e-1) : (e+1), :);
                 n_pres_strm = sum(~isnan(phr_t(2,:)));
-                complete_triple = find(sum(isnan(phr_t)) == 0);
+                complete_triple = find(all(not(isnan(phr_t))));
                 if ~isempty(complete_triple)
+                    tmp_diff = Core_Utils.diffAndPred(phr_t(:,complete_triple));
+                    tmp_dt = cumsum(median(tmp_diff, 2));
+                    phr_t = bsxfun(@minus, phr_t, tmp_dt);
+                    candidate_jumper = std(phr_t(:, complete_triple)) > cj_thr;
+                    if (sum(candidate_jumper)/numel(complete_triple)) > 0.6 
+                        % if the number of the suspected jumper (aka CS) is more than the 60% of the total I have an anomaly
+                        % this check is added while processing GMU SL04 daily solution @ epoch 2020-11-12 20:55:30
+                        log.addWarning(sprintf('Anomaly found at epoch %s, outlier detection is marking a outliers on each satellite', this.getTime.getEpoch(e).toString('yyyy-mm-dd HH:MM:SS')));
+                        this.sat.outliers_ph_by_ph(e,:) = true;
+                    end
+                    if not(all(candidate_jumper)) % this should always be true
+                        % consider only stable satellites
+                        complete_triple = complete_triple(not(candidate_jumper));
+                        %phr_t = bsxfun(@minus, phr_t, cumsum(mean(tmp_diff(:, not(candidate_jumper)), 2)) - tmp_dt);
+                    end
                     %max el choose pivot
                     [~,max_el_id] = max(el(e,complete_triple));
                     
@@ -2675,7 +2692,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         end
                     end
                     this.sat.outliers_ph_by_ph(e,o_idx) = true;
+                    this.sat.outliers_ph_by_ph(e,cs_idx) = false;
                     this.sat.cycle_slip_ph_by_ph(e,cs_idx) = true;
+                    pivot_sat(e) = complete_triple(max_el_id);
                 end
             end
             phr(this.sat.outliers_ph_by_ph) = nan;
@@ -2703,6 +2722,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 end
                 this.sat.outliers_ph_by_ph(1,o_idx) = true;
                 phr(1,o_idx) = nan;
+                pivot_sat(1) = complete_triple(max_el_id);
             end
             
             % check last epoch
@@ -2727,6 +2747,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     end
                 end
                 this.sat.outliers_ph_by_ph(end,o_idx) = true;
+                pivot_sat(end) = complete_triple(max_el_id);
             end
             
             % check start of arc if there is a cycle slip
@@ -2910,6 +2931,25 @@ classdef Receiver_Work_Space < Receiver_Commons
                     log.addMessage(log.indent(sprintf('Adding other %d phase outliers due to missing valid pseudo-ranges', n_ko - n_out)));
                 end
                 this.sat.outliers_ph_by_ph(id_ko, :) = ~isnan(ph(id_ko, :));
+            end
+            
+            
+            flag_debug = false;
+            if flag_debug
+                phrd = Core_Utils.diffAndPred(phr); 
+                dt = cumsum(nan2zero(phrd((1:n_epoch)' + n_epoch*max(0,(double(pivot_sat)-1))))); 
+                %data = [ zeros(1, size(phrd,2)); diff(phr - dt) + 0.5 * (1:size(phr,2))];
+                data = Core_Utils.diffAndPred(phr - dt) + 1 * (1:size(phr,2));
+                figure; plotSep(data, '.-'); hold on; title('Sat by sat temporal diff (pivot removed)')
+                for s = 1: size(phrd,2);
+                    id_ko = this.sat.outliers_ph_by_ph(:, s);
+                    hold on; plot(find(id_ko), data(id_ko,s), '*r');
+                    data(id_ko,s) = nan;
+                    id_ko = this.sat.cycle_slip_ph_by_ph(:, s);
+                    hold on; plot(find(id_ko), data(id_ko,s), 'ok');
+                    data(id_ko,s) = nan;
+                end
+                figure; plotSep(data, '.-');  title('Sat by sat temporal diff (pivot removed) with no outliers')
             end
         end
                 
