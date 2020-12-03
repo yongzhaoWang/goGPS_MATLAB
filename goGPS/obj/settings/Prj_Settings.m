@@ -4161,7 +4161,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             if isempty(list_preferred)
                 list_preferred = list_supported;
             end
-            flag = ismember(categorical(this.PREFERRED_EPH), list_supported);
+            flag = ismember(categorical(this.PREFERRED_EPH), list_preferred);
             this.setPreferredOrbit(flag); % let's reset the preferred orbit
             list_preferred = this.PREFERRED_EPH(flag);
         end
@@ -4399,7 +4399,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   file_name = this.getFullNavClkPath(id)
-            if isempty(this.clk_full_name)
+            if isempty(this.eph_full_name)
                 this.updateNavFileName();
             end
             file_name = this.clk_full_name;
@@ -4413,7 +4413,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   file_name = this.getFullErpPath(id)
-            if isempty(this.erp_full_name)
+            if isempty(this.eph_full_name)
                 this.updateErpFileName();
             end
             file_name = this.erp_full_name;
@@ -4951,8 +4951,8 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             if ~strcmp(this.selected_orbit_center, center_name)
                 Core.getCoreSky(true); % Reset Core_Sky
                 fw = File_Wizard;
-                list_preferred = this.getPreferredEph(center_name);
-                fw.conjureResource(char(list_preferred{1}), this.getSessionsStartExt, this.getSessionsStopExt, center_name, false);
+                list_preferred = this.PREFERRED_EPH(fw.rm.getOrbitType(center_name));
+                this.setPreferredOrbit(list_preferred, center_name);
             end
             this.selected_orbit_center = center_name;
         end
@@ -4988,14 +4988,19 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   eph_full_name = getEphFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            file_name = fnp.checkPath(strcat(this.eph_dir, filesep, this.eph_name), this.getHomeDir());
-            step_sec = min(3*3600, fnp.getStepSec(file_name)); %supposing a polynomial of degree 12 and SP3 orbit data every 15 min (at worst)
-
-            if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
-                date_start = date_start.getCopy; date_start.addIntSeconds(-step_sec); % Get navigational files with 6 hours of margin
-                date_stop = date_stop.getCopy; date_stop.addIntSeconds(+step_sec); % Get navigational files with 6 hours of margin
+            if isempty(this.eph_name)
+                eph_full_name = '';
+            else
+                file_name = fnp.checkPath(strcat(this.eph_dir, filesep, this.eph_name), this.getHomeDir());
+                step_sec = min(3*3600, fnp.getStepSec(file_name)); %supposing a polynomial of degree 12 and SP3 orbit data every 15 min (at worst)
+                
+                if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
+                    date_start = date_start.getCopy; date_start.addIntSeconds(-step_sec); % Get navigational files with 6 hours of margin
+                    date_stop = date_stop.getCopy; date_stop.addIntSeconds(+step_sec); % Get navigational files with 6 hours of margin
+                end
+                
+                eph_full_name = fnp.dateKeyRepBatch(file_name, date_start,  date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
             end
-            eph_full_name = fnp.dateKeyRepBatch(file_name, date_start,  date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
         end
         
          function met_full_name = getMetFileName(this, date_start, date_stop)
@@ -5027,14 +5032,18 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   clk_full_name = getClkFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            file_name = fnp.checkPath(strcat(this.clk_dir, filesep, this.clk_name), this.getHomeDir());
-            step_sec = min(3*3600, fnp.getStepSec(file_name)); %supposing a polynomial of degree 12 and SP3 orbit data every 15 min (at worst)
-
-            if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
-                date_start = date_start.getCopy; date_start.addIntSeconds(-step_sec); % Get navigational files with 6 hours of margin
-                date_stop = date_stop.getCopy; date_stop.addIntSeconds(+step_sec); % Get navigational files with 6 hours of margin
+            if isempty(this.clk_name)
+                clk_full_name = '';
+            else
+                file_name = fnp.checkPath(strcat(this.clk_dir, filesep, this.clk_name), this.getHomeDir());
+                step_sec = min(3*3600, fnp.getStepSec(file_name)); %supposing a polynomial of degree 12 and SP3 orbit data every 15 min (at worst)
+                
+                if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
+                    date_start = date_start.getCopy; date_start.addIntSeconds(-step_sec); % Get navigational files with 6 hours of margin
+                    date_stop = date_stop.getCopy; date_stop.addIntSeconds(+step_sec); % Get navigational files with 6 hours of margin
+                end
+                clk_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
             end
-            clk_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
         end
 
         function erp_full_name = getErpFileName(this, date_start, date_stop)
@@ -5043,28 +5052,36 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             % SYNTAX
             %   erp_full_name = getErpFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            file_name = fnp.checkPath(strcat(this.erp_dir, filesep, this.erp_name), this.getHomeDir());
-
-            if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
-                date_start = date_start.getCopy;
-                date_stop = date_stop.getCopy;
+            if isempty(this.erp_name)
+                erp_full_name = '';
+            else
+                file_name = fnp.checkPath(strcat(this.erp_dir, filesep, this.erp_name), this.getHomeDir());
+                
+                if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
+                    date_start = date_start.getCopy;
+                    date_stop = date_stop.getCopy;
+                end
+                erp_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
             end
-            erp_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
         end
         
-        function erp_full_name = getBiasFileName(this, date_start, date_stop)
+        function bias_full_name = getBiasFileName(this, date_start, date_stop)
             % Get the full name of the BIAS files (replacing special keywords)
             %
             % SYNTAX
-            %   erp_full_name = getErpFileName(this, date_start, date_stop)
+            %   bias_full_name = getBiasFileName(this, date_start, date_stop)
             fnp = File_Name_Processor();
-            file_name = fnp.checkPath(strcat(this.bias_dir, filesep, this.bias_name), this.getHomeDir());
-
-            if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
-                date_start = date_start.getCopy;
-                date_stop = date_stop.getCopy;
+            if isempty(this.bias_name)
+                bias_full_name = '';
+            else
+                file_name = fnp.checkPath(strcat(this.bias_dir, filesep, this.bias_name), this.getHomeDir());
+                
+                if (~isempty(strfind(file_name, fnp.GPS_WD)) || ~isempty(strfind(file_name, fnp.GPS_WEEK)))
+                    date_start = date_start.getCopy;
+                    date_stop = date_stop.getCopy;
+                end
+                bias_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
             end
-            erp_full_name = fnp.dateKeyRepBatch(file_name, date_start, date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
         end
 
 
@@ -5236,6 +5253,17 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.met_dir = met_dir;
         end
 
+        function resetNavNames(this)
+            % Reset nav files (eph, clk, erp, bias)
+            %
+            % SYNTAX
+            %   this.resetNavNames()
+            this.setNavEphFile('');
+            this.setNavClkFile('');
+            this.setErpPath('');
+            this.setBiasFile('');
+        end
+        
         function setNavEphFile(this, nav_name)
             % Set the file name of the navigational files
             %
@@ -5364,6 +5392,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   this.updateNavFileName();
             this.updateEphFileName();
             this.updateClkFileName();
+            this.updateErpFileName();
+            %this.getFullNavEphPath
+            %this.getFullNavClkPath
+            %this.getFullErpPath
         end
 
         function updateEphFileName(this)
@@ -5454,7 +5486,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.flag_no_resources = flag;
         end
         
-        function setPreferredOrbit(this, flag)
+        function setPreferredOrbit(this, flag, center_name)
             % Set the preferred orbit sequence:
             %   1 final
             %   2 rapid
@@ -5467,12 +5499,20 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %
             % SYNTAX
             %   this.setPreferredOrbit(flag)
-            flag_name = {'final', 'rapid', 'ultra', 'broadcast', 'real-time'};
+            flag_name = this.PREFERRED_EPH;
             if ischar(flag)
                 flag = ismember(flag_name, {flag});
             end
             if iscell(flag)
                 flag = ismember(flag_name, flag);
+            end
+            if nargin < 3 || isempty(center_name)
+                center_name = this.getCurCenter;
+                flag_reset = false; % if the center is not changed, no need to refresh full file names with conjuring
+            else
+                if ~strcmp(this.selected_orbit_center, center_name)
+                    flag_reset = true; % if the center is changed, refresh full file names with conjuring
+                end
             end
             if ~islogical(flag)
                 if sum(flag == 0 | flag == 1) == 5
@@ -5483,6 +5523,15 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                     flag = tmp;
                 end
             end
+            
+            if ~strcmp(this.preferred_eph{1}, flag_name{find(flag, 1, 'first')}) || flag_reset
+                Core.getCoreSky(true); % Reset Core_Sky
+                fw = File_Wizard;
+                this.resetNavNames();
+                fw.conjureResource(flag_name{find(flag, 1, 'first')}, this.getSessionsStartExt, this.getSessionsStopExt, center_name, false);
+                this.updateNavFileName();
+            end
+            
             this.preferred_eph = flag_name(flag);
         end
  

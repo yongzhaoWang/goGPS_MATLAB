@@ -741,169 +741,173 @@ classdef Core_Sky < handle
             f_sp3 = fopen(filename_SP3,'rt');
             
             if (f_sp3 == -1)
-                Core.getLogger.addWarning(sprintf('No ephemerides have been found at %s', filename_SP3));
+                Core.getLogger.addWarning(sprintf('No ephemerides have been found at %s the file cannot be opened', filename_SP3));
             else
                 fnp = File_Name_Processor;
                 Core.getLogger.addMessage(Core.getLogger.indent(sprintf('Opening file %s for reading', fnp.getFileName(filename_SP3))));
                 
                 txt = fread(f_sp3,'*char')';
-                if txt(1) == ' '
-                    % the first line is corrupted and have spaces at
-                    % the beginning of the line
-                    id_cut = find(txt ~= ' ', 1, 'first');
-                    if ~isempty(id_cut)
-                        txt = txt(id_cut : end);
-                    end
-                end
-                version = txt(2);
-                fclose(f_sp3);
-                
-                % get new line separators
-                nl = regexp(txt, '\n')';
-                if nl(end) <  numel(txt)
-                    nl = [nl; numel(txt)];
-                end
-                lim = [[1; nl(1 : end - 1) + 1] (nl - 1)];
-                lim = [lim lim(:,2) - lim(:,1)];
-                if lim(end,3) < 3
-                    lim(end,:) = [];
-                end
-                % get end pf header
-                % coord  rate
-                coord_rate = cell2mat(textscan(txt(repmat(lim(2,1),1,11) + (26:36)),'%f'));
-                % n epochs
-                n_epochs = cell2mat(textscan(txt(repmat(lim(1,1),1,7) + (32:38)),'%f'));
-                % find first epoch
-                string_time = txt(repmat(lim(1,1),1,28) + (3:30));
-               
-                % import it as a GPS_Time obj
-                sp3_first_ep = GPS_Time(string_time, [], true);
-                if this.coord_rate ~= coord_rate
-                    if empty_file
-                        this.coord_rate = coord_rate;
-                    else
-                        Core.getLogger.addWarning(['Coord rate not match: ' num2str(coord_rate)]);
-                        return
-                    end
-                end
-                if clock_flag
-                    this.clock_rate = coord_rate;
-                end
-                % checking overlapping and same correct syncro
-                sp3_last_ep = sp3_first_ep.getCopy();
-                sp3_last_ep.addSeconds(coord_rate * n_epochs);
-
-                % initialize array size
-                if empty_file
-                    this.time_ref_coord = sp3_first_ep.getCopy();
-                    if clock_flag
-                        this.time_ref_clock = sp3_first_ep.getCopy();
-                    end
-                    this.coord = zeros(n_epochs, this.cc.getNumSat(),3);
-                    if clock_flag
-                        this.clock = zeros(n_epochs, this.cc.getNumSat());
-                    end
+                if isempty(txt)
+                    Core.getLogger.addWarning(sprintf('No ephemerides have been found at "%s" the file is empty', filename_SP3));
                 else
-                    idx_first = (sp3_first_ep - this.time_ref_coord) / this.coord_rate;
-                    idx_last = (sp3_last_ep - this.time_ref_coord) / this.coord_rate;
-                    memb_idx = ismembertol([idx_first idx_last], -1 : (size(this.coord,1)+1) ); % check whether the extend of sp3 file intersect with the current data
-                    c_n_sat = size(this.coord,2);
-                    if memb_idx(1) == true && memb_idx(2) == false
-                        n_new_epochs = idx_last - size(this.coord, 1);
-                        this.coord = cat(1,this.coord,zeros(n_new_epochs,c_n_sat,3));
-                        if clock_flag
-                            this.clock = cat(1,this.clock,zeros(n_new_epochs,c_n_sat));
+                    fclose(f_sp3);
+                    if txt(1) == ' '
+                        % the first line is corrupted and have spaces at
+                        % the beginning of the line
+                        id_cut = find(txt ~= ' ', 1, 'first');
+                        if ~isempty(id_cut)
+                            txt = txt(id_cut : end);
                         end
-                    elseif memb_idx(1) == false && memb_idx(2) == true
+                    end
+                    version = txt(2);
+                    
+                    % get new line separators
+                    nl = regexp(txt, '\n')';
+                    if nl(end) <  numel(txt)
+                        nl = [nl; numel(txt)];
+                    end
+                    lim = [[1; nl(1 : end - 1) + 1] (nl - 1)];
+                    lim = [lim lim(:,2) - lim(:,1)];
+                    if lim(end,3) < 3
+                        lim(end,:) = [];
+                    end
+                    % get end pf header
+                    % coord  rate
+                    coord_rate = cell2mat(textscan(txt(repmat(lim(2,1),1,11) + (26:36)),'%f'));
+                    % n epochs
+                    n_epochs = cell2mat(textscan(txt(repmat(lim(1,1),1,7) + (32:38)),'%f'));
+                    % find first epoch
+                    string_time = txt(repmat(lim(1,1),1,28) + (3:30));
+                    
+                    % import it as a GPS_Time obj
+                    sp3_first_ep = GPS_Time(string_time, [], true);
+                    if this.coord_rate ~= coord_rate
+                        if empty_file
+                            this.coord_rate = coord_rate;
+                        else
+                            Core.getLogger.addWarning(['Coord rate not match: ' num2str(coord_rate)]);
+                            return
+                        end
+                    end
+                    if clock_flag
+                        this.clock_rate = coord_rate;
+                    end
+                    % checking overlapping and same correct syncro
+                    sp3_last_ep = sp3_first_ep.getCopy();
+                    sp3_last_ep.addSeconds(coord_rate * n_epochs);
+                    
+                    % initialize array size
+                    if empty_file
                         this.time_ref_coord = sp3_first_ep.getCopy();
                         if clock_flag
                             this.time_ref_clock = sp3_first_ep.getCopy();
                         end
-                        n_new_epochs = -idx_first;
-                        this.coord = cat(1,zeros(n_new_epochs,c_n_sat,3),this.coord);
+                        this.coord = zeros(n_epochs, this.cc.getNumSat(),3);
                         if clock_flag
-                            this.clock = cat(1,zeros(n_new_epochs,c_n_sat),this.clock);
+                            this.clock = zeros(n_epochs, this.cc.getNumSat());
                         end
-                    elseif idx_first > 0 && (memb_idx(1) == false && memb_idx(2) == false)
-                        % if there is a space between last coordinates and the new set
-                        n_new_epochs = idx_last - size(this.coord, 1);
-                        this.coord = cat(1,this.coord, zeros(n_new_epochs,c_n_sat,3));
-                        if clock_flag
-                            this.clock = cat(1,this.clock,zeros(n_new_epochs,c_n_sat));
+                    else
+                        idx_first = (sp3_first_ep - this.time_ref_coord) / this.coord_rate;
+                        idx_last = (sp3_last_ep - this.time_ref_coord) / this.coord_rate;
+                        memb_idx = ismembertol([idx_first idx_last], -1 : (size(this.coord,1)+1) ); % check whether the extend of sp3 file intersect with the current data
+                        c_n_sat = size(this.coord,2);
+                        if memb_idx(1) == true && memb_idx(2) == false
+                            n_new_epochs = idx_last - size(this.coord, 1);
+                            this.coord = cat(1,this.coord,zeros(n_new_epochs,c_n_sat,3));
+                            if clock_flag
+                                this.clock = cat(1,this.clock,zeros(n_new_epochs,c_n_sat));
+                            end
+                        elseif memb_idx(1) == false && memb_idx(2) == true
+                            this.time_ref_coord = sp3_first_ep.getCopy();
+                            if clock_flag
+                                this.time_ref_clock = sp3_first_ep.getCopy();
+                            end
+                            n_new_epochs = -idx_first;
+                            this.coord = cat(1,zeros(n_new_epochs,c_n_sat,3),this.coord);
+                            if clock_flag
+                                this.clock = cat(1,zeros(n_new_epochs,c_n_sat),this.clock);
+                            end
+                        elseif idx_first > 0 && (memb_idx(1) == false && memb_idx(2) == false)
+                            % if there is a space between last coordinates and the new set
+                            n_new_epochs = idx_last - size(this.coord, 1);
+                            this.coord = cat(1,this.coord, zeros(n_new_epochs,c_n_sat,3));
+                            if clock_flag
+                                this.clock = cat(1,this.clock,zeros(n_new_epochs,c_n_sat));
+                            end
                         end
                     end
-                end
-                %%%% read data
-                %%% read epochs
-                t_line = find(txt(lim(:,1)) == '*');
-                % find the length of the time string (it should of this format: yyyy mm dd HH MM SS.00000000)
-                % but sometimes it has 4 digits for seconds :-/ i.e. igs102664.sp3
-                % or has spaces at the end of the time line esa20341.sp3
-                time_len = length(strtrim(txt((lim(t_line(1),1)+1):lim(t_line(1),2)))) + 1;
-                string_time = txt(repmat(lim(t_line,1),1,time_len) + repmat(2 + (1:time_len), length(t_line), 1));
-                %string_time = [string_time repmat(' ',size(string_time,1),1)];
-                % import it as a GPS_Time obj
-                sp3_times = GPS_Time.fromString(string_time');
-
-                % Get active constellations
-                % parse only these
-                sys_c_list = this.cc.getActiveSysChar;
-                % keep only valid lines
-                lim = lim(txt(lim(:,1)) == 'P' | txt(lim(:,1)) == '*', :);
-                
-                % Analyze data line and keep only the one with active satellites
-                d_line = find(txt(lim(:,1)) == 'P')';                
-                sat_sys_c = txt(lim(d_line,1) + 1);
-                sat_sys_c(sat_sys_c == ' ') = 'G'; % standard "a" considers only GPS and no char G is written to specify the constellation
-                % keep only data lines with satellites that I want to load
-                id_ko = regexp(sat_sys_c, ['[^' sys_c_list ']']);
-                lim(d_line(id_ko), :) = [];
-                n_spe = diff(find([txt(lim(:, 1)) '*'] == '*')) - 1; % number of satellites per epoch
-                t_line = find(txt(lim(:, 1)) == '*');
-                d_line = find(txt(lim(:,1)) == 'P')';
-                      
-                % Parse data considering 4 columns of valid observations with full size of 14chars (x4)
-                % All should be float values
-                data = reshape(sscanf(txt(bsxfun(@plus, repmat(lim(d_line,1) + 3, 1, 1 + 14*4), 1:(1 + 14*4)))', '%f'), 4, numel(d_line))';
-                
-                % character of sys_c for each line of the SP3
-                sys_c = txt(lim(d_line,1) + 1);
-                % list of epochs in this.coord to be written
-                c_ep_idx = round((sp3_times - this.time_ref_coord) / this.coord_rate) +1; %current epoch index
-                % prn of each line of data
-                sat_prn = uint8(txt(lim(d_line,1) + 2) - 48) * 10 + uint8(txt(lim(d_line,1) + 3) - 48);
-                
-                % id in this.coord containing the index to insert
-                id_ep = zeros(size(d_line,1),1);  
-                id_ep(1) = 1;
-                id_next_ep = cumsum(n_spe(1 : end-1)) + 1; % id of the next epoch
-                for i = 1 : numel(id_next_ep)
-                    id_ep(id_next_ep(i)) = id_ep(id_next_ep(i)) + 1;
-                end
-                id_ep = cumsum(id_ep);
-
-                % go_id of each line of data
-                go_id = this.cc.getIndex(sys_c, double(sat_prn))';
-                
-                % remove unvalid PRNs
-                id_ko = isnan(go_id);                
-                sat_prn(id_ko) = [];
-                data(id_ko,:) = [];
-                go_id(id_ko) = [];
-                d_line(id_ko) = [];
-                id_ep(id_ko) = [];
-
-                % fill this.coord
-                for col = 1 : 3
-                    id = c_ep_idx(id_ep) + (go_id - 1) * size(this.coord, 1) + (col - 1) * size(this.coord, 1) * size(this.coord, 2);
-                    this.coord(id) = data(:, col) * 1e3;
-                end
-                
-                % fill this.clock
-                if clock_flag
-                    data(:,4) = data(:,4) / 1e6;
-                    data(data(:, 4) > 0.99, 4) = nan; % manual manage of nan (9999)
-                    this.clock(c_ep_idx(id_ep) + (go_id - 1) * size(this.coord, 1)) = data(:, 4);
+                    %%%% read data
+                    %%% read epochs
+                    t_line = find(txt(lim(:,1)) == '*');
+                    % find the length of the time string (it should of this format: yyyy mm dd HH MM SS.00000000)
+                    % but sometimes it has 4 digits for seconds :-/ i.e. igs102664.sp3
+                    % or has spaces at the end of the time line esa20341.sp3
+                    time_len = length(strtrim(txt((lim(t_line(1),1)+1):lim(t_line(1),2)))) + 1;
+                    string_time = txt(repmat(lim(t_line,1),1,time_len) + repmat(2 + (1:time_len), length(t_line), 1));
+                    %string_time = [string_time repmat(' ',size(string_time,1),1)];
+                    % import it as a GPS_Time obj
+                    sp3_times = GPS_Time.fromString(string_time');
+                    
+                    % Get active constellations
+                    % parse only these
+                    sys_c_list = this.cc.getActiveSysChar;
+                    % keep only valid lines
+                    lim = lim(txt(lim(:,1)) == 'P' | txt(lim(:,1)) == '*', :);
+                    
+                    % Analyze data line and keep only the one with active satellites
+                    d_line = find(txt(lim(:,1)) == 'P')';
+                    sat_sys_c = txt(lim(d_line,1) + 1);
+                    sat_sys_c(sat_sys_c == ' ') = 'G'; % standard "a" considers only GPS and no char G is written to specify the constellation
+                    % keep only data lines with satellites that I want to load
+                    id_ko = regexp(sat_sys_c, ['[^' sys_c_list ']']);
+                    lim(d_line(id_ko), :) = [];
+                    n_spe = diff(find([txt(lim(:, 1)) '*'] == '*')) - 1; % number of satellites per epoch
+                    t_line = find(txt(lim(:, 1)) == '*');
+                    d_line = find(txt(lim(:,1)) == 'P')';
+                    
+                    % Parse data considering 4 columns of valid observations with full size of 14chars (x4)
+                    % All should be float values
+                    data = reshape(sscanf(txt(bsxfun(@plus, repmat(lim(d_line,1) + 3, 1, 1 + 14*4), 1:(1 + 14*4)))', '%f'), 4, numel(d_line))';
+                    
+                    % character of sys_c for each line of the SP3
+                    sys_c = txt(lim(d_line,1) + 1);
+                    % list of epochs in this.coord to be written
+                    c_ep_idx = round((sp3_times - this.time_ref_coord) / this.coord_rate) +1; %current epoch index
+                    % prn of each line of data
+                    sat_prn = uint8(txt(lim(d_line,1) + 2) - 48) * 10 + uint8(txt(lim(d_line,1) + 3) - 48);
+                    
+                    % id in this.coord containing the index to insert
+                    id_ep = zeros(size(d_line,1),1);
+                    id_ep(1) = 1;
+                    id_next_ep = cumsum(n_spe(1 : end-1)) + 1; % id of the next epoch
+                    for i = 1 : numel(id_next_ep)
+                        id_ep(id_next_ep(i)) = id_ep(id_next_ep(i)) + 1;
+                    end
+                    id_ep = cumsum(id_ep);
+                    
+                    % go_id of each line of data
+                    go_id = this.cc.getIndex(sys_c, double(sat_prn))';
+                    
+                    % remove unvalid PRNs
+                    id_ko = isnan(go_id);
+                    sat_prn(id_ko) = [];
+                    data(id_ko,:) = [];
+                    go_id(id_ko) = [];
+                    d_line(id_ko) = [];
+                    id_ep(id_ko) = [];
+                    
+                    % fill this.coord
+                    for col = 1 : 3
+                        id = c_ep_idx(id_ep) + (go_id - 1) * size(this.coord, 1) + (col - 1) * size(this.coord, 1) * size(this.coord, 2);
+                        this.coord(id) = data(:, col) * 1e3;
+                    end
+                    
+                    % fill this.clock
+                    if clock_flag
+                        data(:,4) = data(:,4) / 1e6;
+                        data(data(:, 4) > 0.99, 4) = nan; % manual manage of nan (9999)
+                        this.clock(c_ep_idx(id_ep) + (go_id - 1) * size(this.coord, 1)) = data(:, 4);
+                    end
                 end
             end
             this.coord = zero2nan(this.coord);  % <--- nan is slow for the computation of the polynomial coefficents
@@ -1305,7 +1309,9 @@ classdef Core_Sky < handle
         end
         
         function importBiases(this,fname)
-            this.importSinexBias(fname{1});
+            if not(isempty(fname))
+                this.importSinexBias(fname{1});
+            end
         end
         
         function importSinexBias(this,file_name)

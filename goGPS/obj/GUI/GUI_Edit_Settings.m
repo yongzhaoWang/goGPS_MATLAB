@@ -2474,6 +2474,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 % read current center
                 [center_list, center_ss] = r_man.getCenterList();
                 state.setCurCenter(center_list{caller.Value});
+                this.updateUI;
             elseif strcmp(caller.UserData, 'selected_iono_center')
                 % Particular case selected_center is in GUI with full description of the center
                 % Use caller.Value and r_man.getCenterList();

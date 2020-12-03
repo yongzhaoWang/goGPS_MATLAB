@@ -77,7 +77,7 @@ classdef File_Wizard < handle
             this.sys_c = state.getConstellationCollector.getActiveSysChar;            
         end
         
-        function [status] = conjureResource(this, resource_name, date_start, date_stop, center_name, flag_check_remote)
+        function [status] = conjureResource(this, resource_name, date_start, date_stop, center_name, flag_check)
             % Conjure the desired resource givengthe desired center
             % and the times bounds
             %
@@ -106,7 +106,7 @@ classdef File_Wizard < handle
                 center_name = state.getRemoteCenter;
             end
             if nargin < 6
-                flag_check_remote = true;
+                flag_check = true;
             end
             this.current_resource = resource_name;
             [file_tree, latency] = this.rm.getFileStr(center_name, resource_name);
@@ -122,15 +122,19 @@ classdef File_Wizard < handle
             end
             n_h_passed = (GPS_Time.now() - date_stop)/3600;
             % check local
-            log.addMessage(log.indent('Checking local folders ...'));
-            [status, file_tree] = this.navigateTree(file_tree, 'local_check');
-            if status
-                log.addStatusOk('All files have been found locally');
+            if flag_check
+                log.addMessage(log.indent('Checking local folders ...'));
+                [status, file_tree] = this.navigateTree(file_tree, 'local_check');
+                if status
+                    log.addStatusOk('All files have been found locally');
+                else
+                    log.addWarning('Some files not found locally');
+                end
             else
-                log.addWarning('Some files not found locally');
+                [status, file_tree] = this.navigateTree(file_tree, 'no_check');
             end
             % check remote
-            if  state.isAutomaticDownload && ~status && flag_check_remote
+            if  state.isAutomaticDownload && ~status && flag_check
                 if latency(1)~=0 && n_h_passed  < latency(1)
                     log.addWarning(log.indent(sprintf('Not enough latency for finding all the %s orbits...', resource_name)));
                     status = false;
@@ -207,7 +211,7 @@ classdef File_Wizard < handle
                         dsa.addIntSeconds(-step_s);
                         dso.addIntSeconds(+step_s);
                         [file_name_lst, date_list] = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
-                        % file_name_lst = flipud(file_name_lst);
+                        file_name_lst = flipud(file_name_lst);
                         status = true;
                         f_status_lst = file_tree{4};
                         f_ext_lst = file_tree{5};
@@ -255,7 +259,7 @@ classdef File_Wizard < handle
                     else
                         f_name = f_struct.filename;
                         state.setFile(f_name, this.current_resource);
-                        if strcmp(mode, 'local_check')
+                        if strcmp(mode, 'local_check') || strcmp(mode, 'no_check')
                             f_path = this.fnp.checkPath([state.getFileDir(f_name) filesep f_name]);
                             step_s = min(3*3600, this.fnp.getStepSec(f_path)); %supposing a polynomial of degree 12 and SP3 orbit data every 15 min (at worst)
                             dsa = this.date_start.getCopy();
@@ -279,32 +283,34 @@ classdef File_Wizard < handle
                             end
                             status = true;
                             f_status_lst = false(length(file_name_lst),1); % file list to be saved in tree with flag of downloaded or not
-                            for i = 1 : length(file_name_lst)
-                                file_info = dir(file_name_lst{i});
-                                if isempty(file_info)
-                                    f_status = false;
-                                else
-                                    % if the file is empty delete it
-                                    if (file_info.bytes == 0)
+                            if strcmp(mode, 'local_check')
+                                for i = 1 : length(file_name_lst)
+                                    file_info = dir(file_name_lst{i});
+                                    if isempty(file_info)
                                         f_status = false;
-                                        log.addError(sprintf('"%s" file is empty => deleting it...', [file_name_lst{i}]));
-                                        delete(file_name_lst{i});
                                     else
-                                        f_status = true;
+                                        % if the file is empty delete it
+                                        if (file_info.bytes == 0)
+                                            f_status = false;
+                                            log.addError(sprintf('"%s" file is empty => deleting it...', [file_name_lst{i}]));
+                                            delete(file_name_lst{i});
+                                        else
+                                            f_status = true;
+                                        end
                                     end
-                                end
-                                 
-                                %if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
+                                    
+                                    %if numel(file_name_lst) - (3 + numel(file_name_lst_ur)) < 0
                                     f_status_lst(i) = f_status;
                                     status = status && f_status;
                                     if f_status
                                         log.addStatusOk(sprintf('%s ready',this.fnp.getFileName(file_name_lst{i})), 20); % logging on 10 (default is 9, if ok do not show this)
                                     else
-                                        log.addWarning(sprintf('%s have not been found locally', this.fnp.getFileName(file_name_lst{i})));
+                                        log.addWarning(sprintf('%s have not been found locally', file_name_lst{i}));
                                     end
-                                %else
-                                %     log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
-                                %end
+                                    %else
+                                    %     log.addWarning(sprintf('%s have not been found locally, but it is not essential', this.fnp.getFileName(file_name_lst{i})));
+                                    %end
+                                end
                             end
                             if status
                                 file_tree{3} = 0;
@@ -320,8 +326,8 @@ classdef File_Wizard < handle
                                 dso = this.date_stop.getCopy();
                                 dsa.addIntSeconds(-step_s);
                                 dso.addIntSeconds(+step_s);
-                                %file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
-                                file_name_lst = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
+                                file_name_lst = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source));
+                                %file_name_lst = this.fnp.dateKeyRepBatch(f_path, dsa, dso,'0','0','0',vmf_res,vmf_source);
                                 % Manage ultra rapid resources (they overlap 18 hours in the future
                                 try
                                     is_ultra = strcmpi(f_name(1:3), 'IGU') || strcmpi(file_tree{1}(end-4:end), 'ultra');
@@ -330,8 +336,8 @@ classdef File_Wizard < handle
                                 end
                                 if is_ultra
                                     dso_ur = dso.getCopy; dso_ur.addIntSeconds(-18*3600);
-                                    % file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
-                                    file_name_lst_ur = this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source);
+                                    file_name_lst_ur = flipud(this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source));
+                                    %file_name_lst_ur = this.fnp.dateKeyRepBatch(f_path, dsa, dso_ur,'0','0','0',vmf_res,vmf_source);
                                 else
                                     file_name_lst_ur = file_name_lst;
                                 end
@@ -486,8 +492,7 @@ classdef File_Wizard < handle
             % Prepare all the files needed for processing
             
             if ~state.isNoResources()
-                %state.updateNavFileName();
-                %state.updateErpFileName();
+                state.updateNavFileName();
                 this.conjureNavFiles(dsa, dso);
                 if state.isAutomaticDownload()
                     this.conjureBiasFiles(dsa, dso);
