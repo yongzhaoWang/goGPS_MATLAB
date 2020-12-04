@@ -5506,6 +5506,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             if iscell(flag)
                 flag = ismember(flag_name, flag);
             end
+            flag_reset = true;
             if nargin < 3 || isempty(center_name)
                 center_name = this.getCurCenter;
                 flag_reset = false; % if the center is not changed, no need to refresh full file names with conjuring
