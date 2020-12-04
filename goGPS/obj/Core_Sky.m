@@ -154,13 +154,30 @@ classdef Core_Sky < handle
                 this.phase_delays = zeros(this.cc.getNumSat(),82); % group delay of code measurements (meters) referenced to their constellation reference:
                 
                 eph_f_name   = Core.getState.getEphFileName(start_date, stop_date);
-                [~, file_name, ~] = fileparts(eph_f_name{1});
-                if isempty(file_name)
-                    fw = File_Wizard;
-                    fw.conjureNavFiles(start_date, stop_date);
-                    eph_f_name   = Core.getState.getEphFileName(start_date, stop_date);
+                if isempty(eph_f_name)
+                    flag_init_nav_files = true;
+                else
+                    [~, file_name, ~] = fileparts(eph_f_name{1});
+                    if isempty(file_name)
+                        flag_init_nav_files = true;
+                    else
+                        flag_init_nav_files = false;
+                    end
                 end
-            
+                
+                if flag_init_nav_files
+                    state = Core.getState();
+                    center_name = state.getCurCenter();
+                    if iscell(center_name)
+                        center_name = center_name{1};
+                    end
+                    fw = File_Wizard;
+                    list_preferred = state.PREFERRED_EPH(fw.rm.getOrbitType(center_name));
+                    state.setPreferredOrbit(list_preferred, center_name);
+                    eph_f_name   = Core.getState.getEphFileName(start_date, stop_date);
+%                    fw.conjureNavFiles(start_date, stop_date);
+                end
+                
                 clock_f_name = Core.getState.getClkFileName(start_date, stop_date);
                 if isempty(clock_f_name)
                     clock_is_present = false;

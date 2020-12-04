@@ -351,6 +351,7 @@ classdef File_Wizard < handle
                                         if isempty(server)
                                             log.addWarning(sprintf('No server is configured to download "%s"\nCheck remote_resources.ini', file_name));
                                             status = false;
+                                            file_tree{4}(file_tree{4}(:) == 0) = -1;
                                         else
                                             server = server{1};
                                             file_name = strrep(file_name,['?{' server '}'],'');
@@ -366,21 +367,19 @@ classdef File_Wizard < handle
                                             if instr(port,'21')
                                                 idx = this.getServerIdx(s_ip, port, user, passwd);
                                                 [stat, ext] = this.ftp_downloaders{idx}.check(file_name);
-                                                if ~this.nrt
-                                                    status = status && stat;
-                                                else
-                                                    status = stat;
-                                                end
                                             else
                                                 [stat, ext] = Core_Utils.checkHttpTxtRes([s_ip file_name]);
-                                                if ~this.nrt
-                                                    status = status && stat;
-                                                else
-                                                    status = stat;
-                                                end
+                                            end
+                                            if ~this.nrt
+                                                status = status && stat;
+                                            else
+                                                status = stat;
+                                            end
+                                            if not(stat)
+                                                file_tree{4}(j) = -1;
                                             end
                                             f_ext_lst{j} = ext;
-                                            if status
+                                            if stat
                                                 log.addStatusOk(sprintf('%s found (on remote server %s)', this.fnp.getFileName(file_name), server), 20);
                                             else
                                                 if instr(port,'21')
@@ -401,10 +400,10 @@ classdef File_Wizard < handle
                                         
                                     end
                                 end
+                                status = any(file_tree{4} == 0);
                                 file_tree{5} = f_ext_lst;                                
                                 if status
                                     file_tree{3} = i;
-                                    break
                                 end
                             end
                         end
