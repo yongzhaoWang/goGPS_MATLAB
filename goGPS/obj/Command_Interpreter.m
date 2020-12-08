@@ -1280,6 +1280,7 @@ classdef Command_Interpreter < handle
                     
                     log.newLine();
                     log.addMarkedMessage(sprintf('%s Executing: %s', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), cmd_list{cur_line_id}));
+                    fprintf(sprintf(' ** %s Executing: %s\n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), cmd_list{cur_line_id})); % write the command in console too
                     t1 = tic;
                     log.simpleSeparator([], [0.4 0.4 0.4]);
                     
@@ -1554,7 +1555,7 @@ classdef Command_Interpreter < handle
                                 msg = strrep(msg, '${SSS_INTERVAL}', sprintf('from %s to %s', Core.getState.getSessionLimits.first.toString('yyyy/mm/dd HH:MM'), Core.getState.getSessionLimits.last.toString('yyyy/mm/dd HH:MM')));
                             end
                             tb.sendText(telebot_chat_id, msg, 'md');
-                        else
+                        elseif ~isempty(telebot_chat_id)
                             log = Core.getLogger;
                             log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send message "%s"', strrep(tok{t}(2:end-1), this.SUB_KEY, ' ')));
                         end
@@ -2887,7 +2888,7 @@ classdef Command_Interpreter < handle
                         if Core.isGReD && ~isempty(telebot_chat_id)
                             tb = Telebot();
                             tb.sendImage(telebot_chat_id, file_path, file_name, '');
-                        else
+                        elseif ~isempty(telebot_chat_id)
                             log = Core.getLogger;
                             log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send image "%s"', file_name));
                         end
