@@ -45,7 +45,7 @@ function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc, n
     if nargin < 3
         n_sigma = 6;
     end
-    [tmp, trend] = strongDeTrend(data, robustness_perc, 1, n_sigma);
+    [tmp, trend] = strongDeTrend(data, robustness_perc, 1-((1-robustness_perc)/2), n_sigma);
     thr = n_sigma * strongStd(tmp, robustness_perc);
 
     lid_ko = abs(tmp) > thr;
