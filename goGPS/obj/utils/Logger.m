@@ -54,6 +54,7 @@ classdef Logger < handle
         STD_GUI        = 4;     % Output: GUI only    100 (third bit set)
         
         ORANGE = [1 0.65 0];
+        ERROR_ON_CONSOLE = true;
     end
 
     properties (GetAccess = 'private', SetAccess = 'protected')
@@ -786,7 +787,7 @@ classdef Logger < handle
             text = strrep(text, '\n', char([10, 32 * ones(1,15)]));
             text = strrep(text, '\', '\\');
             
-            if this.isScreenOut % Screen
+            if this.isScreenOut || this.ERROR_ON_CONSOLE % Screen
                 if (color_mode)
                     cprintf('err', 'Error: ');
                     cprintf('text', [text '\n']);
