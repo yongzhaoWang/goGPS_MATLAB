@@ -1439,6 +1439,21 @@ classdef Core < handle
                 err_code.atx + err_code.atx_f +  ...
                 err_code.hoi * state.isHOI;
         end
+        
+        function printKoSessions_experimental(core)
+            sss_ko = []; 
+            for r = 1:numel(core.rec)
+                coo = core.rec(r).out.getPos;
+                [lid_ko{r}, time{r}, lid_ko_enu, trend_enu] = coo.getBadSession();
+                if any(lid_ko{r})
+                    tmp_ko = (floor(GPS_Time(time{r}{1}(find(lid_ko{r}))) - core.state.getSessionsStart + (core.state.getSessionDuration/2))/core.state.getSessionDuration)';
+                else
+                    tmp_ko = [];
+                end
+                sss_ko = unique([sss_ko tmp_ko]);
+            end
+            fprintf('%s\b\n', sprintf('%d,', sss_ko));
+        end
     end
     
     %% RIN FILE LIST
