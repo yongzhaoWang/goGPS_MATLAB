@@ -116,7 +116,12 @@ function goGPS(ini_settings, use_gui, flag_online)
             state = Core.getCurrentSettings();
             core = Core.getInstance(true, false, state); % Init Core
         end
-    end        
+    end
+    if ~core.isValid
+        log.addError('Nothing to do, core is not valid');
+        return
+    end
+    
     core.setModeGUI(use_gui);
     if nargin < 3 || isempty(flag_online)
         flag_online = true;
