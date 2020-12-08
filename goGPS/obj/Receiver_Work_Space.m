@@ -2663,8 +2663,8 @@ classdef Receiver_Work_Space < Receiver_Commons
                     if (sum(candidate_jumper)/numel(complete_triple)) > 0.6 
                         % if the number of the suspected jumper (aka CS) is more than the 60% of the total I have an anomaly
                         % this check is added while processing GMU SL04 daily solution @ epoch 2020-11-12 20:55:30
-                        log.addWarning(sprintf('Anomaly found at epoch %s, outlier detection is marking a outliers on each satellite', this.getTime.getEpoch(e).toString('yyyy-mm-dd HH:MM:SS')));
-                        this.sat.outliers_ph_by_ph(e,:) = true;
+                        log.addWarning(sprintf('Anomaly found at epoch %s, clock jump?', this.getTime.getEpoch(e).toString('yyyy-mm-dd HH:MM:SS')));
+                        %this.sat.outliers_ph_by_ph(e,:) = true;
                     end
                     if not(all(candidate_jumper)) % this should always be true
                         % consider only stable satellites
@@ -2939,7 +2939,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 phrd = Core_Utils.diffAndPred(phr); 
                 dt = cumsum(nan2zero(phrd((1:n_epoch)' + n_epoch*max(0,(double(pivot_sat)-1))))); 
                 %data = [ zeros(1, size(phrd,2)); diff(phr - dt) + 0.5 * (1:size(phr,2))];
-                data = Core_Utils.diffAndPred(phr - dt) + 1 * (1:size(phr,2));
+                data = Core_Utils.diffAndPred(phr - dt) + 0.3 * (1:size(phr,2));
                 figure; plotSep(data, '.-'); hold on; title('Sat by sat temporal diff (pivot removed)')
                 for s = 1: size(phrd,2);
                     id_ko = this.sat.outliers_ph_by_ph(:, s);
@@ -3851,6 +3851,8 @@ classdef Receiver_Work_Space < Receiver_Commons
             % Parse the data part of a RINEX 2 file -  the header must already be parsed
             % SYNTAX this.parseRin2Data(txt, lim, eoh, <t_start>, <t_stop>, <rate>, <sys_c>)
             % remove comment line from lim
+            
+            log = Core.getLogger;
             if nargin < 6
                 t_start = GPS_Time(0);
                 t_stop = GPS_Time(800000); % 2190/04/28 an epoch very far away
@@ -3887,7 +3889,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             id_ko = (string_time(18,:) ~= '.');
             if any(id_ko)
                 corrupted_lines = serialize([repmat((' - ')', 1, sum(id_ko)); string_time(:, id_ko); char(10 * ones(1, sum(id_ko), 'uint8'))])';
-                this.log.addWarning(sprintf('These epoch lines are apparently corrupted:\n%s', corrupted_lines));
+                log.addWarning(sprintf('These epoch lines are apparently corrupted:\n%s', corrupted_lines));
                 string_time(:, id_ko) = [];
                 t_line(id_ko) = [];
             end
@@ -4002,8 +4004,10 @@ classdef Receiver_Work_Space < Receiver_Commons
                     this.wl = [this.wl; wl];
                 end
                 
-                this.w_bar.createNewBar(' Parsing epochs...');
-                this.w_bar.setBarLen(n_epo);
+                if n_epo > 3600 && log.isScreenOut
+                    this.w_bar.createNewBar(' Parsing epochs...');
+                    this.w_bar.setBarLen(n_epo);
+                end
                 
                 n_ops = numel(this.rin_obs_code.G)/3; % number of observations per satellite
                 n_lps = ceil(n_ops / 5); % number of observation lines per satellite
@@ -4067,7 +4071,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                         this.log.addWarning(sprintf('Problematic epoch found at %s\nInspect the files to detect what went wrong!\nSkipping and continue the parsing, no action taken%s', this.time.getEpoch(e).toString, char(32*ones(this.w_bar.getBarLen(),1))));
                         this.log.setColorMode(cm);
                     end
-                    this.w_bar.go(e);
+                    if log.isScreenOut
+                        this.w_bar.go(e);
+                    end
                 end
                 obs(:, bad_epochs) = [];
                 this.time.remEpoch(bad_epochs);
@@ -4091,6 +4097,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                 otype_list = 'CPLS'; % Not reading doppler by default
             end
             
+            log = Core.getLogger;
             cc = Core.getState.getConstellationCollector;
             
             % find all the observation lines
@@ -4101,7 +4108,6 @@ classdef Receiver_Work_Space < Receiver_Commons
             % find bad epochs (epochs with strange characters):
             bad_ep = ceil(regexp(string_time(:)', '[^\s\.0-9]*') / size(string_time, 1));
             if not(isempty(bad_ep))
-                log = Core.getLogger;
                 corrupted_lines = serialize([repmat((' - ')', 1, numel(bad_ep)); string_time(:, bad_ep); char(10 * ones(1, numel(bad_ep), 'uint8'))])';
                 log.addWarning(sprintf('These epoch lines are apparently corrupted:\n%s', corrupted_lines));
                 t_line(bad_ep) = [];
@@ -4238,12 +4244,12 @@ classdef Receiver_Work_Space < Receiver_Commons
                     if sum(f_id == 0)
                         id_ko = find(f_id == 0);
                         [~, id] = unique(double(obs_code(id_ko, :)) * [1 10 100]');
-                        this.log.addWarning(sprintf('These codes for the %s are not recognized, ignoring data: %s', ss.SYS_EXT_NAME, sprintf('%c%c%c ', obs_code(id_ko(id), :)')));
+                        log.addWarning(sprintf('These codes for the %s are not recognized, ignoring data: %s', ss.SYS_EXT_NAME, sprintf('%c%c%c ', obs_code(id_ko(id), :)')));
                     end
                     this.wl = [this.wl; wl];
                 end
                 
-                if n_epo > 3600
+                if n_epo > 3600 && log.isScreenOut
                     this.w_bar.createNewBar(' Parsing epochs...');
                     this.w_bar.setBarLen(n_epo);
                 end
@@ -4298,7 +4304,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                             %obs(obs_line(1:numel(data{1})), e) = data{1};
                         end
                     end
-                    if n_epo > 3600
+                    if n_epo > 3600 && log.isScreenOut
                         this.w_bar.go(e);
                     end
                 end
