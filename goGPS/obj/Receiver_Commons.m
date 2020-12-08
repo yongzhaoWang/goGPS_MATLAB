@@ -1689,7 +1689,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     % If they exist
                     coo_path = recs(baseline_ids(b, 1)).parent.getCooOutPath();
                     if exist(coo_path, 'file') == 2
-                        coo_ref = Coordinates.importCoo(coo_path);
+                        coo_ref = Coordinates.fromCooFile(coo_path);
                         flag_ready = true;
                     else
                         log.addWarning(sprintf('Missing reference coordinate file: "%s"', coo_path));
@@ -1698,7 +1698,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     
                     coo_path = recs(baseline_ids(b, 2)).parent.getCooOutPath();
                     if exist(coo_path, 'file') == 2
-                        coo_trg = Coordinates.importCoo(coo_path);
+                        coo_trg = Coordinates.fromCooFile(coo_path);
                     else
                         log.addWarning(sprintf('Missing target coordinate file: "%s"', coo_path));
                         coo_trg = Coordinates();
@@ -1803,7 +1803,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     % If they exist
                     coo_path = recs(baseline_ids(b, 1)).parent.getCooOutPath();
                     if exist(coo_path, 'file') == 2
-                        coo_ref = Coordinates.importCoo(coo_path);
+                        coo_ref = Coordinates.fromCooFile(coo_path);
                         flag_ready = true;
                     else
                         log.addWarning(sprintf('Missing reference coordinate file: "%s"', coo_path));
@@ -1812,7 +1812,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     
                     coo_path = recs(baseline_ids(b, 2)).parent.getCooOutPath();
                     if exist(coo_path, 'file') == 2
-                        coo_trg = Coordinates.importCoo(coo_path);
+                        coo_trg = Coordinates.fromCooFile(coo_path);
                     else
                         log.addWarning(sprintf('Missing target coordinate file: "%s"', coo_path));
                         coo_trg = Coordinates();
@@ -1899,7 +1899,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             % If they exist
                             coo_path = rec.parent.getCooOutPath();
                             if exist(coo_path, 'file') == 2
-                                coo = Coordinates.importCoo(coo_path);
+                                coo = Coordinates.fromCooFile(coo_path);
                             else
                                 log.addWarning(sprintf('Missing coordinate file: "%s"', coo_path));
                                 coo = Coordinates();
@@ -1968,7 +1968,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             % If they exist
                             coo_path = rec.parent.getCooOutPath();
                             if exist(coo_path, 'file') == 2
-                                coo = Coordinates.importCoo(coo_path);
+                                coo = Coordinates.fromCooFile(coo_path);
                             else
                                 log.addWarning(sprintf('Missing coordinate file: "%s"', coo_path));
                                 coo = Coordinates();
@@ -2034,7 +2034,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                             % If they exist
                             coo_path = rec.parent.getCooOutPath();
                             if exist(coo_path, 'file') == 2
-                                coo = Coordinates.importCoo(coo_path);
+                                coo = Coordinates.fromCooFile(coo_path);
                             else
                                 log.addWarning(sprintf('Missing coordinate file: "%s"', coo_path));
                                 coo = Coordinates();
