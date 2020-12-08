@@ -63,7 +63,8 @@ classdef Coordinates < Exportable & handle
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
         name = '';                  % Name of the point (not yet used extensively)
         time = GPS_Time             % Position time
-        xyz = []                    % Coordinates are stored in meters in as cartesian XYZ ECEF
+        xyz = []                    % Coordinates are stored in meters in as cartesian XYZ ECEF [m]
+        v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
     end
@@ -88,6 +89,11 @@ classdef Coordinates < Exportable & handle
             this.xyz = pos.xyz;
             this.Cxx = pos.Cxx;
             this.time = pos.time.getCopy;
+            try % legacy support
+                this.v_xyz = pos.v_xyz;
+            catch
+                this.v_xyz = [];
+            end
         end
         
         function copy = getCopy(this)
@@ -272,7 +278,7 @@ classdef Coordinates < Exportable & handle
             if nargout == 5
                 time = this.time.getCopy;
             end
-        end        
+        end
         
         function [lat, lon, h_ellips, h_ortho] = getGeodetic(this)
             % Get Coordinates as Geodetic coordinates
@@ -326,7 +332,7 @@ classdef Coordinates < Exportable & handle
             ondu = this.getOrthometricCorrFromLatLon(lat, lon);
         end
         
-        function loc = getLocal(this, ref_pos)
+        function [loc_enu, v_enu, id_ok] = getLocal(this, ref_pos)
             % Get Coordinates as Local coordinates with respect to ref_pos
             %
             % OUTPUT
@@ -336,9 +342,29 @@ classdef Coordinates < Exportable & handle
             %   loc = this.getLocal(ref_pos)
            
             xyz_ref = ref_pos.getXYZ;
-            xyz_this = this.getXYZ;
+            [xyz_this, time] = this.getXYZ;
             baseline = xyz_this - repmat(xyz_ref, size(xyz_this,1),1);
-            loc = Coordinates.cart2loca(xyz_ref, baseline);
+            [loc_enu, rot_mat] = Coordinates.cart2loca(xyz_ref, baseline);
+            if nargout > 1
+                if size(xyz_this, 1) > 3
+                    if isempty(this.v_xyz)
+                        v_enu = [0 0 0];
+                        
+                        for c = 1:3
+                            [~, id_ok(:,c), trend] = strongFilterStaticData(loc_enu(:,c), 0.8, 7);
+                            v_enu(c) = (trend(end) - trend(1)) / (time.last.getMatlabTime - time.first.getMatlabTime) * 365; % m / year
+                        end
+                        this.v_xyz = v_enu * rot_mat;
+                    else
+                        v_xyz = this.v_xyz; %#ok<PROPLC>
+                        v_enu = v_xyz * rot_mat'; %#ok<PROPLC>
+                    end
+                else
+                    id_ok = true(size(xyz_ref,1));
+                    v_enu = [nan nan nan];
+                end
+                
+            end
         end
         
         function status = isEmpty(this)
@@ -535,7 +561,7 @@ classdef Coordinates < Exportable & handle
             this = Coordinates.fromXYZ(x, y, z, time);
         end
     
-        function this = importCoo(file_name)
+        function this = fromCooFile(file_name)
             % Importing from a coo file XYZ and timestamp to a Coordinate
             % object
             this = Coordinates;
@@ -618,25 +644,207 @@ classdef Coordinates < Exportable & handle
             fh = showCoordinatesENU(coo_list);
         end
         
-        function fh = showCoordinatesENU(coo_list, coo_ref, n_obs)
-            % Plot East North Up coordinates
+        function fh = showCoordinates(mode, coo_list, coo_ref, n_obs)
+            % Plot X Y Z coordinates
             %
-            % SYNTAX 
-            %   this.showCoordinatesENU(coo_list);
+            % SYNTAX
+            %   this.showCoordinatesXYZ(coo_list);
+            
+            if strcmpi(mode, 'XYZ')
+                mode = 'XYZ';
+                axis_label = {'ECEF X', 'ECEF Y', 'ECEF Z'};
+            else
+                mode = 'ENU';
+                axis_label = {'East', 'North', 'Up'};
+            end
             
             thr = 0.8;
-             
+            
             str_title{2} = sprintf('STD (detrended)');
             str_title{3} = sprintf('STD (detrended)');
             log = Core.getLogger();
             fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
             for i = 1 : numel(coo_list)
                 pos = coo_list(i);
+                
                 if not(isempty(pos.name))
-                    str_title{1} = sprintf('%s\nPosition stability ENU [mm]\nSTD (detrended)', pos.name);
+                    str_title{1} = sprintf('%s\nPosition stability %s [mm]\nSTD (detrended)', pos.name, mode);
                 elseif isempty(str_title{1})
-                    str_title{1} = sprintf('Position stability ENU [mm]\nSTD (detrended)');
+                    str_title{1} = sprintf('Position stability %s [mm]\nSTD (detrended)', mode);
                 end
+               
+                if ~pos.isEmpty
+                    
+                    if nargin < 3 || isempty(coo_ref)
+                        if strcmpi(mode, 'XYZ')
+                            pos_diff = (pos.getXYZ - pos.getMedianPos.getXYZ) * 1e3;
+                        elseif strcmpi(mode, 'ENU')
+                            pos_diff = pos.getLocal(pos.getMedianPos) * 1e3;
+                        end
+                        flag_time = true;
+                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
+                            t = pos.time.getMatlabTime;
+                            if numel(t) < size(pos_diff,1)
+                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more coordinates than times\n plotting only the positions with time'))
+                                pos_diff = pos_diff(1:numel(t),:);
+                            elseif numel(t) > size(pos_diff,1)
+                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more times than coordinates\n plotting only the first positions'))
+                                t = t(1:size(pos_diff,1),:);
+                            end
+                        else
+                            flag_time = false;
+                            t = (1 : size(pos_diff, 1))';
+                        end
+                    elseif nargin > 2 && not(isempty(coo_ref)) % plot baseline
+                        pos_diff = [];
+                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
+                            [t_comm, idx_1, idx2] = intersect(round(coo_ref.time.getRefTime(pos.time.first.getMatlabTime)),round(pos.time.getRefTime(pos.time.first.getMatlabTime)));
+                            t = pos.time.first.getMatlabTime + t_comm/86400;
+                            if strcmpi(mode, 'XYZ')
+                                pos_diff = (pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:))*1e3;
+                                pos_diff = bsxfun(@minus, pos_diff, median(pos_diff,1, 'omitnan'));
+                            elseif strcmpi(mode, 'ENU')
+                                pos_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:) )*1e3;
+                            end
+                            flag_time = true;
+                        else
+                            if numel(coo_ref.xyz) == numel(pos.xyz)
+                                pos_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz - coo_ref.xyz)*1e3;
+                                t = t(1:size(pos_diff,1),:);
+                                flag_time = false;
+                            else
+                                log.addError(sprintf('No time in coordinates and number off coordinates in ref different from coordinate in the second receiver'))
+                            end
+                        end
+                        pos_diff = bsxfun(@minus, pos_diff,median(pos_diff,1,'omitnan'));
+                    end
+                    
+                    
+                    if size(pos_diff, 1) > 1
+                        if nargin >= 4 && n_obs > 0
+                            id_ok = (max(1, size(pos_diff,1) - n_obs + 1)) : size(pos_diff,1);
+                            pos_diff = pos_diff(id_ok, :);
+                            t = t(id_ok);
+                        end
+                        
+                        if numel(coo_list) > 1
+                            fh.Name = sprintf('%03d: d%s MR', fh.Number, mode); fh.NumberTitle = 'off';
+                        else
+                            fh.Name = sprintf('%03d: d%s', fh.Number, mode); fh.NumberTitle = 'off';
+                        end
+                        
+                        if numel(coo_list) == 1
+                            color_order = Core_UI.getColor(1:3,3);
+                        else
+                            color_order = Core_UI.getColor(i * [1 1 1], numel(coo_list));
+                        end      
+                        
+                        subplot(3,1,1);
+                        e = pos_diff(:,1);
+                        set(0, 'CurrentFigure', fh);;
+                        if thr < 1
+                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 7);
+                            set(0, 'CurrentFigure', fh);
+                            Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
+                            e = data;
+                        else
+                            set(0, 'CurrentFigure', fh);
+                            Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
+                            lid_ko = false(numel(t), 1);
+                            trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,1))), pos_diff(~isnan(pos_diff(:,1)),1), 1, t);
+                        end
+                        ax(3) = gca(fh);
+                        if (t(end) > t(1))
+                            xlim([t(1) t(end)]);
+                        end
+                        yl = minMax(e);
+                        ylim([min(-20, yl(1)) max(20, yl(2))]);
+                        if flag_time
+                            setTimeTicks(4);
+                        end
+                        h = ylabel([axis_label{1} ' [mm]']); h.FontWeight = 'bold';
+                        grid on;
+                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - trend(~lid_ko)), 'omitnan'));
+                        h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
+                        subplot(3,1,2);
+                        
+                        n = pos_diff(:,2);                        
+                        if thr < 1
+                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 7);
+                            set(0, 'CurrentFigure', fh);
+                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
+                            n = data;
+                        else
+                            set(0, 'CurrentFigure', fh);
+                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
+                            trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,2))), pos_diff(~isnan(pos_diff(:,2)),2), 1, t);
+                        end
+                        ax(2) = gca(fh);
+                        if (t(end) > t(1))
+                            xlim([t(1) t(end)]);
+                        end
+                        yl = minMax(n);
+                        ylim([min(-20, yl(1)) max(20, yl(2))]);
+                        if flag_time
+                            setTimeTicks(4);
+                        end
+                        h = ylabel([axis_label{2} ' [mm]']); h.FontWeight = 'bold';
+                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - trend(~lid_ko)), 'omitnan'));
+                        h = title(str_title{2}, 'interpreter', 'none'); h.FontWeight = 'bold';
+                        grid on;
+                        subplot(3,1,3);
+                        
+                        up = pos_diff(:,3);                        
+                        if thr < 1
+                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 7);
+                            set(0, 'CurrentFigure', fh);
+                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
+                            up = data;
+                        else
+                            trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,3))), pos_diff(~isnan(pos_diff(:,3)),3), 1, t);
+                            set(0, 'CurrentFigure', fh);
+                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
+                        end
+                        ax(1) = gca(fh);
+                        if (t(end) > t(1))
+                            xlim([t(1) t(end)]);
+                        end
+                        yl = minMax(up);
+                        ylim([min(-20, yl(1)) max(20, yl(2))]);
+                        if flag_time
+                            setTimeTicks(4);
+                        end
+                        h = ylabel([axis_label{3} ' [mm]']); h.FontWeight = 'bold';
+                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - trend(~lid_ko)), 'omitnan'));
+                        h = title(str_title{3}, 'interpreter', 'none'); h.FontWeight = 'bold';
+                        grid on;
+                        linkaxes(ax, 'x');
+                        grid on;
+                    else
+                        log.addMessage('Plotting a single point static coordinates is not yet supported');
+                    end
+                end
+            end
+            Core_UI.beautifyFig(fh);
+            Core_UI.addBeautifyMenu(fh);
+            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
+        end
+
+        function [lid_ko, time, lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs)
+            % Get outliers in East North Up coordinates
+            %
+            % SYNTAX 
+            %   [lid_ko lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs);
+            
+            thr = 0.8;
+            time = {};
+            log = Core.getLogger();
+            fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
+            for i = 1 : numel(coo_list)
+                pos = coo_list(i);
                 if ~pos.isEmpty
                     
                     if nargin == 1 || isempty(coo_ref)
@@ -674,135 +882,44 @@ classdef Coordinates < Exportable & handle
                         enu_diff = bsxfun(@minus, enu_diff,median(enu_diff,1,'omitnan'));
                     end
                     
-                    if size(enu_diff, 1) > 1
-                        if nargin >= 2 && n_obs > 0
-                            id_ok = (max(1, size(enu_diff,1) - n_obs + 1)) : size(enu_diff,1);
-                            enu_diff = enu_diff(id_ok, :);
-                            t = t(id_ok);
-                        end
-                        
-                        if numel(coo_list) > 1
-                            fh.Name = sprintf('%03d: dENU MR', fh.Number); fh.NumberTitle = 'off';
-                        else
-                            fh.Name = sprintf('%03d: dENU', fh.Number); fh.NumberTitle = 'off';
-                        end
-                        
-                        if numel(coo_list) == 1
-                            color_order = Core_UI.getColor(1:3,3);
-                        else
-                            color_order = Core_UI.getColor(i * [1 1 1], numel(coo_list));
-                        end
-                        
-                        subplot(3,1,1);                       
-                        e = enu_diff(1:numel(t),1);
-                        if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 9);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
-                            e = data;
-                        else
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
-                            lid_ko = false(numel(t), 1);
-                            trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,1))), enu_diff(~isnan(enu_diff(:,1)),1), 1, t);
-                        end
-                        ax(3) = gca(fh);
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = [-1 1] * max(abs([perc(e, 0.05)*3 perc(e, 0.95)*3]));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        if flag_time
-                            setTimeTicks(4);
-                        end
-                         h = ylabel('East [mm]'); h.FontWeight = 'bold';
-                        grid on;
-                        
-                        if (t(end)-t(1) > 199) && flag_time
-                            ttmp = t(~isnan(enu_diff(:,1)));
-                            [filtered, ~, ~, splined] = splinerMat(t(~isnan(enu_diff(:,1))), enu_diff(~isnan(enu_diff(:,1)),1), 365/4, 1e-8, ttmp(1):ttmp(end));
-                            plot(ttmp(1):ttmp(end), splined, 'k');
-                            trend(~isnan(enu_diff(:,1))) = filtered;
-                        end
-                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - trend(~lid_ko)), 'omitnan'));
-                        h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
-                        subplot(3,1,2);
-                        
-                        n = enu_diff(:,2);                        
-                        if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 9);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:));
-                            n = data;
-                        else
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
-                            trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,2))), enu_diff(~isnan(enu_diff(:,2)),2), 1, t);
-                        end
-                        ax(2) = gca(fh);
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = [-1 1] * max(abs([perc(n, 0.05)*3 perc(n, 0.95)*3]));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        if flag_time 
-                            setTimeTicks(4);
-                        end
-                        h = ylabel('North [mm]'); h.FontWeight = 'bold';
-                        if (t(end)-t(1) > 199) && flag_time
-                            ttmp = t(~isnan(enu_diff(:,2)));
-                            [filtered, ~, ~, splined] = splinerMat(t(~isnan(enu_diff(:,2))), enu_diff(~isnan(enu_diff(~lid_ko,2)),2), 365/4, 1e-8, ttmp(1):ttmp(end));
-                            plot(ttmp(1):ttmp(end), splined, 'k');
-                            trend(~isnan(enu_diff(:,1))) = filtered;
-                        end
-                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - trend(~lid_ko)), 'omitnan'));
-                        h = title(str_title{2}, 'interpreter', 'none'); h.FontWeight = 'bold';
-                        grid on;
-                        subplot(3,1,3);
-                        
-                        up = enu_diff(:,3);                        
-                        if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 9);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
-                            up = data;
-                        else
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
-                            trend = Core_Utils.interp1LS(t(~isnan(enu_diff(:,3))), enu_diff(~isnan(enu_diff(:,3)),3), 1, t);
-                        end
-                        ax(1) = gca(fh);
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = [-1 1] * max(abs([perc(up, 0.05)*3 perc(up, 0.95)*3]));
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        if flag_time
-                            setTimeTicks(4);
-                        end
-                        h = ylabel('Up [mm]'); h.FontWeight = 'bold';
-                        if (t(end)-t(1) > 199) && flag_time
-                            ttmp = t(~isnan(enu_diff(:,3)));
-                            [filtered, ~, ~, splined] = splinerMat(t(~isnan(enu_diff(:,3))), enu_diff(~isnan(enu_diff(~lid_ko,3)),3), 365/4, 1e-8, ttmp(1):ttmp(end));
-                            plot(ttmp(1):ttmp(end), splined, 'k');
-                            trend(~isnan(enu_diff(:,1))) = filtered;
-                        end
-                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - trend(~lid_ko)), 'omitnan'));
-                        h = title(str_title{3}, 'interpreter', 'none'); h.FontWeight = 'bold';
-                        grid on;
-                        linkaxes(ax, 'x');
-                        grid on;
-                    else
-                        log.addMessage('Plotting a single point static coordinates is not yet supported');
+                    if nargin >= 2 && n_obs > 0
+                        id_ok = (max(1, size(enu_diff,1) - n_obs + 1)) : size(enu_diff,1);
+                        enu_diff = enu_diff(id_ok, :);
+                        t = t(id_ok);
                     end
+                    
+                    e = enu_diff(1:numel(t),1);
+                    [data, lid_ko_enu{i}(:,1), trend_enu{i}(:,1)] = strongFilterStaticData(e, 0.8, 7);
+                    
+                    n = enu_diff(:,2);
+                    [data, lid_ko_enu{i}(:,2), trend_enu{i}(:,1)] = strongFilterStaticData(n, 0.8, 7);
+                    
+                    up = enu_diff(:,3);
+                    [data, lid_ko_enu{i}(:,3), trend_enu{i}(:,1)] = strongFilterStaticData(up, 0.8, 7);
+                    
+                    lid_ko = isnan(e) | lid_ko_enu{i}(:,1) | isnan(n) | lid_ko_enu{i}(:,2) | isnan(up) | lid_ko_enu{i}(:,3);
+                    time{i} = t;
                 end
             end
-            Core_UI.beautifyFig(fh);
-            Core_UI.addBeautifyMenu(fh);
-            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
+            if numel(lid_ko) == 1
+                lid_ko = lid_ko{1};
+                lid_ko_enu = lid_ko_enu{1};
+                trend_enu = trend_enu{1};
+                time = time{1};
+            end
+        end
+
+        function fh = showCoordinatesENU(coo_list, coo_ref, n_obs)
+            % Plot East North Up coordinates
+            %
+            % SYNTAX 
+            %   this.showCoordinatesENU(coo_list);
+            
+            switch nargin
+                case 1, fh = showCoordinates('ENU', coo_list);
+                case 2, fh = showCoordinates('ENU', coo_list, coo_ref);
+                case 3, fh = showCoordinates('ENU', coo_list, coo_ref, n_obs);
+            end
         end
         
         function fh = showPositionXYZ(coo_list)
@@ -818,166 +935,11 @@ classdef Coordinates < Exportable & handle
             %
             % SYNTAX
             %   this.showCoordinatesXYZ(coo_list);
-            
-            thr = 0.8;
-            
-            str_title{1} = sprintf('Position stability XYZ [mm]\nSTD (detrended)');
-            str_title{2} = sprintf('STD (detrended)');
-            str_title{3} = sprintf('STD (detrended)');
-            log = Core.getLogger();
-            fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
-            for i = 1 : numel(coo_list)
-                pos = coo_list(i);
-                if ~pos.isEmpty
-                    
-                    if nargin == 1 || isempty(coo_ref)
-                        xyz_diff = (pos.getXYZ - pos.getMedianPos.getXYZ) * 1e3;
-                        flag_time = true;
-                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
-                            t = pos.time.getMatlabTime;
-                            if numel(t) < size(xyz_diff,1)
-                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more coordinates than times\n plotting only the positions with time'))
-                                xyz_diff = xyz_diff(1:numel(t),:);
-                            elseif numel(t) > size(xyz_diff,1)
-                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more times than coordinates\n plotting only the first positions'))
-                                t = t(1:size(xyz_diff,1),:);
-                            end
-                        else
-                            flag_time = false;
-                            t = (1 : size(xyz_diff, 1))';
-                        end
-                    elseif nargin > 1 % plot baseline
-                        xyz_diff = [];
-                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
-                            [t_comm, idx_1, idx2] = intersect(round(coo_ref.time.getRefTime(pos.time.first.getMatlabTime)),round(pos.time.getRefTime(pos.time.first.getMatlabTime)));
-                            t = pos.time.first.getMatlabTime + t_comm/86400;
-                            xyz_diff = (pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:))*1e3;
-                            xyz_diff = bsxfun(@minus, xyz_diff, median(xyz_diff,1, 'omitnan')); 
-                            flag_time = true;
-                        else
-                            if numel(coo_ref.xyz) == numel(pos.xyz)
-                                xyz_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz - coo_ref.xyz)*1e3;
-                                t = t(1:size(xyz_diff,1),:);
-                                flag_time = false;
-                            else
-                                log.addError(sprintf('No time in coordinates and number off coordinates in ref different from coordinate in the second receiver'))
-                            end
-                        end
-                        xyz_diff = bsxfun(@minus, xyz_diff,median(xyz_diff,1,'omitnan'));
-                    end
-                    
-                    
-                    if size(xyz_diff, 1) > 1
-                        if nargin >= 2 && n_obs > 0
-                            id_ok = (max(1, size(xyz_diff,1) - n_obs + 1)) : size(xyz_diff,1);
-                            xyz_diff = xyz_diff(id_ok, :);
-                            t = t(id_ok);
-                        end
-                        
-                        if numel(coo_list) > 1
-                            fh.Name = sprintf('%03d: dXYZ MR', fh.Number); fh.NumberTitle = 'off';
-                        else
-                            fh.Name = sprintf('%03d: dXYZ', fh.Number); fh.NumberTitle = 'off';
-                        end
-                        
-                        if numel(coo_list) == 1
-                            color_order = Core_UI.getColor(1:3,3);
-                        else
-                            color_order = Core_UI.getColor(i * [1 1 1], numel(coo_list));
-                        end      
-                        
-                        subplot(3,1,1);
-                        e = xyz_diff(:,1);
-                        set(0, 'CurrentFigure', fh);;
-                        if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 9);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
-                            e = data;
-                        else
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
-                            lid_ko = false(numel(t), 1);
-                            trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,1))), xyz_diff(~isnan(xyz_diff(:,1)),1), 1, t);
-                        end
-                        ax(3) = gca(fh);
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = minMax(e);
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        if flag_time
-                            setTimeTicks(4);
-                        end
-                        h = ylabel('X [mm]'); h.FontWeight = 'bold';
-                        grid on;
-                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - trend(~lid_ko)), 'omitnan'));
-                        h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
-                        subplot(3,1,2);
-                        
-                        n = xyz_diff(:,2);                        
-                        if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 9);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
-                            n = data;
-                        else
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
-                            trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,2))), xyz_diff(~isnan(xyz_diff(:,2)),2), 1, t);
-                        end
-                        ax(2) = gca(fh);
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = minMax(n);
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        if flag_time
-                            setTimeTicks(4);
-                        end
-                        h = ylabel('Y [mm]'); h.FontWeight = 'bold';
-                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - trend(~lid_ko)), 'omitnan'));
-                        h = title(str_title{2}, 'interpreter', 'none'); h.FontWeight = 'bold';
-                        grid on;
-                        subplot(3,1,3);
-                        
-                        up = xyz_diff(:,3);                        
-                        if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 9);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
-                            up = data;
-                        else
-                            trend = Core_Utils.interp1LS(t(~isnan(xyz_diff(:,3))), xyz_diff(~isnan(xyz_diff(:,3)),3), 1, t);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
-                        end
-                        ax(1) = gca(fh);
-                        if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
-                        end
-                        yl = minMax(up);
-                        ylim([min(-20, yl(1)) max(20, yl(2))]);
-                        if flag_time
-                            setTimeTicks(4);
-                        end
-                        h = ylabel('Z [mm]'); h.FontWeight = 'bold';
-                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - trend(~lid_ko)), 'omitnan'));
-                        h = title(str_title{3}, 'interpreter', 'none'); h.FontWeight = 'bold';
-                        grid on;
-                        linkaxes(ax, 'x');
-                        grid on;
-                    else
-                        log.addMessage('Plotting a single point static coordinates is not yet supported');
-                    end
-                end
+            switch nargin
+                case 1, fh = showCoordinates('XYZ', coo_list);
+                case 2, fh = showCoordinates('XYZ', coo_list, coo_ref);
+                case 3, fh = showCoordinates('XYZ', coo_list, coo_ref, n_obs);
             end
-            Core_UI.beautifyFig(fh);
-            Core_UI.addBeautifyMenu(fh);
-            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
         end
         
         function fh = showPositionPlanarUp(coo_list)
@@ -1146,6 +1108,10 @@ classdef Coordinates < Exportable & handle
     % =========================================================================
     
     methods (Access = 'public')
+        function this = importCoo(this, file_name)
+            this = Coordinates.fromCooFile(file_name);
+        end
+        
         function res = eq(coo1, coo2)
             %%% DESCRIPTION: check if two coordinates are equal
             d = sqrt(sum((coo1.xyz - coo2.xyz).^2, 2));
@@ -1647,7 +1613,8 @@ classdef Coordinates < Exportable & handle
                 fh = figure; Core_UI.beautifyFig(fh, 'dark'); drawnow
                 % Plot the baseline difference ----------------------------------------
                 subplot(3,1,1);
-                plotSep(t_comm, enu_diff, '.-', 'MarkerSize', 15, 'LineWidth', 2);
+                tmp = bsxfun(@minus, enu_diff, [-20 0 20]);
+                plotSep(t_comm, tmp, '.-', 'MarkerSize', 15, 'LineWidth', 2);
                 for c = 1 : 3
                     std_enu(:,c) = std(enu_diff(id_ok(:,c), c), 'omitnan');
                 end
@@ -1658,7 +1625,17 @@ classdef Coordinates < Exportable & handle
                 ax(1) = gca;
                 ylabel(sprintf('Baseline\ndifference'));
                 grid minor
-                title(sprintf('Baseline %d - %d\\fontsize{5} \n', r, id_ref), 'FontSize', 16);
+                if isempty(coo1.name)
+                    trg_rec_name = sprintf('%d', r);
+                else
+                    trg_rec_name = coo1.name;
+                end
+                if isempty(coo_ref1.name)
+                    ref_rec_name = sprintf('%d', id_ref);
+                else
+                    ref_rec_name = coo_ref1.name;
+                end
+                title(sprintf('Baseline %s - %s\\fontsize{5} \n', trg_rec_name, ref_rec_name), 'FontSize', 16);
                 
                 
                 % Plot the baseline (filtered by spline) of the solution with no MP ---
@@ -1676,6 +1653,7 @@ classdef Coordinates < Exportable & handle
                 end
                 tmp = tmp - splined; % remove splines
                 tmp0 = tmp0 - splined0; % remove splines
+                tmp0 = bsxfun(@minus, tmp0, [-20 0 20]);
                 plotSep(t0, tmp0, '.-', 'MarkerSize', 15, 'LineWidth', 2);
                 
                 for c = 1 : 3
@@ -1707,6 +1685,7 @@ classdef Coordinates < Exportable & handle
                 end
                 tmp = tmp - splined; % remove splines
                 tmp1 = tmp1 - splined1; % remove splines
+                tmp1 = bsxfun(@minus, tmp1, [-20 0 20]);
                 plotSep(t1, tmp1, '.-', 'MarkerSize', 15, 'LineWidth', 2);
                 
                 for c = 1 : 3
@@ -1723,6 +1702,7 @@ classdef Coordinates < Exportable & handle
                 grid minor
                 
                 Core_UI.beautifyFig(fh, 'dark');
+                Core_UI.addExportMenu(fh);
                 linkaxes(ax, 'x');
                 
                 Core.getLogger.addMonoMessage(sprintf('Baseline %d - %d) %5.2f %% %5.2f %% %5.2f %%', r, id_ref, (100*((std_enu0 - std_enu1) ./ std_enu0))));
