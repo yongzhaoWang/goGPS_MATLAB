@@ -1370,9 +1370,21 @@ classdef GNSS_Station < handle
             log = Core.getLogger;
             if isempty(this.ant_mp)
                 state = Core.getState;
-                out_dir = fullfile(state.getMPDir(), this.getMarkerName4Ch);
-                out_file_name = fullfile(out_dir, sprintf('%s_mp_*.mat', this.getMarkerName4Ch));
+                marker_name = upper(this.getMarkerName4Ch);
+                out_dir = fullfile(state.getMPDir(), marker_name);
+                out_file_name = fullfile(out_dir, sprintf('%s_mp_*.mat', marker_name));
                 file_info = dir(out_file_name);
+                if isempty(file_info)
+                    marker_name = lower(this.getMarkerName4Ch);
+                    out_dir = fullfile(state.getMPDir(), marker_name);
+                    out_file_name = fullfile(out_dir, sprintf('%s_mp_*.mat', marker_name));
+                    file_info = dir(out_file_name);
+                elseif isempty(file_info)
+                    marker_name = (this.getMarkerName4Ch);
+                    out_dir = fullfile(state.getMPDir(), marker_name);
+                    out_file_name = fullfile(out_dir, sprintf('%s_mp_*.mat', marker_name));
+                    file_info = dir(out_file_name);
+                end
                 date = [];
                 idf = [];
                 for f = 1 : numel(file_info)
@@ -1397,11 +1409,11 @@ classdef GNSS_Station < handle
                         [~, id_min] = min(abs(date - sss_center)); 
                         closer_fid = idf(id_sort(id_min));
                         file_name = fullfile(out_dir, file_info(closer_fid).name);
-                        log.addMarkedMessage(sprintf('%s - Importing Multipath mitigation model from "%s"',  this.getMarkerName4Ch, file_name));
+                        log.addMarkedMessage(sprintf('%s - Importing Multipath mitigation model from "%s"',  marker_name, file_name));
                         load(file_name, 'ant_mp');
                         this.ant_mp = ant_mp;
                     catch ex
-                        log.addWarning(sprintf('Loading Multipath mitigation model for %s failed', this.getMarkerName4Ch));
+                        log.addWarning(sprintf('Loading Multipath mitigation model for %s failed', marker_name));
                     end
                 end
             end
