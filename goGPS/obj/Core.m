@@ -91,6 +91,8 @@ classdef Core < handle
         geoid = struct('file', [], 'grid', 0, 'cellsize', 0, 'Xll', 0, 'Yll', 0, 'ncols', 0, 'nrows', 0); % parameters of the reference geoid
         
         gom         % Parallel controller
+        
+        isValid = true; % must be converted into a function
     end
 
     %% PROPERTIES RECEIVERS
@@ -151,49 +153,55 @@ classdef Core < handle
             
             
             persistent unique_instance_core__
-
-            if (nargin == 1) && isa(force_clean, 'Core')
-                unique_instance_core__ = force_clean;
-                this = force_clean;
-                this.is_gred = exist('GReD_Utility', 'class') == 8;
-            else                
-                if nargin < 1 || isempty(force_clean)
-                    force_clean = false;
-                end
-                if nargin < 2 || isempty(skip_init)
-                    skip_init = false;
-                end
-                
-                
-                if isempty(unique_instance_core__)
-                    this = Core();
-                    unique_instance_core__ = this;
-
-                    if ~skip_init
-                        if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
-                            this.init(force_clean, ini);
-                        else
-                            this.init(force_clean);
-                        end
-                    else
-                        if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
-                            this.state = Prj_Settings(ini);
-                        end
-                    end
+            if nargin == 3 && (isa(ini, 'char') && ~exist(ini, 'file'))
+                log = Logger.getInstance();
+                log.addError(sprintf('Ini file is missing or unreadable: "%s"', ini))
+                this = Core;
+                this.isValid = false;
+            else
+                if (nargin == 1) && isa(force_clean, 'Core')
+                    unique_instance_core__ = force_clean;
+                    this = force_clean;
                     this.is_gred = exist('GReD_Utility', 'class') == 8;
-
                 else
-                    this = unique_instance_core__;
-                    if ~skip_init
-                        if nargin == 3 && ~isempty(ini) && ...
-                            (isa(ini,'Prj_Settings') || exist(ini, 'file'))
-                            this.init(force_clean, ini);
+                    if nargin < 1 || isempty(force_clean)
+                        force_clean = false;
+                    end
+                    if nargin < 2 || isempty(skip_init)
+                        skip_init = false;
+                    end
+                    
+                    
+                    if isempty(unique_instance_core__)
+                        this = Core();
+                        unique_instance_core__ = this;
+                        
+                        if ~skip_init
+                            if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
+                                this.init(force_clean, ini);
+                            else
+                                this.init(force_clean);
+                            end
                         else
-                            this.init(force_clean);
+                            if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
+                                this.state = Prj_Settings(ini);
+                            end
                         end
+                        this.is_gred = exist('GReD_Utility', 'class') == 8;
+                        
                     else
-                        if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
-                            this.state = Prj_Settings(ini);
+                        this = unique_instance_core__;
+                        if ~skip_init
+                            if nargin == 3 && ~isempty(ini) && ...
+                                    (isa(ini,'Prj_Settings') || exist(ini, 'file'))
+                                this.init(force_clean, ini);
+                            else
+                                this.init(force_clean);
+                            end
+                        else
+                            if nargin == 3 && ~isempty(ini) && (isa(ini, 'Prj_Settings') || exist(ini, 'file'))
+                                this.state = Prj_Settings(ini);
+                            end
                         end
                     end
                 end
