@@ -914,7 +914,7 @@ classdef LS_Manipulator_new < handle
                                         cols_tmp = [ 0 1];
                                         ep_id = floor(time_obs(obs_lid)*obs_rate/opt.spline_rate);
                                         spline_v = Core_Utils.spline(rem(time_obs(obs_lid)*obs_rate,opt.spline_rate)/opt.spline_rate,1);
-                                        u_e_tmp = unique([ep_id ep_id+1]);
+                                        u_e_tmp = unique([ep_id ep_id+1]');
                                         time_par_tmp = [u_e_tmp*opt.spline_rate  (u_e_tmp+1)*opt.spline_rate];
                                         ep_pgr_id = zeros(sum(obs_lid),length(cols_tmp));
                                         for i_o = cols_tmp;
@@ -936,7 +936,7 @@ classdef LS_Manipulator_new < handle
                                         cols_tmp = [ 0 1 2 3];
                                         ep_id = floor(time_obs(obs_lid)*obs_rate/opt.spline_rate);
                                         spline_v = Core_Utils.spline(rem(time_obs(obs_lid)*obs_rate,opt.spline_rate)/opt.spline_rate,3);
-                                        u_e_tmp = unique([ep_id ep_id+1 ep_id+2 ep_id+3]);
+                                        u_e_tmp = unique([ep_id ep_id+1 ep_id+2 ep_id+3]');
                                         time_par_tmp = [u_e_tmp*opt.spline_rate  (u_e_tmp+1)*opt.spline_rate];
                                         ep_pgr_id = zeros(sum(obs_lid),length(cols_tmp));
                                         for i_o = cols_tmp;
@@ -1400,7 +1400,7 @@ classdef LS_Manipulator_new < handle
                 end
             end
             
-            % ---- (multi receiver) for each epoche remove one coordinate --------
+            % ---- (multi receiver) for each epoch remove one coordinate --------
             if (sum(this.param_class == this.PAR_REC_X) > 0 || sum(this.param_class == this.PAR_REC_Y) > 0  ||  sum(this.param_class == this.PAR_REC_Z) > 0 || sum(this.param_class == this.PAR_TROPO) > 0  || sum(this.param_class == this.PAR_TROPO_E) > 0  || sum(this.param_class == this.PAR_TROPO_N) > 0) && (sum(this.param_class == this.PAR_SAT_CLK) > 0 || sum(this.param_class == this.PAR_SAT_CLK_PH) > 0 || sum(this.param_class == this.PAR_SAT_CLK_PR) > 0)
                 idx_time_x = find(this.class_par == this.PAR_REC_X & ~this.out_par);
                 prm_tmp = this.ls_parametrization.getParametrization(this.PAR_REC_X); is_x_ep_wise= prm_tmp(1) == LS_Parametrization.EP_WISE;
@@ -1734,7 +1734,7 @@ classdef LS_Manipulator_new < handle
             values = [this.A(:); this.A_pseudo(:)];
             % Creating A' instead of A
             % A = sparse(rows, columns, values, n_obs, n_par); % <- this is A
-            A = sparse(columns, rows, values, n_par, n_obs); % <- stupid trick for speed-up MATLAB traspose the sparse matrix!!!
+            A = sparse(columns, rows, values, n_par, n_obs); % <- stupid trick for speed-up MATLAB, traspose the sparse matrix!!!
             clearvars columns rows values
             this.A_full = A'; % save it for use in other methods
             n_out = sum(this.outlier_obs);
@@ -1747,7 +1747,7 @@ classdef LS_Manipulator_new < handle
             class_par([this.idx_rd; find(this.out_par)]) = [];
             
             zero_pars = sum(A~=0) == 0;
-            if isempty(A)
+            if isempty(A) % Design matrix should not be empty
                 Core.getLogger.addError('Network solution failed, something bad happened :-(');
             else
                 A(:,zero_pars) = [];
@@ -1776,8 +1776,8 @@ classdef LS_Manipulator_new < handle
                     this.reweight_obs = ones(size(this.variance_obs));
                 end
                 vars = [1./this.variance_obs(~this.outlier_obs).*this.reweight_obs(~this.outlier_obs); 1./this.variance_pseudo];
-                mean_vars = 1 ; %mean(vars);
-                vars = vars ./ mean_vars;
+                % mean_vars = 1 ; %mean(vars);
+                % vars = vars ./ mean_vars;
                 Cyy =  spdiags(vars,0,n_obs - n_out,n_obs - n_out);
                 x_est = zeros(n_par -length(this.idx_rd) - sum(this.out_par),1);
                 y = sparse([this.obs(~this.outlier_obs); zeros(size(this.A_pseudo,1),1)]);
@@ -1826,7 +1826,7 @@ classdef LS_Manipulator_new < handle
                 iono = sum(idx_reduce_iono) > 0;
                 sat_clk = sum(idx_reduce_sat_clk) > 0;
                 rec_clk = sum(idx_reduce_rec_clk) > 0;
-                
+                 
                 cross_terms = {};
                 ii  = 1;
                 for i = 0 : step : floor(max_ep / step) * step % sparse matrix library became very slow in case of big/huge matrix the reduction can be applyed dividing the matrices in parts
@@ -1877,6 +1877,7 @@ classdef LS_Manipulator_new < handle
                         
                         Ner_t = Awr_t*Ae_t;
                         
+                        % Reduce the system for ionospheric parameters
                         if iono
                             n_iono = sum(idx_reduce_cycle_iono);
                             diagonal = 1./diag(Nr_t(idx_reduce_cycle_iono, idx_reduce_cycle_iono));
@@ -1898,6 +1899,7 @@ classdef LS_Manipulator_new < handle
                             cross_terms_t{1} = {iIono B_iono [Nx_iono Nx_iono_cycle'] idx_reduce_cycle_iono};
                         end
                         
+                        % Reduce the system for satellite clocks
                         if sat_clk
                             i_sat_clk_tmp = idx_reduce_cycle_sat_clk(~idx_reduce_cycle_iono);
                             n_sat_clk = sum(i_sat_clk_tmp);
@@ -1931,6 +1933,7 @@ classdef LS_Manipulator_new < handle
                             
                         end
                         
+                        % Reduce the matrix for receivers clocks
                         if rec_clk
                             i_rec_clk_tmp = idx_reduce_cycle_rec_clk(~idx_reduce_cycle_iono & ~idx_reduce_cycle_sat_clk);
                             n_rec_clk = sum(i_rec_clk_tmp);
@@ -1959,12 +1962,12 @@ classdef LS_Manipulator_new < handle
                 clearvars iSatClk B_satclk Nx_satclk Nx_satclk_cyle idx_reduce_cycle_sat_clk
                 clearvars iIono B_iono Nx_iono Nx_iono_cycle idx_reduce_cycle_iono diagonal
                 clearvars Awr_t  Ar_t Ae_t y_t Nr_t Br_t Ner_t
+                
                 % ------- fix the ambiguities
                 c_p = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
                 idx_amb = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) == this.PAR_AMB;
                 svd_strat = true;
                 if sum(this.param_class == this.PAR_AMB) > 0 && fix && any(idx_amb)
-                    
                     if svd_strat
                         % svd startegy
                         % reduce all other paramter than ambiguoties
@@ -2158,14 +2161,13 @@ classdef LS_Manipulator_new < handle
                     end
                 end
                 
-                
                 x = zeros(n_par,1);
                 idx_est = true(n_par,1);
                 idx_est([this.idx_rd ; find(this.out_par)]) = false;
                 x(idx_est) = x_est;
                 res = nan(size(this.obs));
                 
-                % generate esatimations also for the out par (to get a residual)
+                % generate estimations also for the out par (to get a residual)
                 if n_out > 0 && false % to be debugged
                     res_out = this.obs(this.outlier_obs) - A_out(:,~this.out_par & ~Core_Utils.ordinal2logical(this.idx_rd,n_par))*x_est;
                     red_out = res_out;
