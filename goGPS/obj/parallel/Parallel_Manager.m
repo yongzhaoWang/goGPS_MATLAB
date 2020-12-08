@@ -521,7 +521,7 @@ classdef Parallel_Manager < Com_Interface
                         if isfield(tmp, 'rec') && (numel(tmp.rec) == n_rec) && isfield(tmp, 'atmo')
                             % Import atmosphere as computed by rec
                             core.setAtmosphere(tmp.atmo);
-                            log.addMessage(log.indent(sprintf('%s - Importing session %d computed by worker %d', GPS_Time.now.toString('HH:MM:SS'), sss_id, w_id)));
+                            log.addMessage(log.indent(sprintf('%s - Importing session %d of %d computed by worker %d', GPS_Time.now.toString('HH:MM:SS'), sss_id, numel(sss_file), w_id)));
                             drawnow;
                             for r = 1 : n_rec
                                 if core.rec(r).isEmpty
