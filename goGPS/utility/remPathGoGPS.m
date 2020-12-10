@@ -1,5 +1,5 @@
-function addPathGoGPS(flag_rem)
-% Script to add goGPS folders to path with black_list
+function remPathGoGPS()
+% Script to remove goGPS folders to path with black_list
 
 %--------------------------------------------------------------------------
 %               ___ ___ ___
@@ -33,60 +33,6 @@ function addPathGoGPS(flag_rem)
 %--------------------------------------------------------------------------
 
     if ~isdeployed
-        p = genpath(pwd);
-
-        % bin folder
-        [l1, l2] = regexp(p,'(?<=:)[^:]*bin[\/|\\][^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-
-        [l1, l2] = regexp(p,'(?<=:)[^:]*bin[^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-
-        % GACOS folder
-        [l1, l2] = regexp(p,'(?<=:)[^:]*20180416T085957[^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-
-        % GACOS folder
-        [l1, l2] = regexp(p,'(?<=:)[^:]*GACOS[\/|\\]example[^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-
-        % SINERGY folder
-        [l1, l2] = regexp(p,'(?<=:)[^:]*Sinergy[\/|\\]maps[^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-
-        % GIT folders
-        [l1, l2] = regexp(p,'(?<=:)[^:]*\.git[^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-
-        % SVN folders
-        [l1, l2] = regexp(p,'(?<=:)[^:]*\.svn[^:]*:');
-
-        for l = size(l1, 2) : -1 : 1
-            p(l1(l) : l2(l)) = [];
-        end
-        
-        if nargin == 1 && flag_rem
-            rmpath(p);
-        else
-            addpath(p);
-        end
+       addPathGoGPS(true);
     end
 end
