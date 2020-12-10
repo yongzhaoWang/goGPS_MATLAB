@@ -678,6 +678,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         
         % Location of the communication dir for parallel message passing interface
         com_dir = Prj_Settings.COM_DIR;
+        %max_timeout_time = 3600;
 
         %------------------------------------------------------------------
         % PROJECT

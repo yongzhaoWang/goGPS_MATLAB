@@ -645,10 +645,10 @@ classdef Coordinates < Exportable & handle
         end
         
         function fh = showCoordinates(mode, coo_list, coo_ref, n_obs)
-            % Plot X Y Z coordinates
+            % Plot ENU or XYZ coordinates
             %
             % SYNTAX
-            %   this.showCoordinatesXYZ(coo_list);
+            %   this.showCoordinates(coo_list);
             
             if strcmpi(mode, 'XYZ')
                 mode = 'XYZ';
@@ -667,15 +667,15 @@ classdef Coordinates < Exportable & handle
             for i = 1 : numel(coo_list)
                 pos = coo_list(i);
                 
-                if not(isempty(pos.name))
-                    str_title{1} = sprintf('%s\nPosition stability %s [mm]\nSTD (detrended)', pos.name, mode);
-                elseif isempty(str_title{1})
-                    str_title{1} = sprintf('Position stability %s [mm]\nSTD (detrended)', mode);
-                end
-               
                 if ~pos.isEmpty
                     
                     if nargin < 3 || isempty(coo_ref)
+                        if not(isempty(pos.name))
+                            str_title{1} = sprintf('%s\nPosition stability %s [mm]\nSTD (detrended)', pos.name, mode);
+                        else
+                            str_title{1} = sprintf('Position stability %s [mm]\nSTD (detrended)', mode);
+                        end
+                        
                         if strcmpi(mode, 'XYZ')
                             pos_diff = (pos.getXYZ - pos.getMedianPos.getXYZ) * 1e3;
                         elseif strcmpi(mode, 'ENU')
@@ -696,6 +696,12 @@ classdef Coordinates < Exportable & handle
                             t = (1 : size(pos_diff, 1))';
                         end
                     elseif nargin > 2 && not(isempty(coo_ref)) % plot baseline
+                        if not(isempty(pos.name))
+                            str_title{1} = sprintf('%s - %s\nBaseline stability %s [mm]\nSTD (detrended)', pos.name, coo_ref.name, mode);
+                        else
+                            str_title{1} = sprintf('Baseline stability %s [mm]\nSTD (detrended)', mode);
+                        end
+                        
                         pos_diff = [];
                         if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
                             [t_comm, idx_1, idx2] = intersect(round(coo_ref.time.getRefTime(pos.time.first.getMatlabTime)),round(pos.time.getRefTime(pos.time.first.getMatlabTime)));
@@ -741,7 +747,7 @@ classdef Coordinates < Exportable & handle
                         
                         subplot(3,1,1);
                         e = pos_diff(:,1);
-                        set(0, 'CurrentFigure', fh);;
+                        set(0, 'CurrentFigure', fh);
                         if thr < 1
                             [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 7);
                             set(0, 'CurrentFigure', fh);
