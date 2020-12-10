@@ -349,12 +349,14 @@ classdef Go_Slave < Com_Interface
                                     end
                                     
                                     % Substitute key "$" into command list with the one from PAR target
-                                    % And PAR loops with FOR => PAR within a PAR is not supported
                                     if this.isTargetWorker()
                                         for c = 1 : numel(cmd_file.cmd_list)
                                             cmd_file.cmd_list{c} = strrep(cmd_file.cmd_list{c},'$', num2str(req_id));
-                                            cmd_file.cmd_list{c} = strrep(cmd_file.cmd_list{c},'PAR', 'FOR');
                                         end
+                                    end
+                                    % And PAR loops with FOR => PAR within a PAR is not supported
+                                    for c = 1 : numel(cmd_file.cmd_list)
+                                        cmd_file.cmd_list{c} = strrep(cmd_file.cmd_list{c},'PAR', 'FOR');
                                     end
                                     
                                     if this.isSessionWorker()
