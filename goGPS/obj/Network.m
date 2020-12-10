@@ -513,7 +513,7 @@ classdef Network < handle
                     
                     s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
                     
-                    if (s0 < 0.01 || (flag_try == 1 && s0 < 0.05))
+                    if (s0 < 0.015 || (flag_try == 1 && s0 < 0.05))
                         this.log.addStatusOk(sprintf('Network adjustment completed with sigma0 = %.4f m ', s0));
                         % initialize array for results
                         this.initOutNew(ls);
