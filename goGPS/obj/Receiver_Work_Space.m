@@ -2663,7 +2663,7 @@ classdef Receiver_Work_Space < Receiver_Commons
                     if (sum(candidate_jumper)/numel(complete_triple)) > 0.6 
                         % if the number of the suspected jumper (aka CS) is more than the 60% of the total I have an anomaly
                         % this check is added while processing GMU SL04 daily solution @ epoch 2020-11-12 20:55:30
-                        log.addWarning(sprintf('Anomaly found at epoch %s, clock jump?', this.getTime.getEpoch(e).toString('yyyy-mm-dd HH:MM:SS')));
+                        log.addWarning(sprintf('Anomaly found at epoch %s, clock jump?', this.time.getEpoch(e).toString('yyyy-mm-dd HH:MM:SS')));
                         %this.sat.outliers_ph_by_ph(e,:) = true;
                     end
                     if not(all(candidate_jumper)) % this should always be true
@@ -3646,9 +3646,21 @@ classdef Receiver_Work_Space < Receiver_Commons
             % 3) 'MARKER NAME'
             fln = find(line2head == 3, 1, 'first'); % get field line
             if isempty(fln)
-                this.parent.marker_name = 'NO_NAME';
+                if isempty(this.parent.marker_name)
+                    this.parent.marker_name = 'NO_NAME';
+                end
             else
-                this.parent.marker_name = strtrim(txt(lim(fln, 1) + (0:59)));
+                tmp = strtrim(txt(lim(fln, 1) + (0:59)));
+                if isempty(tmp)
+                    % if the header does not contain a marker "extract" it from the filename
+                    tmp = this.file.file_name_list{1};
+                    if numel(tmp) > 4
+                        tmp = upper(tmp(1:4));
+                    end
+                end
+                if not(isempty(tmp))
+                    this.parent.marker_name = tmp;
+                end
             end
             % 4) 'OBSERVER / AGENCY'
             fln = find(line2head == 4, 1, 'first'); % get field line
