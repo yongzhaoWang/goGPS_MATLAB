@@ -978,7 +978,7 @@ classdef Command_Interpreter < handle
             this.CMD_MPEST.name = {'MPEST', 'multipath_est'};
             this.CMD_MPEST.descr = ['Create a multipath model for the receiver.' new_line 'It requires to previously process the target with the uncombined engine.' new_line 'Uncombined residuals must be in the receiver'];
             this.CMD_MPEST.rec = 'T';
-            this.CMD_MPEST.par = [this.PAR_N_DAYS this.PAR_OFFSET];
+            this.CMD_MPEST.par = [this.PAR_N_DAYS this.PAR_OFFSET this.PAR_P_MPN];
 
             this.CMD_KEEP.name = {'KEEP'};
             this.CMD_KEEP.descr = ['Keep in the object the data of a certain constallation' new_line 'at a certain rate'];
@@ -1640,7 +1640,7 @@ classdef Command_Interpreter < handle
                 if ~sys_found
                     sys_list = state.cc.getActiveSysChar;
                 end
-                for r = setdiff(id_trg, 0);
+                for r = setdiff(id_trg, 0)
                     log.newLine();
                     log.addMarkedMessage(sprintf('Importing data for receiver %d: %s', r, rec(r).getMarkerName()));
                     log.smallSeparator();
@@ -2396,6 +2396,7 @@ classdef Command_Interpreter < handle
             [id_trg, found] = this.getMatchingRec(rec, tok, 'T');
             [n_days, found_n] = this.getNumericPar(tok, this.PAR_N_DAYS.par);
             [offset, found_o] = this.getNumericPar(tok, this.PAR_OFFSET.par);
+            [mp_type] = this.getMatchingMP(tok);
             log = Core.getLogger;
             if ~found
                 log.addWarning('No target found -> nothing to do');
@@ -2412,9 +2413,9 @@ classdef Command_Interpreter < handle
                         else
                             day_span = [n_days];
                         end
-                        rec(r).updateMultiPath(day_span);
+                        rec(r).updateMultiPath(day_span, mp_type);
                     else
-                        rec(r).updateMultiPath();
+                        rec(r).updateMultiPath([], mp_type);
                     end                    
                 end
             end

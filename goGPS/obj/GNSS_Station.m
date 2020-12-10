@@ -514,13 +514,13 @@ classdef GNSS_Station < handle
             
         end
         
-        function updateMultiPath(sta_list, day_span)
+        function updateMultiPath(sta_list, day_span, mp_mode)
             sta_list = sta_list(~sta_list.isEmpty);
             log = Core.getLogger();
             for rec = sta_list(:)'
                 log.addMarkedMessage(sprintf('Updating multipath corrections for "%s"', rec.getMarkerName4Ch));
                 % If resduals ph by ph are available on out use them
-                if nargin == 2 && ~isempty(day_span)
+                if nargin >= 2 && ~isempty(day_span)
                     if isempty(rec(1).out.sat.res)
                         ant_mp = rec.work.computeMultiPath([], day_span);
                     else
@@ -536,7 +536,7 @@ classdef GNSS_Station < handle
                 
                 % rec.ant_mp = rec.ant_mp + ant_mp;
                 flag_update = false;
-                if isempty(rec.work) || isempty(rec.work.ant_mp)
+                if (isempty(rec.work) || isempty(rec.work.ant_mp)) && ~(nargin >= 3 && not(isempty(mp_mode)))
                     % Zerniche multipath is not yet in the receiver
                     rec.ant_mp = ant_mp;
                     flag_update = true;
@@ -561,19 +561,35 @@ classdef GNSS_Station < handle
                                         rec.ant_mp.(sys_c).(trk) = ant_mp.(sys_c).(trk);
                                     else
                                         % Get the old map that was applied
-                                        switch Core.getCurrentSettings.flag_rec_mp
-                                            case 0, applied_map = 0;
-                                            case 1, applied_map = applied_ant.(sys_c).(trk).z_map;
-                                            case 2, applied_map = applied_ant.(sys_c).(trk).r_map;
-                                            case 3, applied_map = applied_ant.(sys_c).(trk).g_map;
-                                            case 4, applied_map = applied_ant.(sys_c).(trk).c_map;
-                                            case 5, applied_map = applied_ant.(sys_c).(trk).g1_map;
-                                            case 6, applied_map = applied_ant.(sys_c).(trk).c1_map;                                                
+                                        if nargin >= 3 && not(isempty(mp_mode))
+                                            applied_ant = rec.ant_mp;
+                                            if isempty(applied_ant)
+                                                applied_ant = rec.getAntennaMultiPath();
+                                            end
+                                            switch mp_mode
+                                                case 0, applied_map = 0;
+                                                case 1, applied_map = applied_ant.(sys_c).(trk).z_map;
+                                                case 2, applied_map = applied_ant.(sys_c).(trk).r_map;
+                                                case 3, applied_map = applied_ant.(sys_c).(trk).g_map;
+                                                case 4, applied_map = applied_ant.(sys_c).(trk).c_map;
+                                                case 5, applied_map = applied_ant.(sys_c).(trk).g1_map;
+                                                case 6, applied_map = applied_ant.(sys_c).(trk).c1_map;
+                                            end
+                                        else
+                                            switch Core.getCurrentSettings.flag_rec_mp
+                                                case 0, applied_map = 0;
+                                                case 1, applied_map = applied_ant.(sys_c).(trk).z_map;
+                                                case 2, applied_map = applied_ant.(sys_c).(trk).r_map;
+                                                case 3, applied_map = applied_ant.(sys_c).(trk).g_map;
+                                                case 4, applied_map = applied_ant.(sys_c).(trk).c_map;
+                                                case 5, applied_map = applied_ant.(sys_c).(trk).g1_map;
+                                                case 6, applied_map = applied_ant.(sys_c).(trk).c1_map;
+                                            end
                                         end
-                                        rec.ant_mp.(sys_c).(trk).z_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).z_map)) + ant_mp.(sys_c).(trk).z_map;
-                                        rec.ant_mp.(sys_c).(trk).r_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).r_map)) + ant_mp.(sys_c).(trk).r_map;
-                                        rec.ant_mp.(sys_c).(trk).g_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g_map)) + ant_mp.(sys_c).(trk).g_map;
-                                        rec.ant_mp.(sys_c).(trk).c_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c_map)) + ant_mp.(sys_c).(trk).c_map;
+                                        rec.ant_mp.(sys_c).(trk).z_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).z_map)) + ant_mp.(sys_c).(trk).z_map;
+                                        rec.ant_mp.(sys_c).(trk).r_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).r_map)) + ant_mp.(sys_c).(trk).r_map;
+                                        rec.ant_mp.(sys_c).(trk).g_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g_map)) + ant_mp.(sys_c).(trk).g_map;
+                                        rec.ant_mp.(sys_c).(trk).c_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c_map)) + ant_mp.(sys_c).(trk).c_map;
                                         rec.ant_mp.(sys_c).(trk).g1_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g1_map)) + ant_mp.(sys_c).(trk).g1_map;
                                         rec.ant_mp.(sys_c).(trk).c1_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c1_map)) + ant_mp.(sys_c).(trk).c1_map;
                                     end
