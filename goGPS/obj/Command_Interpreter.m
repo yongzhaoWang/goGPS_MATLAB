@@ -1472,7 +1472,7 @@ classdef Command_Interpreter < handle
                                     case this.CMD_MPEST.name                % CMD_MPEST
                                         this.runMPEst(core.rec, tok(2:end));
                                 end
-                                if (core.getCoreSky.isEmpty())
+                                if (core.getCoreSky.isEmpty()) && (core.state.getCurSession > 0)
                                     core.sky.initSession(core.state.getSessionLimits);
                                 end
                                 switch upper(tok{1})

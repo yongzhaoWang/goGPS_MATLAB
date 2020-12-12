@@ -4872,6 +4872,10 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             if nargin < 2
                 n = this.getCurSession();
             end
+            if n < 0
+                n = 1;
+            end
+            
             [buf_lft, but_rgt] = this.getBuffer();
             sss_lim = this.getSessionsStart;
             sss_lim.addSeconds((n-1) * this.sss_duration);
