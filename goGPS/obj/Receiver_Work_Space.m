@@ -42,7 +42,7 @@ classdef Receiver_Work_Space < Receiver_Commons
         NEW_ISP = true;
         DT_CORRECTION_TIME_DESYNC = false;
         NEW_OUT_DET = true;
-        CS_REPAIR = true;
+        CS_REPAIR = false;
     end
     
     % ==================================================================================================================================================
@@ -5012,13 +5012,15 @@ classdef Receiver_Work_Space < Receiver_Commons
                     lon = median(lon);
                     h_ortho = median(h_ortho);
                     if ~isempty(this)
-                        if this.state.mapping_function == 3
+                        if this.state.mapping_function == Prj_Settings.MF_NIEL
                             [mfh, mfw] = atmo.niell(this.time, lat./180*pi, zero2nan(this.sat.el)./180*pi,h_ellipse);
-                        elseif this.state.mapping_function == 2
+                        elseif this.state.mapping_function == Prj_Settings.MF_VMF1
                             [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,1);
-                        elseif this.state.mapping_function == 4
+                        elseif this.state.mapping_function == Prj_Settings.MF_VMF3_1
                             [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,3);
-                        elseif this.state.mapping_function == 1
+                        elseif this.state.mapping_function == Prj_Settings.MF_VMF3_5
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,3);
+                        elseif this.state.mapping_function == Prj_Settings.MF_GMF
                             [mfh, mfw] = atmo.gmf(this.time, lat./180*pi, lon./180*pi, h_ortho, zero2nan(this.sat.el)./180*pi);
                         end
                        
