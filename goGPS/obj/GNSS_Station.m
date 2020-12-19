@@ -596,6 +596,7 @@ classdef GNSS_Station < handle
                                 end
                             end
                         end
+                        rec.ant_mp.time_lim = ant_mp.time_lim;
                         flag_update = true;
                     catch ex
                         %Core_Utils.printEx(ex);
@@ -3085,7 +3086,7 @@ classdef GNSS_Station < handle
             %   thr_lev       level of threshold (usually 5.5 - conservative)
             %
             % SYNTAX
-            %   id_ko = sta_list.cleanTropo(thr_lev, flag_reduce)
+            %   id_ko = sta_list.checkTropo_mr(thr_lev, flag_reduce)
             
             % state = Core.getCurrentSettings; 
             if nargin < 2 || isempty(thr_lev)
@@ -5963,7 +5964,7 @@ classdef GNSS_Station < handle
 
             rec_ok = false(numel(sta_list), 1);
             for r = 1 : size(sta_list, 2)
-                rec_ok(r) = ~isempty(tropo{r});
+                rec_ok(r) = ~isempty(tropo{r}) & any(~isnan(tropo{r}));
             end
 
             sta_list = sta_list(rec_ok);
