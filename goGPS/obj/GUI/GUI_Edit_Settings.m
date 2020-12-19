@@ -2054,6 +2054,13 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 'TooltipString', 'Download orbits and clock if available', ...
                 'Callback', @this.downloadOrbits);
             
+            if Core.isGReD
+                uicontrol( 'Parent', but_line, ...
+                'String', 'Download GMUs now', ...
+                'TooltipString', 'Download missing or partially downloaded GMU now', ...
+                'Callback', @this.downloadGMUs);
+            end
+            
             rr_box.Heights = [30];
             
             Core_UI.insertEmpty(bottom_box);
@@ -2580,7 +2587,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 if strcmp(child.Style, 'edit')
                     val = str2num(child.String);
                     if isempty(val)
-                        val =0;
+                        val = 0;
                     end
                     array = [array val];
                 end
@@ -2603,6 +2610,115 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         function downloadOrbits(this, caller, event)
             fw = File_Wizard;
             fw.downloadResource('eph',Core.getState.getSessionsStartExt, Core.getState.getSessionsStopExt);
+        end
+        
+        function downloadGMUs(this, caller, event)
+            % Download the GMU here present
+            % This unction is restricter for GReD internally usage
+            core = Core.getCurrentCore;
+            script_name = fullfile('tmp', 'reDownload.sh');
+            if not(exist('tmp', 'dir') == 7)
+                mkdir('tmp')
+            end
+            fid = fopen(script_name ,'wt+');
+            
+            log = core.getLogger;
+            core.updateRinFileList(true, true);
+            if fid > 0
+                str = sprintf('cd ~/Repositories/goget/\n');
+                
+                rin_list = core.rin_list;
+                try
+                    legacy_marker = Daemon_Guard.LEGACY_MARKER;
+                catch
+                    legacy_marker = {'CAC1', 'CAC2', 'CAC3', 'ARV0'};
+                end
+                try
+                    ignore_missing_marker = Daemon_Guard.IGNORE_MARKER;
+                catch
+                        ignore_missing_marker = {...
+                            'ID01', ...
+                            'ID02', ...
+                            'ID03', ...
+                            'ID04', ...
+                            'ID05', ...
+                            'ID06', ...
+                            'ID07', ...
+                            'ID08', ...
+                            'ID09', ...
+                            'ID10', ...
+                            'ID11', ...
+                            'TW01', ...
+                            'TW02', ...
+                            'TW03', ...
+                            'TW04', ...
+                            'TW05', ...
+                            'TW06', ...
+                            'TW06', ...
+                            'GVP1', ...
+                            'GVP2', ...
+                            'GVP3', ...
+                            'GVP4'};
+                end
+                log.addMarkedMessage(sprintf('Searching for missing or partially downloaded files: %s\n', script_name));
+                flag_any = false;
+                for r = 1 : numel(rin_list)
+                    % Search for files with partial content, and try to redownload them using getGMU
+                    id_short = find(mod(round(rin_list(r).last_epoch.getMatlabTime * 24 * 60 - 1), 60) + 1 < 55);
+                    
+                    marker = rin_list(r).marker_name{1};
+                    marker = marker(1:4);
+                    for bad_id = id_short'
+                        file_name = rin_list(r).getFileName(bad_id);
+                        fullrate = (rin_list(r).last_epoch.getEpoch(bad_id) - rin_list(r).first_epoch.getEpoch(bad_id)) / 3600 * 100;
+                        fprintf('%5.1f%%, "%s"\n', fullrate, file_name);
+                        marker = rin_list(r).marker_name{bad_id};
+                        marker = marker(1:4);
+                        cur_time_start = round(24 * rin_list(r).first_epoch.getEpoch(bad_id).getMatlabTime) / 24;
+                        
+                        log.addMessage(log.indent(sprintf(' - %5.1f%%, %s @ %s "%s"\n', fullrate, marker, datestr(cur_time_start, 'yyyy-mm-dd HH:MM'), file_name)));
+                        str = sprintf('%spython3 ./getGMU.py -n 1 -u -m %s %s -d %s\n', str, marker, iif(ismember(marker, legacy_marker), '--legacy', ''), datestr(cur_time_start, 'yyyy-mm-dd -t HH:MM'));
+                        flag_any = true;
+                        %delete(file_name);
+                        %if fullrate > 100
+                        %    r, bad_id
+                        %end
+                    end
+                    
+                    if not(ismember(marker, ignore_missing_marker))
+                        sss_start = round(core.state.getSessionsStartExt.getMatlabTime * 24);
+                        sss_stop = round(core.state.getSessionsStopExt.getMatlabTime * 24);
+                        sss_stop = min(sss_stop, floor(now * 24 - 1/6) - 1/24);
+                        step = 1;
+                        file_start = round(rin_list(r).first_epoch.getMatlabTime * 24 * 6) / 6;
+                        if not(isempty(file_start))
+                            t = sss_start : sss_stop;
+                            t_bad = setdiff(t, file_start) /  24;
+                            for missing_epoch = t_bad
+                                log.addMessage(log.indent(sprintf(' - %5.1f%%, %s @ %s\n', 0, marker, datestr(missing_epoch, 'yyyy-mm-dd HH:MM'))));
+                                str = sprintf('%spython3 ./getGMU.py -n 1 -u -m %s %s -d %s\n', str, marker, iif(ismember(marker, legacy_marker), '--legacy', ''), datestr(missing_epoch, 'yyyy-mm-dd -t HH:MM'));
+                                flag_any = true;
+                            end
+                        end
+                    end
+                end
+                
+                if flag_any
+                    fwrite(fid, str);
+                else
+                    log.addMarkedMessage('Good, it seems there are no missing or partially downloaded files.');
+                end
+                fclose(fid);
+                if flag_any
+                    log.addMarkedMessage(sprintf('Run script: %s\n', script_name));
+                    % fprintf('\n------------------------------------------------------------------------- \n')
+                    % dos(sprintf('cat %s', script_name));
+                    % fprintf('\n------------------------------------------------------------------------- \n')
+                    dos(sprintf('chmod +x %s', script_name));
+                    dos(sprintf('./%s', script_name));
+                end
+                delete(script_name);
+            end
         end
         
         function resetResDir(this, caller, event)
