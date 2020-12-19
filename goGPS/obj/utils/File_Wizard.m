@@ -364,12 +364,17 @@ classdef File_Wizard < handle
                                                 old_server = struct('name', server, 's_ip', s_ip, 'port', port);
                                             end
                                             
-                                            if instr(port,'21')
-                                                idx = this.getServerIdx(s_ip, port, user, passwd);
-                                                [stat, ext] = this.ftp_downloaders{idx}.check(file_name);
+                                            if strcmp(s_ip, 'cddis.gsfc.nasa.gov')
+                                                log.addError('cddis.gsfc.nasa.gov is no more configured for working with goGPS');
                                             else
-                                                [stat, ext] = Core_Utils.checkHttpTxtRes([s_ip file_name]);
+                                                if instr(port,'21')
+                                                    idx = this.getServerIdx(s_ip, port, user, passwd);
+                                                    [stat, ext] = this.ftp_downloaders{idx}.check(file_name);
+                                                else
+                                                    [stat, ext] = Core_Utils.checkHttpTxtRes([s_ip file_name]);
+                                                end
                                             end
+                                            
                                             if ~this.nrt
                                                 status = status && stat;
                                             else

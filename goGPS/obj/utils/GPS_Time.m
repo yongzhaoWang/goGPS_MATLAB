@@ -1085,6 +1085,7 @@ classdef GPS_Time < Exportable & handle
             %
             % SYNTAX
             %   [unix_time, unix_time_f, second_correction] = getUnixTime(this)
+            
             switch this.time_type
                 case 0 % I'm in MAT TIME
                     % constants in matlab are slower than copied values :-( switching to values
