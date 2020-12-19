@@ -644,7 +644,7 @@ classdef Coordinates < Exportable & handle
             fh = showCoordinatesENU(coo_list);
         end
         
-        function fh = showCoordinates(mode, coo_list, coo_ref, n_obs)
+        function fh_list = showCoordinates(mode, coo_list, coo_ref, n_obs)
             % Plot ENU or XYZ coordinates
             %
             % SYNTAX
@@ -657,23 +657,23 @@ classdef Coordinates < Exportable & handle
                 mode = 'ENU';
                 axis_label = {'East', 'North', 'Up'};
             end
-            
+            fh_list = [];
             thr = 0.8;
             
             str_title{2} = sprintf('STD (detrended)');
             str_title{3} = sprintf('STD (detrended)');
             log = Core.getLogger();
-            fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
             for i = 1 : numel(coo_list)
                 pos = coo_list(i);
                 
                 if ~pos.isEmpty
-                    
                     if nargin < 3 || isempty(coo_ref)
                         if not(isempty(pos.name))
                             str_title{1} = sprintf('%s\nPosition stability %s [mm]\nSTD (detrended)', pos.name, mode);
+                            fig_name = sprintf('d%s %s', mode, pos.name);
                         else
                             str_title{1} = sprintf('Position stability %s [mm]\nSTD (detrended)', mode);
+                            fig_name = sprintf('d%s', mode);
                         end
                         
                         if strcmpi(mode, 'XYZ')
@@ -698,8 +698,10 @@ classdef Coordinates < Exportable & handle
                     elseif nargin > 2 && not(isempty(coo_ref)) % plot baseline
                         if not(isempty(pos.name))
                             str_title{1} = sprintf('%s - %s\nBaseline stability %s [mm]\nSTD (detrended)', pos.name, coo_ref.name, mode);
+                            fig_name = sprintf('d%s %s - %s', mode, pos.name, coo_ref.name);
                         else
                             str_title{1} = sprintf('Baseline stability %s [mm]\nSTD (detrended)', mode);
+                            fig_name = sprintf('d%s bsl', mode);
                         end
                         
                         pos_diff = [];
@@ -726,17 +728,14 @@ classdef Coordinates < Exportable & handle
                     end
                     
                     
+                    fh = figure('Visible', 'off');  subplot(3,1,1); Core_UI.beautifyFig(fh);
+                    fh.Name = sprintf('%03d: %s', fh.Number, fig_name);  fh.NumberTitle = 'off';
+                    
                     if size(pos_diff, 1) > 1
                         if nargin >= 4 && n_obs > 0
                             id_ok = (max(1, size(pos_diff,1) - n_obs + 1)) : size(pos_diff,1);
                             pos_diff = pos_diff(id_ok, :);
                             t = t(id_ok);
-                        end
-                        
-                        if numel(coo_list) > 1
-                            fh.Name = sprintf('%03d: d%s MR', fh.Number, mode); fh.NumberTitle = 'off';
-                        else
-                            fh.Name = sprintf('%03d: d%s', fh.Number, mode); fh.NumberTitle = 'off';
                         end
                         
                         if numel(coo_list) == 1
@@ -745,21 +744,21 @@ classdef Coordinates < Exportable & handle
                             color_order = Core_UI.getColor(i * [1 1 1], numel(coo_list));
                         end      
                         
-                        subplot(3,1,1);
+                        setAxis(fh, 1);
                         e = pos_diff(:,1);
-                        set(0, 'CurrentFigure', fh);
                         if thr < 1
                             [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 7);
-                            set(0, 'CurrentFigure', fh);
+                            setAxis(fh, 1);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); 
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:));
                             e = data;
                         else
-                            set(0, 'CurrentFigure', fh);
+                            setAxis(fh, 1);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
                             lid_ko = false(numel(t), 1);
                             trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,1))), pos_diff(~isnan(pos_diff(:,1)),1), 1, t);
                         end
+                        setAxis(fh, 1);
                         ax(3) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
@@ -778,13 +777,13 @@ classdef Coordinates < Exportable & handle
                         n = pos_diff(:,2);                        
                         if thr < 1
                             [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 7);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            setAxis(fh, 2);
+                         Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
                             n = data;
                         else
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
+                            setAxis(fh, 2);
+                        Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
                             trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,2))), pos_diff(~isnan(pos_diff(:,2)),2), 1, t);
                         end
                         ax(2) = gca(fh);
@@ -805,14 +804,14 @@ classdef Coordinates < Exportable & handle
                         up = pos_diff(:,3);                        
                         if thr < 1
                             [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 7);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            setAxis(fh, 3);
+                        Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
                             up = data;
                         else
                             trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,3))), pos_diff(~isnan(pos_diff(:,3)),3), 1, t);
-                            set(0, 'CurrentFigure', fh);
-                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
+                            setAxis(fh, 3);
+                        Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
                         end
                         ax(1) = gca(fh);
                         if (t(end) > t(1))
@@ -832,11 +831,13 @@ classdef Coordinates < Exportable & handle
                     else
                         log.addMessage('Plotting a single point static coordinates is not yet supported');
                     end
+                    fh_list = [fh_list fh];
+                    Core_UI.beautifyFig(fh);
+                    Core_UI.addBeautifyMenu(fh);
+                    fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
                 end
             end
-            Core_UI.beautifyFig(fh);
-            Core_UI.addBeautifyMenu(fh);
-            fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
+            
         end
 
         function [lid_ko, time, lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs)
