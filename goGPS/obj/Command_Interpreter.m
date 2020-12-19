@@ -90,6 +90,7 @@ classdef Command_Interpreter < handle
         CMD_SYNC        % Syncronization among multiple receivers (same rate)
         CMD_OUTDET      % Outlier and cycle-slip detection
         CMD_SHOW        % Display plots and images
+        CMD_CHKTROPO    % Outlier detection of tropospheric parameters based on ZWD data
         CMD_VALIDATE    % Validate estimated parameter with external data
         CMD_EXPORT      % Export results
         CMD_PUSHOUT     % push results in output
@@ -179,7 +180,8 @@ classdef Command_Interpreter < handle
         PAR_S_ZWD       % ZWD
         PAR_S_ZTD_VSH   % ZTD vs Height
         PAR_S_ZWD_VSH   % ZWD vs Height
-        PAR_S_ZWD_STAT   % ZWD vs Height
+        PAR_S_ZWD_STAT  % ZWD Status of processing
+        PAR_S_ZWD_SYNC  % ZWD MR sync
         PAR_S_PWV       % PWV
         PAR_S_PTH       % PTH
         PAR_S_STD       % ZTD Slant
@@ -213,7 +215,7 @@ classdef Command_Interpreter < handle
         PAR_S_SAVE      % flage for saving                
                 
         KEY_LIST = {'FOR', 'PAR', 'END'};
-        CMD_LIST = {'SET', 'PINIT', 'PKILL', 'LOAD', 'RENAME', 'EMPTY', 'EMPTYWORK', 'EMPTYOUT', 'AZEL', 'MASK', 'BASICPP', 'PREPRO', 'OUTDET', 'FIX_POS', 'CODEPP', 'PPP', 'NET', 'SEID', 'SID', 'REMIONO', 'MPEST', 'KEEP', 'SYNC', 'SHOW', 'VALIDATE', 'EXPORT', 'PUSHOUT', 'REMSAT', 'REMOBS', 'REMTMP', 'SENDMSG'};
+        CMD_LIST = {'SET', 'PINIT', 'PKILL', 'LOAD', 'RENAME', 'EMPTY', 'EMPTYWORK', 'EMPTYOUT', 'AZEL', 'MASK', 'BASICPP', 'PREPRO', 'OUTDET', 'FIX_POS', 'CODEPP', 'PPP', 'NET', 'SEID', 'SID', 'REMIONO', 'MPEST', 'KEEP', 'SYNC', 'SHOW', 'CHKTROPO', 'VALIDATE', 'EXPORT', 'PUSHOUT', 'REMSAT', 'REMOBS', 'REMTMP', 'SENDMSG'};
         PUSH_LIST = {'PPP','NET','CODEPP','AZEL'};
         VALID_CMD = {};
         CMD_ID = [];
@@ -707,6 +709,14 @@ classdef Command_Interpreter < handle
             this.PAR_S_ZWD_STAT.limits = [];
             this.PAR_S_ZWD_STAT.accepted_values = [];
 
+            this.PAR_S_ZWD_SYNC.name = 'ZWD_SYNC';
+            this.PAR_S_ZWD_SYNC.descr = 'ZWD_SYNC           Zenith Wet Delay multi-receiver sync (imagesc)';
+            this.PAR_S_ZWD_SYNC.par = '(zwd_sync)|(ZWD_SYNC)';
+            this.PAR_S_ZWD_SYNC.class = '';
+            this.PAR_S_ZWD_SYNC.limits = [];
+            this.PAR_S_ZWD_SYNC.accepted_values = [];
+
+            
             this.PAR_S_PWV.name = 'PWV';
             this.PAR_S_PWV.descr = 'PWV                Precipitable Water Vapour';
             this.PAR_S_PWV.par = '(pwv)|(PWV)';
@@ -1004,8 +1014,14 @@ classdef Command_Interpreter < handle
                 this.PAR_S_MPN this.PAR_S_SNR this.PAR_S_SNRI ...
                 this.PAR_S_OSTAT this.PAR_S_PSTAT this.PAR_S_OCS this.PAR_S_OCSP this.PAR_S_RES_PR this.PAR_S_RES_PH this.PAR_S_RES_PR_STAT this.PAR_S_RES_PH_STAT this.PAR_S_RES_PR_SKY this.PAR_S_RES_PH_SKY ...
                 this.PAR_S_RES_PR_SKYP this.PAR_S_RES_PH_SKYP this.PAR_S_PTH this.PAR_S_NSAT this.PAR_S_NSATSS this.PAR_S_NSATSSS this.PAR_S_ZTD this.PAR_S_ZTD_VSH this.PAR_S_ZHD this.PAR_S_ZWD ...
-                this.PAR_S_ZWD_VSH this.PAR_S_ZWD_STAT this.PAR_S_PWV this.PAR_S_STD this.PAR_S_RES_STD this.PAR_S_TGRAD this.PAR_S_ORBOK this.PAR_S_ALLORBOK];
+                this.PAR_S_ZWD_VSH this.PAR_S_ZWD_STAT this.PAR_S_ZWD_SYNC this.PAR_S_PWV this.PAR_S_STD this.PAR_S_RES_STD this.PAR_S_TGRAD this.PAR_S_ORBOK this.PAR_S_ALLORBOK];
 
+
+            this.CMD_CHKTROPO.name = {'CHKTROPO', 'Tropospheric parameters check'};
+            this.CMD_CHKTROPO.descr = 'Outlier detection of tropospheric parameters based on ZWD data of multiple-receivers (min 3)';
+            this.CMD_CHKTROPO.rec = 'T';
+            this.CMD_CHKTROPO.par = [];
+            
             this.CMD_VALIDATE.name = {'VALIDATE', 'validate'};
             this.CMD_VALIDATE.descr = 'Validate estimated parameter with external data';
             this.CMD_VALIDATE.rec = 'T';
@@ -1488,6 +1504,8 @@ classdef Command_Interpreter < handle
                                         this.runCodePP(core.rec, tok(2:end));
                                     case this.CMD_PPP.name                  % PPP
                                         this.runPPP(core.rec, tok(2:end));
+                                    case this.CMD_CHKTROPO.name             % CHKTROPO
+                                        this.runCheckTropo(core.rec, tok(2:end)); 
                                     case this.CMD_NET.name                  % NET
                                         this.runNet(core.rec, tok(2:end));
                                     case this.CMD_SEID.name                 % SEID
@@ -2020,6 +2038,26 @@ classdef Command_Interpreter < handle
                             rec(r).work.computeBasicPosition();
                         end
                     end
+                end
+            end
+        end
+     
+        function runCheckTropo(this, rec, tok)
+            % Outlier detection of tropospheric parameters based on ZWD data of multiple-receivers (min 3)
+            %
+            % INPUT
+            %   rec     list of rec objects
+            %   tok     list of tokens(parameters) from command line (cell array)
+            %
+            % SYNTAX
+            %   this.runPPP(rec, tok)
+            [id_trg, found] = this.getMatchingRec(rec, tok, 'T');
+            log = Core.getLogger;
+            if ~found || numel(id_trg) < 3
+                log.addWarning('Not enough target receivers found for tropo check');
+            else
+                if numel(id_trg) > 2
+                    rec(id_trg).checkTropo_mr();
                 end
             end
         end
@@ -2617,6 +2655,9 @@ classdef Command_Interpreter < handle
                             show_ok  = show_ok + 1;
                         elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_ZWD_STAT.par ')*$'], 'once'))
                             fh_list = [fh_list; trg.showZwdProcStatus()]; %#ok<AGROW>
+                            show_ok  = show_ok + 1;
+                        elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_ZWD_SYNC.par ')*$'], 'once'))
+                            fh_list = [fh_list; trg.showZwdSync()]; %#ok<AGROW>
                             show_ok  = show_ok + 1;
                         elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_S_PWV.par ')*$'], 'once'))
                             fh_list = [fh_list; trg.showPwv()]; %#ok<AGROW>
