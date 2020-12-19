@@ -217,30 +217,34 @@ classdef Logger < handle
             %   this.setOutMode(<screen_out>, <file_out>, <gui_out>)
             %
             
-            if ~isempty(screen_out)
-                % set first bit
-                if screen_out
-                    this.std_out = bitor(this.std_out, 1, 'uint8');
-                else
-                    this.std_out = bitand(this.std_out, 6, 'uint8');
+            if nargin == 2 && isnumeric(screen_out)
+                this.std_out = screen_out;
+            else
+                if ~isempty(screen_out)
+                    % set first bit
+                    if screen_out
+                        this.std_out = bitor(this.std_out, 1, 'uint8');
+                    else
+                        this.std_out = bitand(this.std_out, 6, 'uint8');
+                    end
                 end
-            end
-            
-            if (nargin > 2) && ~isempty(file_out)
-                % set second bit
-                if file_out
-                    this.std_out = bitor(this.std_out, 2, 'uint8');
-                else
-                    this.std_out = bitand(this.std_out, 5, 'uint8');
+                
+                if (nargin > 2) && ~isempty(file_out)
+                    % set second bit
+                    if file_out
+                        this.std_out = bitor(this.std_out, 2, 'uint8');
+                    else
+                        this.std_out = bitand(this.std_out, 5, 'uint8');
+                    end
                 end
-            end
-            
-            if (nargin > 3) && ~isempty(gui_out)
-                % set third bit
-                if gui_out
-                    this.std_out = bitor(this.std_out, 4, 'uint8');
-                else
-                    this.std_out = bitand(this.std_out, 3, 'uint8');
+                
+                if (nargin > 3) && ~isempty(gui_out)
+                    % set third bit
+                    if gui_out
+                        this.std_out = bitor(this.std_out, 4, 'uint8');
+                    else
+                        this.std_out = bitand(this.std_out, 3, 'uint8');
+                    end
                 end
             end
         end
