@@ -279,7 +279,10 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     coo = Coordinates.fromXYZ([0 0 0]);
                 end
                 if coo.time.isEmpty
-                    coo.setTime(this.getPositionTime());
+                    tmp = this.getPositionTime();
+                    if not(isempty(tmp))
+                        coo.setTime(tmp);
+                    end
                 end
             else
                 if ~isempty(this.add_coo)
@@ -291,7 +294,10 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     log.addWarning(sprintf('No additional coordinates are present into %s', this.parent.getMarkerName4Ch));
                     coo = this.getPos();
                     if coo.time.isEmpty
-                        coo.setTime(this.getPositionTime());
+                        tmp = this.getPositionTime();
+                        if not(isempty(tmp))
+                            coo.setTime(tmp);
+                        end
                     end
                 end
             end
@@ -699,12 +705,17 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             n_sat_ss = struct();
             cc = this.getCC;
             if isfield(this.quality_info, 'n_spe') && ~isempty(this.quality_info.n_spe)  && ~isempty(this.quality_info.n_sat)
-                n_sat = this.quality_info.n_spe.A(this.getIdSync);
-                for sys_c = cc.getActiveSysChar()
-                    if ~isempty(this.quality_info.n_spe.(sys_c))
-                        n_sat_ss.(sys_c) = this.quality_info.n_spe.(sys_c)(this.getIdSync);
-                    else
-                        n_sat_ss.(sys_c) = [];
+                if numel(this.quality_info.n_spe.A) < max(this.getIdSync)
+                    n_sat = nan;
+                    n_sat_ss.G = [];
+                else
+                    n_sat = this.quality_info.n_spe.A(this.getIdSync);
+                    for sys_c = cc.getActiveSysChar()
+                        if ~isempty(this.quality_info.n_spe.(sys_c))
+                            n_sat_ss.(sys_c) = this.quality_info.n_spe.(sys_c)(this.getIdSync);
+                        else
+                            n_sat_ss.(sys_c) = [];
+                        end
                     end
                 end
             else
@@ -1720,11 +1731,6 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     ax = fh.Children(end);
                     set(fh, 'CurrentAxes', ax);
                     bsl_str = [recs(baseline_ids(b, 2)).parent.getMarkerName4Ch ' - ' recs(baseline_ids(b, 1)).parent.getMarkerName4Ch];
-                    if numel(ax.Title.String) == 2
-                        ax.Title.String{1} = [bsl_str  ax.Title.String{1}(9:end)];
-                    else
-                        ax.Title.String{1} = bsl_str;
-                    end
                     fig_name = sprintf('BSL_EN_U_%s-%s_%s', recs(baseline_ids(b, 1)).parent.getMarkerName4Ch,recs(baseline_ids(b, 2)).parent.getMarkerName4Ch, recs(baseline_ids(b, 1)).getTime.first.toString('yyyymmdd_HHMM'));
                     fh.UserData = struct('fig_name', fig_name);
                     fh.Name = ['dENU ' bsl_str];

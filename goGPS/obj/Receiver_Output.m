@@ -240,7 +240,11 @@ classdef Receiver_Output < Receiver_Commons
             %
             % SYNTAX
             %   xyz = this.getPositionTime()
-            time = this.time_pos.getCopy();
+            if isa(this.time_pos, 'GPS_Time')
+                time = this.time_pos.getCopy();
+            else
+                time = [];
+            end
         end
         
         function [pwv, time] = getPwv(this)
@@ -658,11 +662,13 @@ classdef Receiver_Output < Receiver_Commons
                             if isempty(this.quality_info.n_spe)
                                 this.quality_info.n_spe = struct('A', [], 'G', [], 'R', [], 'E', [], 'J', [], 'C', [], 'I', []);
                             end
-                            this.quality_info.n_spe.A = Core_Utils.injectData(this.quality_info.n_spe.A, rec_work.quality_info.n_spe.A(rec_work.getIdSync), idx1, idx2);
-                            % for each constellations
-                            for sys_c = cc.getActiveSysChar
-                                if ~isempty(rec_work.quality_info.n_spe.(sys_c))
-                                    this.quality_info.n_spe.(sys_c) = Core_Utils.injectData(this.quality_info.n_spe.(sys_c), rec_work.quality_info.n_spe.(sys_c)(rec_work.getIdSync), idx1, idx2);
+                            if not(isempty(rec_work.quality_info.n_spe))
+                                this.quality_info.n_spe.A = Core_Utils.injectData(this.quality_info.n_spe.A, rec_work.quality_info.n_spe.A(rec_work.getIdSync), idx1, idx2);
+                                % for each constellations
+                                for sys_c = cc.getActiveSysChar
+                                    if ~isempty(rec_work.quality_info.n_spe.(sys_c))
+                                        this.quality_info.n_spe.(sys_c) = Core_Utils.injectData(this.quality_info.n_spe.(sys_c), rec_work.quality_info.n_spe.(sys_c)(rec_work.getIdSync), idx1, idx2);
+                                    end
                                 end
                             end
                         end
