@@ -398,23 +398,36 @@ classdef Network < handle
                     
                     % If is a baseline and MP reduction is requested,
                     % reduce for MP
-                    if numel(this.rec_list == 2) && (mp_type > 0) && (numel(this.id_ref) == 1)
-                        
-                        % Remove eventually loaded mp map from ref data
-                        ant_mp = this.rec_list(this.id_ref).work.getAppliedMPM;
-                        ls.applyMPM(ant_mp, this.id_ref, -1);
-
-                        % Remove eventually loaded mp map from trg data
-                        i_trg = setdiff([1,2], this.id_ref);
-                        ant_mp = this.rec_list(i_trg).work.getAppliedMPM;
-                        ls.applyMPM(ant_mp, i_trg, -1);
-
-                      
-                        % Apply twice the MP of the trg
-                        ant_mp = this.rec_list(i_trg).getAntennaMultiPath;
-                        ant_mp = GNSS_Station.getCurrentMPM(ant_mp, mp_type); % Extract just the needed map
-                        ls.applyMPM(ant_mp, i_trg, +2);
-                        %ls.applyMPM(ant_mp, this.id_ref, +1);
+                    if (mp_type > 0)
+                        % if baseline processing apply the map of the non reference twice
+                        if (numel(this.rec_list) == 2) && (numel(this.id_ref) == 1)
+                            % Remove eventually loaded mp map from ref data
+                            ant_mp = this.rec_list(this.id_ref).work.getAppliedMPM;
+                            ls.applyMPM(ant_mp, this.id_ref, -1);
+                            
+                            % Remove eventually loaded mp map from trg data
+                            i_trg = setdiff([1,2], this.id_ref);
+                            ant_mp = this.rec_list(i_trg).work.getAppliedMPM;
+                            ls.applyMPM(ant_mp, i_trg, -1);
+                            
+                            
+                            % Apply twice the MP of the trg
+                            ant_mp = this.rec_list(i_trg).getAntennaMultiPath;
+                            ant_mp = GNSS_Station.getCurrentMPM(ant_mp, mp_type); % Extract just the needed map
+                            ls.applyMPM(ant_mp, i_trg, +2);
+                            %ls.applyMPM(ant_mp, this.id_ref, +1);
+                        else
+                            for r = 1 : numel(this.rec_list > 2)
+                                % Remove eventually loaded mp map from ref data
+                                ant_mp = this.rec_list(r).work.getAppliedMPM;
+                                ls.applyMPM(ant_mp, this.id_ref, -1);
+                                
+                                % Apply the MP of the rec
+                                ant_mp = this.rec_list(r).getAntennaMultiPath;
+                                ant_mp = GNSS_Station.getCurrentMPM(ant_mp, mp_type); % Extract just the needed map
+                                ls.applyMPM(ant_mp, r, +1);
+                            end
+                        end
                     end
                     
                     if state.flag_free_net_tropo
