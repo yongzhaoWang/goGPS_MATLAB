@@ -5373,6 +5373,22 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             end
         end
 
+        function obs_full_name = getObsFileName(this, date_start, date_stop)
+            % Get the full name of the observations files (replacing special keywords)
+            %
+            % SYNTAX
+            %   this.getObsFileName(date_start, date_stop);
+            obs_full_name = {};
+            fnp = File_Name_Processor();
+            if ~iscell(this.obs_name)
+                this.obs_name = {this.obs_name};
+            end
+            home_dir = this.getHomeDir(); % cache home dir name
+            for i = 1 : numel(this.obs_name)
+                path_list = fnp.checkPath(strcat(this.obs_dir, filesep, this.obs_name{i}), home_dir);
+                obs_full_name{i} = fnp.dateKeyRepBatch(path_list, date_start,  date_stop, this.sss_id_list, this.sss_id_start, this.sss_id_stop);
+            end
+        end
         function updateMetFileName(this)
             % Update the full name of the observations files (replacing special keywords)
             %
