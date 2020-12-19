@@ -1459,6 +1459,14 @@ classdef Core < handle
     %% RIN FILE LIST
     % ==================================================================================================================================================
     methods
+        function showRinList(this)
+            state = Core.getCurrentSettings();
+            state.updateObsFileName;
+            this = Core.getCurrentCore;
+            this.updateRinFileList(true, true);
+            this.plotRecList();
+        end
+        
         function  plotRecList(this)
             % plot receiver availability
             %
@@ -1493,7 +1501,7 @@ classdef Core < handle
                 for r = 1 : n_rec
                     name = File_Name_Processor.getFileName(rec_path{r}{1});
                     sta_name{end+1} = name(1:4);
-                    fr(r) = File_Rinex(rec_path{r}, 100);
+                    fr(r) = File_Rinex(rec_path{r}, 100); 
                     name = File_Name_Processor.getFileName(rec_path{r}{1});
                 end
             end
@@ -1512,6 +1520,8 @@ classdef Core < handle
                 y_stop = y_stop.getMatlabTime();
                 fh = figure; fh.Name = sprintf('%03d: Daily RINEX File Availability %d', fh.Number, year); fh.NumberTitle = 'off'; hold on;
                 line([week_time week_time], [0 n_rec+1],'Color',[0.9 0.9 0.9],'LineStyle',':');
+                min_t = sss_stop;
+                max_t = sss_strt;
                 for r = 1 : n_rec
                     if sum(fr(r).is_valid_list) > 0
                         central_time = GPS_Time.getMeanTime(fr(r).first_epoch , fr(r).last_epoch).getMatlabTime;
@@ -1520,6 +1530,12 @@ classdef Core < handle
                         plot(central_time, r * ones(size(central_time)),'.', 'MarkerSize', 20, 'Color', Core_UI.getColor(r, n_rec));
                         if ~isempty(fr(r).first_epoch) && ~isempty(fr(r).last_epoch)
                             % Build a unique line
+                            if (min_t > fr(r).first_epoch.first)
+                                min_t = fr(r).first_epoch.first;
+                            end
+                            if (max_t < fr(r).last_epoch.last)
+                                max_t = fr(r).last_epoch.last;
+                            end
                             t = [fr(r).first_epoch.getMatlabTime  fr(r).last_epoch.getMatlabTime];
                             t = [t t(:, 2)];
                             plot(serialize(t'), serialize(r * [ones(size(t,1),2) nan(size(t,1),1)]'), '-', 'Color', Core_UI.getColor(r, n_rec), 'LineWidth', 4);
@@ -1527,7 +1543,7 @@ classdef Core < handle
                     end
                 end
                 Core_UI.addExportMenu(fh); Core_UI.addBeautifyMenu(fh); Core_UI.beautifyFig(fh, 'light');
-                x_lims = [max(sss_strt.getMatlabTime - 1, y_strt) min(sss_stop.getMatlabTime +1, y_stop)];
+                x_lims = [(max(sss_strt.getMatlabTime, min_t.getMatlabTime) - 0.01) (min(sss_stop.getMatlabTime, max_t.getMatlabTime) + 0.01)];
                 months_time = months_time(months_time > x_lims(1) & months_time < x_lims(2));
                 xlim(x_lims);
                 ylim([0 n_rec + 1]);
