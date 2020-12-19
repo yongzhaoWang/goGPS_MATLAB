@@ -329,7 +329,11 @@ classdef Residuals < Exportable
             %
             % SYNTAX:
             %    [is_ph] = this.isPhase()
-            is_ph = this.obs_code(:,2) == 'L';
+            if isempty(this.obs_code)
+                is_ph = false;
+            else
+                is_ph = this.obs_code(:,2) == 'L';
+            end
         end
         
         function [is_co] = isCombined(this)
