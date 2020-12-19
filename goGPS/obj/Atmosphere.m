@@ -950,7 +950,11 @@ classdef Atmosphere < handle
             %
             % SYNTAX
             %   tec = interpolateTEC(this, gps_time, lat, lon)
-            tec = Core_Utils.linInterpLatLonTime(this.ionex.data, this.ionex.first_lat, this.ionex.d_lat, this.ionex.first_lon, this.ionex.d_lon, this.ionex.first_time_double, this.ionex.d_t, lat, lon,gps_time);
+            if isempty(this.ionex)
+                tec = 0;
+            else
+                tec = Core_Utils.linInterpLatLonTime(this.ionex.data, this.ionex.first_lat, this.ionex.d_lat, this.ionex.first_lon, this.ionex.d_lon, this.ionex.first_time_double, this.ionex.d_t, lat, lon,gps_time);
+            end
         end
         
         function thin_shell_height = getThinShellHeight(this)
@@ -1752,7 +1756,7 @@ classdef Atmosphere < handle
             gmfh       = nan2zero(gmfh + ht_corr);
         end
         
-        function [gmfh, gmfw] = vmf_grd(this, time, lat, lon, el, h_ell,version, interp_first)
+        function [gmfh, gmfw] = vmf_grd(this, time, lat, lon, el, h_ell, version, interp_first)
             %angles in radians!!
             %code based on:
             %    [1]  Boehm, J., B. Werl, H. Schuh (2006),  Troposphere mapping functions for GPS and very long baseline interferometry  from European Centre for Medium-Range Weather Forecasts operational analysis data,J. Geoph. Res., Vol. 111, B02406, doi:10.1029/2005JB003629.
