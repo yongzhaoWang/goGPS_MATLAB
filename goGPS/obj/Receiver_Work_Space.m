@@ -8749,24 +8749,27 @@ classdef Receiver_Work_Space < Receiver_Commons
             %  add or subtract ocean loading from observations
             if true
                 [hoi2, hoi3, bending] = this.computeHOI();
-                
-                cc = Core.getState.getConstellationCollector;
-                for s = 1 : cc.getMaxNumSat()
-                    obs_idx = this.obs_code(:,1) == 'C' |  this.obs_code(:,1) == 'L';
-                    obs_idx = obs_idx & this.go_id == s;
-                    if sum(obs_idx) > 0
-                        for o = find(obs_idx)'
-                            o_idx = this.obs(o, :) ~=0; %find where apply corrections
-                            wl = this.wl(o);
-                            wl3 = wl^3;
-                            wl4 = wl^4;
-                            if  this.obs_code(o,1) == 'L'
-                                this.obs(o,o_idx) = this.obs(o,o_idx) - sign(sgn)*( -1/2 *hoi2(o_idx,s)'*wl3  - 1/3* hoi3(o_idx,s)'*wl4 +  bending(o_idx,s)'*wl4) ./ this.wl(o);
-                            else
-                                this.obs(o,o_idx) = this.obs(o,o_idx) - sign(sgn)*( hoi2(o_idx,s)'*wl3 + hoi3(o_idx,s)'*wl4 + bending(o_idx,s)'*wl4);
+                if any(hoi2)
+                    cc = Core.getState.getConstellationCollector;
+                    for s = 1 : cc.getMaxNumSat()
+                        obs_idx = this.obs_code(:,1) == 'C' |  this.obs_code(:,1) == 'L';
+                        obs_idx = obs_idx & this.go_id == s;
+                        if sum(obs_idx) > 0
+                            for o = find(obs_idx)'
+                                o_idx = this.obs(o, :) ~=0; %find where apply corrections
+                                wl = this.wl(o);
+                                wl3 = wl^3;
+                                wl4 = wl^4;
+                                if  this.obs_code(o,1) == 'L'
+                                    this.obs(o,o_idx) = this.obs(o,o_idx) - sign(sgn)*( -1/2 *hoi2(o_idx,s)'*wl3  - 1/3* hoi3(o_idx,s)'*wl4 +  bending(o_idx,s)'*wl4) ./ this.wl(o);
+                                else
+                                    this.obs(o,o_idx) = this.obs(o,o_idx) - sign(sgn)*( hoi2(o_idx,s)'*wl3 + hoi3(o_idx,s)'*wl4 + bending(o_idx,s)'*wl4);
+                                end
                             end
                         end
                     end
+                else
+                    Core.getLogger.addError(sprintf('No IONEX found for session starting at %s', Core.getState.getSessionsStart.toString('yyyy-mm-dd HH:MM')));
                 end
             else % use gfz zernike map %
                 atmo = Core.getAtmosphere;
@@ -8848,7 +8851,6 @@ classdef Receiver_Work_Space < Receiver_Commons
             this.updateCoordinates();
             atmo = Core.getAtmosphere();
             [hoi_delay2_coeff, hoi_delay3_coeff, bending_coeff] = atmo.getHOIdelayCoeff(this.lat,this.lon, this.sat.az,this.sat.el,this.h_ellips,this.time);
-            
         end
         
         %--------------------------------------------------------
