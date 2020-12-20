@@ -800,7 +800,12 @@ classdef Core < handle
                 end
             end
             if ~(exist(this.local_storage, 'dir'))
-                mkdir(this.local_storage)
+                try
+                    mkdir(this.local_storage);
+                catch ex
+                    Core_Utils.printEx(ex);
+                    Logger.getInstance.addError(sprintf('Creating "%s" seems impossible, check your permissions!', this.local_storage));
+                end
             end            
         end
 
