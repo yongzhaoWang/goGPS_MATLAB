@@ -950,7 +950,7 @@ classdef Atmosphere < handle
             %
             % SYNTAX
             %   tec = interpolateTEC(this, gps_time, lat, lon)
-            if isempty(this.ionex)
+            if isempty(this.ionex) || isempty(this.ionex.data)
                 tec = 0;
             else
                 tec = Core_Utils.linInterpLatLonTime(this.ionex.data, this.ionex.first_lat, this.ionex.d_lat, this.ionex.first_lon, this.ionex.d_lon, this.ionex.first_time_double, this.ionex.d_t, lat, lon,gps_time);
@@ -1025,36 +1025,38 @@ classdef Atmosphere < handle
             hoi_delay3_coeff = zeros(size(el));
             bending_coeff = zeros(size(el));
             ppo = zeros([size(el)]);
-            gps_time = time.getGpsTime();
-            t_stec = zeros(size(el));
-            t_mfpp = zeros(size(el));
-            for t = 1: size(el,1)
-                idx_sat = find(el(t,:) > 0);
-                if sum(idx_sat > 0)
-                    t_time= gps_time(t);
-                    [stec, pp, mfpp, k] = this.getSTEC(lat,lon, az(t,idx_sat),el(t,idx_sat),h, t_time);
-                    A = 80.6;
-                    
-                    t_stec(t,idx_sat) = stec;
-                    t_mfpp(t,idx_sat) = mfpp;
-                    if isempty(this.emf) % do not reload the model each time
-                        this.emf = Earth_Magnetic_Field();
+            if not(isempty(this.ionex)) && not(isempty(this.ionex.data))
+                gps_time = time.getGpsTime();
+                t_stec = zeros(size(el));
+                t_mfpp = zeros(size(el));
+                for t = 1: size(el,1)
+                    idx_sat = find(el(t,:) > 0);
+                    if sum(idx_sat > 0)
+                        t_time= gps_time(t);
+                        [stec, pp, mfpp, k] = this.getSTEC(lat,lon, az(t,idx_sat),el(t,idx_sat),h, t_time);
+                        A = 80.6;
+                        
+                        t_stec(t,idx_sat) = stec;
+                        t_mfpp(t,idx_sat) = mfpp;
+                        if isempty(this.emf) % do not reload the model each time
+                            this.emf = Earth_Magnetic_Field();
+                        end
+                        b = zeros(length(idx_sat),3);
+                        for s = 1:numel(idx_sat)
+                            b(s,:) = this.emf.getB(t_time, GPS_SS.ELL_A/1000 + this.ionex.height(1), pp(s,2), pp(s,1));
+                        end
+                        bok = sum(b.*k,2); %to Tesla
+                        c = this.V_LIGHT ;
+                        Nemax1 = (20 -6)/(4.55 - 1.38) * 1e12 / 1e18; %in[1]
+                        Nemax2 = (3*1e12); % in [2]
+                        ni = 0.66;
+                        zi = acos(1./mfpp);
+                        stec = stec * 1e16;
+                        hoi_delay2_coeff(t,idx_sat) =  7527 / c^2  .* bok .* stec;% Eq (10) (11) in [1]
+                        hoi_delay3_coeff(t,idx_sat) =  2437 / c^4  .* Nemax1 .* ni .* stec.^2;% Eq (1g) (15) (14) in [1]
+                        bending_coeff(t,idx_sat)    =  A^2 ./ (8 .* c^4)  .* tan(zi).^2 .* ni .* Nemax2 .* stec;% Eq(4.34) in [2]
+                        ppo(t,idx_sat) = stec;
                     end
-                    b = zeros(length(idx_sat),3);
-                    for s = 1:numel(idx_sat)
-                        b(s,:) = this.emf.getB(t_time, GPS_SS.ELL_A/1000 + this.ionex.height(1), pp(s,2), pp(s,1));
-                    end
-                    bok = sum(b.*k,2); %to Tesla
-                    c = this.V_LIGHT ;
-                    Nemax1 = (20 -6)/(4.55 - 1.38) * 1e12 / 1e18; %in[1]
-                    Nemax2 = (3*1e12); % in [2]
-                    ni = 0.66;
-                    zi = acos(1./mfpp);
-                    stec = stec * 1e16;
-                    hoi_delay2_coeff(t,idx_sat) =  7527 / c^2  .* bok .* stec;% Eq (10) (11) in [1]
-                    hoi_delay3_coeff(t,idx_sat) =  2437 / c^4  .* Nemax1 .* ni .* stec.^2;% Eq (1g) (15) (14) in [1]
-                    bending_coeff(t,idx_sat)    =  A^2 ./ (8 .* c^4)  .* tan(zi).^2 .* ni .* Nemax2 .* stec;% Eq(4.34) in [2]
-                    ppo(t,idx_sat) = stec;
                 end
             end
         end
