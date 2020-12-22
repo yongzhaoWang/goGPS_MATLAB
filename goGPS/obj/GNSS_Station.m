@@ -514,23 +514,26 @@ classdef GNSS_Station < handle
             
         end
         
-        function updateMultiPath(sta_list, day_span, mp_mode)
+        function updateMultiPath(sta_list, day_span, mp_mode, sys_grp)
             sta_list = sta_list(~sta_list.isEmpty);
             log = Core.getLogger();
+            if (nargin < 4) || isempty(sys_grp)
+                sys_grp = struct('G', 'G', 'R', 'R', 'E', 'E', 'J', 'J', 'C', 'C', 'I', 'I', 'S', 'S');
+            end
             for rec = sta_list(:)'
                 log.addMarkedMessage(sprintf('Updating multipath corrections for "%s"', rec.getMarkerName4Ch));
                 % If resduals ph by ph are available on out use them
                 if nargin >= 2 && ~isempty(day_span)
                     if isempty(rec(1).out.sat.res)
-                        ant_mp = rec.work.computeMultiPath([], day_span);
+                        ant_mp = rec.work.computeMultiPath(sys_grp, [], day_span);
                     else
-                        ant_mp = rec.out.computeMultiPath([], day_span);
+                        ant_mp = rec.out.computeMultiPath(sys_grp, [], day_span);
                     end
                 else
                     if isempty(rec(1).out.sat.res)
-                        ant_mp = rec.work.computeMultiPath();
+                        ant_mp = rec.work.computeMultiPath(sys_grp);
                     else
-                        ant_mp = rec.out.computeMultiPath();
+                        ant_mp = rec.out.computeMultiPath(sys_grp);
                     end
                 end
                 

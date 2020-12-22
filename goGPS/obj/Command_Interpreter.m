@@ -117,6 +117,7 @@ classdef Command_Interpreter < handle
         PAR_OFFSET      % Parameter select offset
         PAR_SNRTHR      % Parameter select snrthr
         PAR_SS          % Parameter select constellation
+        PAR_P_GRP         % Parameter constellation grouping (for MPM generation)
         PAR_OTYPE       % Parameter select observation type (i.e. CPLSD)
         PAR_BAND        % Parameter of the band to be used in the adjustment
         PAR_CTYPE       % Parameter coordinate type
@@ -385,6 +386,13 @@ classdef Command_Interpreter < handle
             this.PAR_P_MPN.limits = [];
             this.PAR_P_MPN.accepted_values = [];
 
+            this.PAR_P_GRP.name = 'constellation grouping';
+            this.PAR_P_GRP.descr = '-g=<group_list>    Group List (e.g. -s=GRE,EG,RG)';
+            this.PAR_P_GRP.par = '(\-g\=)'; % (regexp) parameter prefix: -s --constellation
+            this.PAR_P_GRP.class = 'char';
+            this.PAR_P_GRP.limits = [];
+            this.PAR_P_GRP.accepted_values = [];
+            
             this.PAR_M_UNCOMBINED.name = 'Use the uncombined engine';
             this.PAR_M_UNCOMBINED.descr = '-u                 (flag) use the uncombined engine';
             this.PAR_M_UNCOMBINED.par = '(-u)|(-U)|(--uncombined)|(--UNCOMBINED)';
@@ -988,7 +996,7 @@ classdef Command_Interpreter < handle
             this.CMD_MPEST.name = {'MPEST', 'multipath_est'};
             this.CMD_MPEST.descr = ['Create a multipath model for the receiver.' new_line 'It requires to previously process the target with the uncombined engine.' new_line 'Uncombined residuals must be in the receiver'];
             this.CMD_MPEST.rec = 'T';
-            this.CMD_MPEST.par = [this.PAR_N_DAYS this.PAR_OFFSET this.PAR_P_MPN];
+            this.CMD_MPEST.par = [this.PAR_N_DAYS this.PAR_OFFSET this.PAR_P_MPN this.PAR_P_GRP];
 
             this.CMD_KEEP.name = {'KEEP'};
             this.CMD_KEEP.descr = ['Keep in the object the data of a certain constallation' new_line 'at a certain rate'];
@@ -2435,6 +2443,7 @@ classdef Command_Interpreter < handle
             [n_days, found_n] = this.getNumericPar(tok, this.PAR_N_DAYS.par);
             [offset, found_o] = this.getNumericPar(tok, this.PAR_OFFSET.par);
             [mp_type] = this.getMatchingMP(tok);
+            [sys_grp, found_g] = this.getSysGrouping(tok);
             log = Core.getLogger;
             if ~found
                 log.addWarning('No target found -> nothing to do');
@@ -2451,9 +2460,9 @@ classdef Command_Interpreter < handle
                         else
                             day_span = [n_days];
                         end
-                        rec(r).updateMultiPath(day_span, mp_type);
+                        rec(r).updateMultiPath(day_span, mp_type, sys_grp);
                     else
-                        rec(r).updateMultiPath([], mp_type);
+                        rec(r).updateMultiPath([], mp_type, sys_grp);
                     end                    
                 end
             end
@@ -3393,6 +3402,36 @@ classdef Command_Interpreter < handle
                 found = true;
                 cc = Core.getConstellationCollector;
                 sys_list = intersect(sys_list, cc.getActiveSysChar);
+            end
+        end
+        
+        function [sys_grp, found] = getSysGrouping(this, tok)
+            % Extract from a set of tokens the constellation grouping
+            % This is useful for MPEST command, in the estimation of multipath maps
+            % multiple constellations can be used together exploiting close bands with similar
+            % reflection features
+            %
+            % INPUT
+            %   tok     list of tokens(parameters) from command line (cell array)
+            %
+            % OUTPUT
+            %   sys_grp struct witha field for each constellation
+            %
+            % SYNTAX
+            %   [sys_grp, found] = this.getSysGrouping(tok)
+            
+            found = false;            
+            sys_grp = struct('G', 'G', 'R', 'R', 'E', 'E', 'J', 'J', 'C', 'C', 'I', 'I', 'S', 'S');
+            
+            tmp = regexp([tok{:}], ['(?<=' this.PAR_P_GRP.par ')[GREJCIS,]*'], 'match', 'once');
+            if ~isempty(tmp)
+                tmp = textscan(tmp, '%s', 'Delimiter', ','); tmp = tmp{1};
+                found = true;
+                for g = 1 : numel(tmp)
+                    if numel(tmp{g}) > 1
+                        sys_grp.(tmp{g}(1)) = tmp{g};
+                    end
+                end
             end
         end
         

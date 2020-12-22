@@ -114,7 +114,7 @@ classdef Network < handle
             %   id_ref : [1,n_rec]  receivers numeric index to be choosen as reference, their value mean will be set to zero
             %   coo_rate : rate of the solution
             %   free_net : process in free net mode
-            %   mp_tye   : apply multipath to baselines 
+            %   mp_type  : apply multipath to baselines 
             %
             % SYNATAX
             %    this. adjustNetwork(id_ref, <coo_rate>, <reduce_iono>)
@@ -397,7 +397,7 @@ classdef Network < handle
                     end
                     
                     % If is a baseline and MP reduction is requested,
-                    % reduce for MP
+                    % reduce for MP (multipath)
                     if (mp_type > 0)
                         % if baseline processing apply the map of the non reference twice
                         if (numel(this.rec_list) == 2) && (numel(this.id_ref) == 1)
