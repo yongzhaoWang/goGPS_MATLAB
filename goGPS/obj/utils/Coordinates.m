@@ -61,12 +61,13 @@ classdef Coordinates < Exportable & handle
     end
     
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
-        name = '';                  % Name of the point (not yet used extensively)
+        name = ''                   % Name of the point (not yet used extensively)
         time = GPS_Time             % Position time
         xyz = []                    % Coordinates are stored in meters in as cartesian XYZ ECEF [m]
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 'flag', [], 'fixing_ratio', []) % Additional info related to the coordinate in use
     end
         
     % =========================================================================
@@ -576,22 +577,9 @@ classdef Coordinates < Exportable & handle
                     id_ver = find(txt(lim(:,1) + 1) == 'F'); % +FileVersion
                     file_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), '(?<=FileVersion[ ]*: )1.0', 'once')));
                     
-                    % Point Name
-                    timestamp = [];
-                    if file_ok
-                        id_line = find(txt(lim(:,1) + 1) == 'M'); % +MonitoringPoint
-                        if isempty(id_line)
-                            file_ok = false;
-                        else
-                            this.name = regexp(txt(lim(id_line, 1):lim(id_line, 2)), '(?<=MonitoringPoint[ ]*: ).*', 'match', 'once');
-                        end
-                    end
-                    
-                    % Data column (at the moment set here manually)
-                    data_col = [2, 3, 4] + 1; % x, y, z
-                    
                     % Data should be present
                     timestamp = [];
+                    data_start = size(lim, 1);
                     if file_ok
                         id_len_ok = find(lim(:,3)+1 >= 9);
                         data_start = id_len_ok(find(txt(lim(id_len_ok,1) + 9) == 't') + 1); % +DataStart
@@ -609,14 +597,74 @@ classdef Coordinates < Exportable & handle
                         end
                     end
                     
-                    % Import XYZ and time
+                    if file_ok
+                        % Point Name
+                        id_line = find(txt(lim(1:data_start,1) + 1) == 'M'); % +MonitoringPoint
+                        if isempty(id_line)
+                            file_ok = false;
+                        else
+                            this.name = regexp(txt(lim(id_line, 1):lim(id_line, 2)), '(?<=MonitoringPoint[ ]*: ).*', 'match', 'once');
+                        end
+                        
+                        % DataType
+                        id_line_start = find(txt(lim(1:data_start-1,1) + 1) == 'D' & txt(lim(1:data_start-1,1) + 5) == 'T'); % +MonitoringPoint
+                        id_line = id_line_start -1 + find(txt(lim(id_line_start:data_start-1,1) + 1) == '-');
+                        col = str2num(txt(lim(id_line, 1) + repmat(2:3, numel(id_line),1))) + 1;
+                        data_type = categorical();
+                        for t = 1 : numel(col)
+                            data_type(t) = categorical({txt((lim(id_line(t), 1) + 18) : lim(id_line(t), 2))});
+                        end
+                        
+                        data_col = [col(data_type == categorical({'x'})), ...
+                            col(data_type == categorical({'y'})), ...
+                            col(data_type == categorical({'z'}))];
+                    end
+                    
+                    % Data column (at the moment set here manually)
+                    data_col = [2, 3, 4] + 1; % x, y, z
+                    
+                    % Import data and time
                     if file_ok
                         this.xyz = nan(data_stop - data_start + 1, 3);
+                        n_data = data_stop - data_start + 1;
+                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'));
+                        this.Cxx = zeros(3, 3, n_data);
+                        
+                        id_cov = [col(data_type == categorical({'Cxx'})), ...
+                            col(data_type == categorical({'Cxy'})), ...
+                            col(data_type == categorical({'Cxz'})), ...
+                            col(data_type == categorical({'Cyy'})), ...
+                            col(data_type == categorical({'Cyz'})), ...
+                            col(data_type == categorical({'Czz'}))];
+                        
+                        id_n_epo = col(data_type == categorical({'nEpochs'}));
+                        id_n_obs = col(data_type == categorical({'nObs'}));
+                        id_fix = col(data_type == categorical({'fixingRatio'}));
                         for l = 0 : (data_stop - data_start)
                             data_line = strsplit(txt(lim(data_start + l, 1) : lim(data_start + l, 2)), ';');
                             this.xyz(l + 1, 1) = str2double(data_line{data_col(1)});
                             this.xyz(l + 1, 2) = str2double(data_line{data_col(2)});
                             this.xyz(l + 1, 3) = str2double(data_line{data_col(3)});
+                            
+                             
+                            if numel(id_cov) == 6
+                                tmp = [str2num(data_line{id_cov(1)}), str2num(data_line{id_cov(2)}), str2num(data_line{id_cov(3)}); ...
+                                    str2num(data_line{id_cov(2)}), str2num(data_line{id_cov(4)}), str2num(data_line{id_cov(5)}); ...
+                                    str2num(data_line{id_cov(3)}), str2num(data_line{id_cov(5)}), str2num(data_line{id_cov(6)})];
+                                if any(tmp(:))
+                                    this.Cxx(:,:,l + 1) = tmp;
+                                end
+                            end
+                            
+                            if any(id_n_epo)
+                                this.info.n_epo(l + 1) = uint32(str2double(data_line{id_n_epo}));
+                            end
+                            if any(id_n_obs)
+                                this.info.n_obs(l + 1) = uint32(str2double(data_line{id_n_obs}));
+                            end
+                            if any(id_fix)
+                                this.info.fixing_ratio(l + 1) = single(str2double(data_line{id_fix}));
+                            end
                         end
                         this.time = GPS_Time(timestamp);
                     end
@@ -642,6 +690,35 @@ classdef Coordinates < Exportable & handle
             % SYNTAX 
             %   this.showPositionENU(coo_list);
             fh = showCoordinatesENU(coo_list);
+        end
+        
+        function fh_list = showNData(coo_list)
+            fh_list = [];
+            for coo = coo_list(:)'
+                if ~isempty(coo.info.n_obs)
+                    if not(isempty(coo.name))
+                        fig_name = sprintf('%s #data', coo.name);
+                    else
+                        fig_name = sprintf('#data');
+                    end
+                    fh = figure('Visible', 'off');  Core_UI.beautifyFig(fh);
+                    fh.Name = sprintf('%03d: %s', fh.Number, fig_name);  fh.NumberTitle = 'off';
+                    
+                    plotSep(coo.time.getMatlabTime, coo.info.n_obs, '.-', 'MarkerSize', 10, 'LineWidth', 2);
+                    ylabel('n obs');
+                    yyaxis right
+                    plotSep(coo.time.getMatlabTime, coo.info.n_epo, '.-', 'MarkerSize', 10, 'LineWidth', 2);
+                    ylabel('n epochs');
+                    
+                    xlim([coo.time.first.getMatlabTime coo.time.last.getMatlabTime]);
+                    setTimeTicks(4);
+                    
+                    fh_list = [fh_list fh];
+                    Core_UI.beautifyFig(fh);
+                    Core_UI.addBeautifyMenu(fh);
+                    fh.Visible = iif(Core_UI.isHideFig, 'off', 'on'); drawnow;
+                end
+            end
         end
         
         function fh_list = showCoordinates(mode, coo_list, coo_ref, n_obs)
@@ -961,7 +1038,7 @@ classdef Coordinates < Exportable & handle
             % Plot East North Up coordinates
             %
             % SYNTAX 
-            %   this.showCoordinatesENU(coo_list);
+            %   this.showCoordinatesPlanarUp(coo_list);
             
             log = Core.getLogger();
             for i = 1 : numel(coo_list)
