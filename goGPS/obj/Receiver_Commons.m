@@ -2278,19 +2278,21 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             end
         end
                                 
-        function ant_mp = computeMultiPath(this, l_max, day_span)
+        function ant_mp = computeMultiPath(this, sys_grp, l_max, day_span)
             % Get Zernike multi pth coefficients
             %
             % INPUT
-            %   l_max   maximum degree for of the Zernike polynomials
+            %   sys_grp  struct containing grouping for constellations
+            %   l_max    maximum degree for of the Zernike polynomials
+            %   day_span contains offset and length of the period to be used to compute the MP maps
             %
             % SYNTAX
             %   this.computeMultiPath(l_max)
             
-            if nargin < 2
+            if nargin < 3
                 l_max = []; % managed within the function in res
             end            
-            if nargin == 3
+            if nargin == 4
                 % day_span contains offset and length of the period to be used to compute the MP maps
                 if numel(day_span) == 1 % if only len is defined, set offset to zero
                     offset = 0;
@@ -2301,9 +2303,9 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 stop = ceil(this.sat.res.time.last.getMatlabTime) + offset;
                 start = stop - len;
                 time_lim = GPS_Time([start stop]');
-                ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, l_max, [], [], [], time_lim);
+                ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, sys_grp, l_max, [], [], [], time_lim);
             else
-                ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, l_max);
+                ant_mp = this.sat.res.computeMultiPath(this.parent.getMarkerName4Ch, sys_grp, l_max);
             end
         end                
         
