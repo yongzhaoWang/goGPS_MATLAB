@@ -8749,7 +8749,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             %  add or subtract ocean loading from observations
             if true
                 [hoi2, hoi3, bending] = this.computeHOI();
-                if any(hoi2)
+                if any(hoi2(:))
                     cc = Core.getState.getConstellationCollector;
                     for s = 1 : cc.getMaxNumSat()
                         obs_idx = this.obs_code(:,1) == 'C' |  this.obs_code(:,1) == 'L';
