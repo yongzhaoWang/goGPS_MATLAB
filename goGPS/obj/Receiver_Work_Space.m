@@ -10306,6 +10306,18 @@ classdef Receiver_Work_Space < Receiver_Commons
                         this.updateErrIono(all_go_id);
                     end
                     this.updateErrTropo(all_go_id);
+                    % If I now my position, I can make and additional check on the quality of the pseudo-ranges
+                    % see CAC3 23 Dic 2020
+                    [pr, id_pr] = this.getPseudoRanges;
+                    sensor = pr - this.getSyntPrObs;
+                    sensor = abs(bsxfun(@minus, sensor, median(sensor,2, 'omitnan')));
+                    id_ko = sensor > 1e3;
+                    if any(id_ko(:))
+                        log.addWarning(sprintf('%d pseudorange observations have a strongly biased value, removing them to avoid processing problems', sum(id_ko(:))));
+                        pr(id_ko) = NaN;
+                        this.setPseudoRanges(pr, id_pr);
+                    end
+                    % Start the estimation of the receiver clock
                     [dpos, s0] = this.codeStaticPositioning([],[],[],0);
                     if s0 > 0
                         this.updateAllTOT();
