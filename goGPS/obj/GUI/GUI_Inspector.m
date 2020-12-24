@@ -1536,28 +1536,29 @@ classdef GUI_Inspector < GUI_Unique_Win
             if isempty(strrep(char(this.j_cmd.getText()),'"', ''''))
                 this.j_cmd.setText('% Write here the commands to be executed');
             else
-                cmd_list = textscan(strrep(strrep(char(this.j_cmd.getText()),'"', ''''),'%','#'),'%s','Delimiter', '\n');
+                full_cmd_list = textscan(strrep(strrep(char(this.j_cmd.getText()),'"', ''''),'%','#'),'%s','Delimiter', '\n');
                 cmd = Core.getCommandInterpreter();
-                if ~isempty(cmd_list)
-                    [cleaned_cmd_list, err_list, loop_lev] = cmd.fastCheck(cmd_list{1});
+                if ~isempty(full_cmd_list)
+                    [cleaned_cmd_list, err_list, loop_lev] = cmd.fastCheck(full_cmd_list{1});
                     cmd_list{1} = cleaned_cmd_list;
                     loop_lev = loop_lev - (diff([0 loop_lev]) > 0);
                     
                     cid = 0; % index running on valid commands
-                    for c = 1 : numel(cmd_list{1})
+                    for c = 1 : numel(full_cmd_list{1})
                         cid = cid + ~err_list(c);
                         
-                        cur_cmd = cmd_list{1}{c};
+                        cur_cmd = full_cmd_list{1}{c};
                         if (length(cur_cmd) > 1) && (cur_cmd(1) ~= '#') && err_list(c)
                             cur_cmd = ['# ' cur_cmd ' - ERROR: CMD UNKNOWN']; %#ok<AGROW>
-                            cmd_list{1}{c} = cur_cmd;
+                            full_cmd_list{1}{c} = cur_cmd;
                         elseif ~err_list(c)
-                            cmd_list{1}{c} = sprintf('%s%s', char(32 * ones(1,3 * loop_lev(cid))), strtrim(cleaned_cmd_list{cid}));
+                            full_cmd_list{1}{c} = sprintf('%s%s', char(32 * ones(1,3 * loop_lev(cid))), strtrim(cleaned_cmd_list{cid}));
                         end
                     end
-                    str = strrep(strCell2Str(cmd_list{1}, 10),'#','%');
+                    str = strrep(strCell2Str(full_cmd_list{1}, 10),'#','%');
                     this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                 end
+                cleaned_cmd_list = full_cmd_list{1};
             end
             Core.getLogger.addMarkedMessage('The command validity has been checked');
         end
