@@ -1686,8 +1686,10 @@ classdef LS_Manipulator_new < handle
                                             [az_grid, el_grid] = Core_Utils.getPolarGrid(360 / size(mp_map, 2), 90 / size(mp_map, 1));
                                             [az_mgrid, el_mgrid] = meshgrid(Core_Utils.deg2rad(az_grid), Core_Utils.deg2rad(el_grid));
                                             map2scatter = griddedInterpolant(flipud([az_mgrid(:,end) - 2*pi, az_mgrid, az_mgrid(:,1) + 2*pi])', flipud([el_mgrid(:,end) el_mgrid el_mgrid(:,1)])', flipud([mp_map(:,end) mp_map mp_map(:,1)])', 'linear');
-                                            % mp_corr = map2scatter(az, el);
-                                            this.obs(id_obs) = this.obs(id_obs) - sgn * map2scatter(az, el);
+                                            % "funny" story to remember, MATLAB 2018a Linux:
+                                            % double + double * single = single
+                                            % without the double cast, this.obs loses precision becoming a single and nothing will work!
+                                            this.obs(id_obs) = this.obs(id_obs) - sgn * double(map2scatter(az, el));
                                         end
                                     end
                                 end
