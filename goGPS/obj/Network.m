@@ -119,6 +119,7 @@ classdef Network < handle
             % SYNATAX
             %    this. adjustNetwork(id_ref, <coo_rate>, <reduce_iono>)
             
+            log = Core.getLogger;
             state = Core.getState;
             if nargin < 3
                 coo_rate = [];
@@ -155,9 +156,9 @@ classdef Network < handle
             n_valid_rec = sum(~is_empty_recs);
             n_valid_ref = sum(~is_empty_recs(lid_ref));
             if n_valid_ref < numel(id_ref)
-                this.log.addError('One or more reference stations for Network solution are missing! Skipping NET');
+                log.addError('One or more reference stations for Network solution are missing! Skipping NET');
             elseif (n_valid_rec < 2)
-                this.log.addError('Not enough receivers (< 2), skipping network solution');
+                log.addError('Not enough receivers (< 2), skipping network solution');
             else
                 % if iono reduction is requested take off single frequency
                 % receiver
@@ -165,7 +166,7 @@ classdef Network < handle
                     r = 1;
                     while (r <= length(this.rec_list))
                         if ~this.rec_list(r).work.isMultiFreq
-                            this.log.addWarning(sprintf('Receiver %s is not multi frequency, removing it from network processing.',this.rec_list(r).getMarkerName4Ch));
+                            log.addWarning(sprintf('Receiver %s is not multi frequency, removing it from network processing.',this.rec_list(r).getMarkerName4Ch));
                             this.rec_list(r) = [];
                             id_ref(id_ref == r) = [];
                             id_ref(id_ref > r) = id_ref(id_ref > r) -1;
@@ -197,7 +198,7 @@ classdef Network < handle
                 if state.getReweightNET() < 2
                     n_clean = 0;
                 else
-                    this.log.addMessage(this.log.indent('Network solution performing 4 loops of outlier detection on the residuals'), 2);
+                    log.addMessage(this.log.indent('Network solution performing 4 loops of outlier detection on the residuals'), 2);
                     n_clean = 3;
                 end
                 
@@ -527,7 +528,10 @@ classdef Network < handle
                     s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
                     
                     if (s0 < 0.015 || (flag_try == 1 && s0 < 0.05))
-                        this.log.addStatusOk(sprintf('Network adjustment completed with sigma0 = %.4f m ', s0));
+                        if ~log.isScreenOut
+                            fprintf('    %s            Sigma0 = %.4f m \n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), s0);
+                        end
+                        log.addStatusOk(sprintf('Network adjustment completed with sigma0 = %.4f m ', s0));
                         % initialize array for results
                         this.initOutNew(ls);
                         this.addAdjValuesNew(ls);
@@ -537,10 +541,16 @@ classdef Network < handle
                         flag_try = 0;
                     else
                         if state.isSepCooAtBoundaries && flag_try > 1
-                            this.log.addError(sprintf('s0 ( %.4f) too high! try to repeat the solution with separate coordinates',s0));
+                            if ~log.isScreenOut
+                                fprintf('    %s            Too high sigma0 = %.4f m \n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), s0);
+                            end
+                            log.addError(sprintf('s0 ( %.4f) too high! try to repeat the solution with separate coordinates',s0));
                             flag_try = flag_try - 1;
                         else
-                            this.log.addWarning(sprintf('s0 ( %.4f) too high! not updating the results',s0));
+                            if ~log.isScreenOut
+                                fprintf('    %s            Too high sigma0 = %.4f m \n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), s0);
+                            end
+                            log.addWarning(sprintf('s0 ( %.4f) too high! not updating the results',s0));
                             flag_try = 0;
                         end
                     end
