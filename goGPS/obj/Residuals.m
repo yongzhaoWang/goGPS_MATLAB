@@ -1212,7 +1212,7 @@ classdef Residuals < Exportable
                     scale = 1e2;
                 end
                 
-                if nargin < 2
+                if nargin < 2 || isempty(marker_name)
                     marker_name = '';
                 end
                 

@@ -11126,6 +11126,10 @@ classdef Receiver_Work_Space < Receiver_Commons
                                 else
                                     log.addWarning(log.indent(sprintf('End of pre-processing s0 = %.4f\nCorrecting solution by %.3f meters', s0, sqrt(sum(dpos.^2)))));
                                 end
+                                if ~log.isScreenOut
+                                    fprintf('    %s            Sigma0 = %.4f m \n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), s0);
+                                end
+                        
                                 this.dt_ip = this.dt_ip + this.dt; % save init_positioning clock
                                 % smooth clock estimation
                                 this.smoothAndApplyDt(0, false, false, 0);
