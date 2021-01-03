@@ -1969,7 +1969,8 @@ classdef LS_Manipulator_new < handle
                 c_p = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
                 idx_amb = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono) == this.PAR_AMB;
                 svd_strat = true;
-                if sum(this.param_class == this.PAR_AMB) > 0 && fix && any(idx_amb)
+                flag_fix = sum(this.param_class == this.PAR_AMB) > 0 && fix && any(idx_amb);
+                if flag_fix
                     if svd_strat
                         % svd startegy
                         % reduce all other paramter than ambiguoties
@@ -2027,19 +2028,24 @@ classdef LS_Manipulator_new < handle
                         oid_amb = oid_par(class_par == this.PAR_AMB);
                         [ambs, this.fix_ratio] = LS_Manipulator_new.fixAmb(N_amb_amb, B_amb_amb,sat_amb,rec_amb,oid_amb);
                         
-                        
-                        B_ap_ap(~idx_amb) = B_ap_ap(~idx_amb) - N_ap_ap(~idx_amb,idx_amb)*ambs;
-                        clearvars N_ap_ap
-                        x_reduced = zeros(size(N,1),1);
-                        
-                        if any(~idx_amb)
-                            phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
-                        end
-                        phys_par_amb(idx_amb) = ambs;
-                        x_reduced(~idx_bias) = phys_par_amb;
-                        if any(idx_bias)
-                            B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*phys_par_amb';
-                            x_reduced(idx_bias) = pinvB*B(idx_bias);
+                        if (this.fix_ratio < 60)
+                            log = Core.getLogger;
+                            log.addError(sprintf('Fixing ratio is below 60%% (%.1f%%) not using the fixed ambiguities', this.fix_ratio));
+                            flag_fix = false;
+                        else
+                            B_ap_ap(~idx_amb) = B_ap_ap(~idx_amb) - N_ap_ap(~idx_amb,idx_amb)*ambs;
+                            clearvars N_ap_ap
+                            x_reduced = zeros(size(N,1),1);
+                            
+                            if any(~idx_amb)
+                                phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
+                            end
+                            phys_par_amb(idx_amb) = ambs;
+                            x_reduced(~idx_bias) = phys_par_amb;
+                            if any(idx_bias)
+                                B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*phys_par_amb';
+                                x_reduced(idx_bias) = pinvB*B(idx_bias);
+                            end
                         end
                     else
                         idx_bias = c_p ~= this.PAR_AMB; %| c_p == this.PAR_SAT_EBFR
@@ -2061,7 +2067,9 @@ classdef LS_Manipulator_new < handle
                         x_reduced(idx_bias) = F \ B(idx_bias);
                         clearvars F
                     end
-                else
+                end
+                
+                if not(flag_fix)
                     cp_red = class_par(~idx_reduce_sat_clk & ~idx_reduce_rec_clk & ~idx_reduce_iono);
                     idx_x = find(cp_red  == this.PAR_REC_X);
                     idx_y = find(cp_red  == this.PAR_REC_Y);
@@ -3177,7 +3185,7 @@ classdef LS_Manipulator_new < handle
             end
             fix_strategy = {'lambda_ILS','lambda_bootstrapping','lambda_partial','bayesian_with_monte_carlo','best_integer_equivariant','sequential_best_integer_equivariant'};
             if sum(idx_glonass) > 0 % GLONASS
-                [C_amb_amb, amb_float,idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
+                [C_amb_amb, amb_float, idx_amb_est] = LS_Manipulator_new.getEstimableAmb(N_amb_amb, B_amb_amb);
                 
                 
                 [C_zz_all, z_all, idx_amb_estable, idx_amb_est, Z] = LS_Manipulator_new.GLONASS_Transform(C_amb_amb, amb_float, idx_amb_est, rec_amb, sat_amb, oid_amb);
