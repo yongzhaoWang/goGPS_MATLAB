@@ -1297,6 +1297,7 @@ classdef Command_Interpreter < handle
                 level = execution_block + loop_level_add;
                 % for each command
                 cur_line_id = 0;
+                cmd_list = cmd_list(~err_list); % keep only valid commandsto execute
                 while cur_line_id < numel(cmd_list)
                     cur_line_id = cur_line_id + 1;
                     
@@ -3481,32 +3482,38 @@ classdef Command_Interpreter < handle
                     id = id + 2;
                 end
             end
-            tok = regexp(str_cmd,'[^ ]*', 'match');
+            
             cmd = [];
             id = [];
-            if isempty(tok)
-                err = this.WRN_MPT; % no command found
+            if not(isempty(str_cmd)) && ismember(str_cmd(1), '%#')
+                    % is a comment
+                    err = 0;
             else
-                id = this.CMD_ID((strcmp(strrep(tok{1}, this.SUB_KEY, ' '), this.VALID_CMD)));
-                if isempty(id)
-                    err = this.ERR_UNK; % command unknown
+                tok = regexp(str_cmd,'[^ ]*', 'match');
+                if isempty(tok)
+                    err = this.WRN_MPT; % no command found
                 else
-                    if id > numel(this.CMD_LIST)
-                        cmd = this.(sprintf('KEY_%s', this.KEY_LIST{id - numel(this.CMD_LIST)}));
+                    id = this.CMD_ID((strcmp(strrep(tok{1}, this.SUB_KEY, ' '), this.VALID_CMD)));
+                    if isempty(id)
+                        err = this.ERR_UNK; % command unknown
                     else
-                        cmd = this.(sprintf('CMD_%s', this.CMD_LIST{id}));
-                    end
-                    if ~isfield(cmd, 'key')
-                        cmd.key = '';
-                    end
-                    flag_multiple_par = false;
-                    for p = 1 : numel(cmd.par)
-                        flag_multiple_par = flag_multiple_par || cmd.par(p).par(1) == '*';
-                    end
-                    if numel(tok) < (1 + numel(cmd.rec))
-                        err = this.ERR_NEI; % not enough input parameters
-                    elseif ~flag_multiple_par && (numel(tok) > (1 + numel(cmd.rec) + numel(cmd.par) + numel(cmd.key)) && ~strcmp(cmd.name{1}, 'RENAME'))
-                        err = this.WRN_TMI; % too many input parameters
+                        if id > numel(this.CMD_LIST)
+                            cmd = this.(sprintf('KEY_%s', this.KEY_LIST{id - numel(this.CMD_LIST)}));
+                        else
+                            cmd = this.(sprintf('CMD_%s', this.CMD_LIST{id}));
+                        end
+                        if ~isfield(cmd, 'key')
+                            cmd.key = '';
+                        end
+                        flag_multiple_par = false;
+                        for p = 1 : numel(cmd.par)
+                            flag_multiple_par = flag_multiple_par || cmd.par(p).par(1) == '*';
+                        end
+                        if numel(tok) < (1 + numel(cmd.rec))
+                            err = this.ERR_NEI; % not enough input parameters
+                        elseif ~flag_multiple_par && (numel(tok) > (1 + numel(cmd.rec) + numel(cmd.par) + numel(cmd.key)) && ~strcmp(cmd.name{1}, 'RENAME'))
+                            err = this.WRN_TMI; % too many input parameters
+                        end
                     end
                 end
             end
@@ -3556,7 +3563,7 @@ classdef Command_Interpreter < handle
             eb_counter = 0;
             for c = 1 : numel(cmd_list)
                 [cmd, err_list(c), ~, cmd_list{c}] = this.getCommandValidity(cmd_list{c});
-                if (nargout > 2)
+                if (nargout > 2) && not(isempty(cmd)) % if it is not a comment
                     if err_list(c) == 0 && (cmd.id == this.KEY_FOR.id)
                         % I need to loop
                         eb_counter = eb_counter + 1;
@@ -3630,6 +3637,9 @@ classdef Command_Interpreter < handle
                 if err_list(c) < 0 && err_list(c) > -100
                     log.addWarning(sprintf('%s - cmd %03d "%s"', this.STR_ERR{abs(err_list(c))}, c, cmd_list{c}));
                 end
+                if ~ismember(err_list(c), [this.WRN_MPT, 0])
+                    cmd_list{c} = sprintf('%% %s - CMD ERROR', cmd_list{c});
+                end
                 execution_block(c) = eb_counter;
                 if ~isempty(cmd)
                     flag_push_command = any(cell2mat(strfind(this.PUSH_LIST, cmd.name{1})));
@@ -3649,7 +3659,7 @@ classdef Command_Interpreter < handle
             end   
            
             flag_push = flag_push .* auto_push; % If in the command list PUSHOUT is present disable automatic push!
-            cmd_list = cmd_list(~err_list);
+            % cmd_list = cmd_list(~err_list); % errors are now commented
             execution_block = execution_block(~err_list);
             sss_list = sss_list(~err_list);
             session_lev = session_lev(~err_list);
