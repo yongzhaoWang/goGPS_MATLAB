@@ -1540,25 +1540,19 @@ classdef GUI_Inspector < GUI_Unique_Win
                 cmd = Core.getCommandInterpreter();
                 if ~isempty(full_cmd_list)
                     [cleaned_cmd_list, err_list, loop_lev] = cmd.fastCheck(full_cmd_list{1});
-                    cmd_list{1} = cleaned_cmd_list;
                     loop_lev = loop_lev - (diff([0 loop_lev]) > 0);
                     
                     cid = 0; % index running on valid commands
-                    for c = 1 : numel(full_cmd_list{1})
+                    for c = 1 : numel(cleaned_cmd_list)
                         cid = cid + ~err_list(c);
                         
-                        cur_cmd = full_cmd_list{1}{c};
-                        if (length(cur_cmd) > 1) && (cur_cmd(1) ~= '#') && err_list(c)
-                            cur_cmd = ['# ' cur_cmd ' - ERROR: CMD UNKNOWN']; %#ok<AGROW>
-                            full_cmd_list{1}{c} = cur_cmd;
-                        elseif ~err_list(c)
-                            full_cmd_list{1}{c} = sprintf('%s%s', char(32 * ones(1,3 * loop_lev(cid))), strtrim(cleaned_cmd_list{cid}));
+                        if ~err_list(c)
+                            cleaned_cmd_list{c} = sprintf('%s%s', char(32 * ones(1,3 * loop_lev(cid))), strtrim(cleaned_cmd_list{c}));
                         end
                     end
-                    str = strrep(strCell2Str(full_cmd_list{1}, 10),'#','%');
+                    str = strrep(strCell2Str(cleaned_cmd_list, 10),'#','%');
                     this.j_cmd.setText(strrep(strrep(str, Command_Interpreter.SUB_KEY, ' '), '''', '"'));
                 end
-                cleaned_cmd_list = full_cmd_list{1};
             end
             Core.getLogger.addMarkedMessage('The command validity has been checked');
         end
