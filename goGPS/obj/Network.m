@@ -523,9 +523,11 @@ classdef Network < handle
                     ls.solve(false);
                     ls.simpleSnoop();
                     % ls.snoopGatt(Core.getState.getMaxPhaseErrThr, Core.getState.getMaxCodeErrThr);
-                    ls.solve(Core.getState.net_amb_fix_approach >1);
-                    
                     s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
+                    if s0 < 0.1 % if the solution is already very bad don't try fixing
+                        ls.solve(Core.getState.net_amb_fix_approach >1);
+                        s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
+                    end
                     
                     if (s0 < 0.015 || (flag_try == 1 && s0 < 0.05))
                         if ~log.isScreenOut
