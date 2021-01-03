@@ -169,6 +169,9 @@ classdef Residuals < Exportable
                 if isempty(res.prn)
                     code_new = [];
                 else
+                    if size(res.obs_code,2) < 8
+                        res.obs_code = [res.obs_code, ' ' * char(ones(size(res.obs_code,1), 8 - size(res.obs_code,2), 'uint8'))];
+                    end
                     code_new = Constellation_Collector.obsCode2num(res.obs_code, res.prn);
                     res.remEntry(code_new == 0);
                 end
