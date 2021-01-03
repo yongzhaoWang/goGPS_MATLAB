@@ -1,4 +1,4 @@
-function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc, n_sigma)
+function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness_perc, n_sigma, spline_base)
 % Returns the data removing outliers (spikes)
 %
 % INPUT:
@@ -45,9 +45,40 @@ function [data, lid_ko, trend] = strongFilterStaticData(data, robustness_perc, n
     if nargin < 3
         n_sigma = 6;
     end
+    if nargin < 4 || numel(spline_base) ~= 2
+        spline_base = [28, 7];
+    end
+    flag_time = false;
+    idf = [];
+    if size(data,2) == 2
+        time = data(:,1);
+        rate = round(median(diff(time*86400)))/86400;
+        time_full = linspace(time(1), time(end), (time(end) - time(1)) / rate + 1)';
+        [~, idf, idr] = intersect(round(time_full/rate), round(time/rate));
+        tmp = data(:,2);
+        data = nan(numel(time_full), 1);
+        data(idf) = tmp;
+        flag_time = 1;
+    end
     [tmp, trend] = strongDeTrend(data, robustness_perc, 1-((1-robustness_perc)/2), n_sigma);
+    if any(tmp) && flag_time && (numel(data(idf)) > 4)
+        
+        spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
+        tmp(idf) = tmp(idf) - spline + trend(idf);
+        spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(2), 1e-6); % one week splines
+        tmp = data(idf) - spline;
+    else
+        if flag_time
+            spline = trend(idf);
+        else
+            spline = trend;
+        end
+    end
+    if flag_time
+        data = data(idf);
+        trend = trend(idf);
+    end
     thr = n_sigma * strongStd(tmp, robustness_perc);
-
     lid_ko = abs(tmp) > thr;
     % figure; plot(data, 'Color', [0.5 0.5 0.5]);
     data(lid_ko) = nan;

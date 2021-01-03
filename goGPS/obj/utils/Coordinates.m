@@ -428,6 +428,16 @@ classdef Coordinates < Exportable & handle
     % =========================================================================
     
     methods
+        function setName(this, name)
+            % Set the name of the coordinates
+            %
+            % SYNTAX
+            %   this.setName(time)
+            
+            this.name = name;
+
+        end
+        
         function setTime(this, time)
             % Set the time of the coordinates
             %
@@ -746,10 +756,10 @@ classdef Coordinates < Exportable & handle
                 if ~pos.isEmpty
                     if nargin < 3 || isempty(coo_ref)
                         if not(isempty(pos.name))
-                            str_title{1} = sprintf('%s\nPosition stability %s [mm]\nSTD (detrended)', pos.name, mode);
+                            str_title{1} = sprintf('%s\nPosition stability %s [mm]\nSTD (vs smoothed signal)', pos.name, mode);
                             fig_name = sprintf('d%s %s', mode, pos.name);
                         else
-                            str_title{1} = sprintf('Position stability %s [mm]\nSTD (detrended)', mode);
+                            str_title{1} = sprintf('Position stability %s [mm]\nSTD (vs smoothed signal)', mode);
                             fig_name = sprintf('d%s', mode);
                         end
                         
@@ -774,10 +784,10 @@ classdef Coordinates < Exportable & handle
                         end
                     elseif nargin > 2 && not(isempty(coo_ref)) % plot baseline
                         if not(isempty(pos.name))
-                            str_title{1} = sprintf('%s - %s\nBaseline stability %s [mm]\nSTD (detrended)', pos.name, coo_ref.name, mode);
+                            str_title{1} = sprintf('%s - %s\nBaseline stability %s [mm]\nSTD (vs smoothed signal)', pos.name, coo_ref.name, mode);
                             fig_name = sprintf('d%s %s - %s', mode, pos.name, coo_ref.name);
                         else
-                            str_title{1} = sprintf('Baseline stability %s [mm]\nSTD (detrended)', mode);
+                            str_title{1} = sprintf('Baseline stability %s [mm]\nSTD (vs smoothed signal)', mode);
                             fig_name = sprintf('d%s bsl', mode);
                         end
                         
@@ -824,83 +834,86 @@ classdef Coordinates < Exportable & handle
                         setAxis(fh, 1);
                         e = pos_diff(:,1);
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(e, 0.8, 7);
+                            [data, lid_ko, trend, data_smooth] = strongFilterStaticData([t e], 0.8, 7);
                             setAxis(fh, 1);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
                             Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:));
+                            plot(t, data_smooth, '.--', 'LineWidth', 1.5, 'Color', max(0, color_order(1,:)-0.2));
                             e = data;
                         else
                             setAxis(fh, 1);
                             Core_Utils.plotSep(t, e, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(1,:)); hold on;
                             lid_ko = false(numel(t), 1);
-                            trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,1))), pos_diff(~isnan(pos_diff(:,1)),1), 1, t);
+                            data_smooth = Core_Utils.interp1LS(t(~isnan(pos_diff(:,1))), pos_diff(~isnan(pos_diff(:,1)),1), 1, t);
                         end
                         setAxis(fh, 1);
                         ax(3) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
-                        yl = minMax(e);
+                        yl = minMax(e) + 2 * [-1 1];
                         ylim([min(-20, yl(1)) max(20, yl(2))]);
                         if flag_time
                             setTimeTicks(4);
                         end
                         h = ylabel([axis_label{1} ' [mm]']); h.FontWeight = 'bold';
                         grid on;
-                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - trend(~lid_ko)), 'omitnan'));
+                        str_title{1} = sprintf('%s %s%.2f', str_title{1}, iif(i>1, '- ', ''), std((e(~lid_ko) - data_smooth(~lid_ko)), 'omitnan'));
                         h = title(str_title{1}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         subplot(3,1,2);
                         
                         n = pos_diff(:,2);                        
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(n, 0.8, 7);
+                            [data, lid_ko, data_smooth, data_smooth] = strongFilterStaticData([t n], 0.8, 7);
                             setAxis(fh, 2);
-                         Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); 
+                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:));
+                            plot(t, data_smooth, '.--', 'LineWidth', 1.5, 'Color', max(0, color_order(2,:)-0.2));
                             n = data;
                         else
                             setAxis(fh, 2);
-                        Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
-                            trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,2))), pos_diff(~isnan(pos_diff(:,2)),2), 1, t);
+                            Core_Utils.plotSep(t, n, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(2,:)); hold on;
+                            data_smooth = Core_Utils.interp1LS(t(~isnan(pos_diff(:,2))), pos_diff(~isnan(pos_diff(:,2)),2), 1, t);
                         end
                         ax(2) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
-                        yl = minMax(n);
+                        yl = minMax(n) + 2 * [-1 1];
                         ylim([min(-20, yl(1)) max(20, yl(2))]);
                         if flag_time
                             setTimeTicks(4);
                         end
                         h = ylabel([axis_label{2} ' [mm]']); h.FontWeight = 'bold';
-                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - trend(~lid_ko)), 'omitnan'));
+                        str_title{2} = sprintf('%s %s%.2f', str_title{2}, iif(i>1, '- ', ''), std((n(~lid_ko) - data_smooth(~lid_ko)), 'omitnan'));
                         h = title(str_title{2}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         grid on;
                         subplot(3,1,3);
                         
-                        up = pos_diff(:,3);                        
+                        up = pos_diff(:,3);
                         if thr < 1
-                            [data, lid_ko, trend] = strongFilterStaticData(up, 0.8, 7);
+                            [data, lid_ko, data_smooth, data_smooth] = strongFilterStaticData([t up], 0.8, 7);
                             setAxis(fh, 3);
-                        Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
-                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); 
+                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', [0.5 0.5 0.5]); hold on;
+                            Core_Utils.plotSep(t, data, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:));
+                            plot(t, data_smooth, '.--', 'LineWidth', 1.5, 'Color', max(0, color_order(3,:)-0.2));
                             up = data;
                         else
-                            trend = Core_Utils.interp1LS(t(~isnan(pos_diff(:,3))), pos_diff(~isnan(pos_diff(:,3)),3), 1, t);
+                            data_smooth = Core_Utils.interp1LS(t(~isnan(pos_diff(:,3))), pos_diff(~isnan(pos_diff(:,3)),3), 1, t);
                             setAxis(fh, 3);
-                        Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
+                            Core_Utils.plotSep(t, up, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(3,:)); hold on;
                         end
                         ax(1) = gca(fh);
                         if (t(end) > t(1))
                             xlim([t(1) t(end)]);
                         end
-                        yl = minMax(up);
+                        yl = minMax(up) + 2 * [-1 1];
                         ylim([min(-20, yl(1)) max(20, yl(2))]);
                         if flag_time
                             setTimeTicks(4);
                         end
                         h = ylabel([axis_label{3} ' [mm]']); h.FontWeight = 'bold';
-                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - trend(~lid_ko)), 'omitnan'));
+                        str_title{3} = sprintf('%s %s%.2f', str_title{3}, iif(i>1, '- ', ''), std((up(~lid_ko) - data_smooth(~lid_ko)), 'omitnan'));
                         h = title(str_title{3}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         grid on;
                         linkaxes(ax, 'x');
