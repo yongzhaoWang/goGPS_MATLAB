@@ -782,6 +782,7 @@ classdef Coordinates < Exportable & handle
                             flag_time = false;
                             t = (1 : size(pos_diff, 1))';
                         end
+                        t_max = t(end);
                     elseif nargin > 2 && not(isempty(coo_ref)) % plot baseline
                         if not(isempty(pos.name))
                             str_title{1} = sprintf('%s - %s\nBaseline stability %s [mm]\nSTD (vs smoothed signal)', pos.name, coo_ref.name, mode);
@@ -801,6 +802,7 @@ classdef Coordinates < Exportable & handle
                             elseif strcmpi(mode, 'ENU')
                                 pos_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:) )*1e3;
                             end
+                            t_max = coo_ref.time.last.getMatlabTime;
                             flag_time = true;
                         else
                             if numel(coo_ref.xyz) == numel(pos.xyz)
@@ -810,6 +812,7 @@ classdef Coordinates < Exportable & handle
                             else
                                 log.addError(sprintf('No time in coordinates and number off coordinates in ref different from coordinate in the second receiver'))
                             end
+                            t_max = t(end);
                         end
                         pos_diff = bsxfun(@minus, pos_diff,median(pos_diff,1,'omitnan'));
                     end
@@ -849,7 +852,7 @@ classdef Coordinates < Exportable & handle
                         setAxis(fh, 1);
                         ax(3) = gca(fh);
                         if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
+                            xlim([t(1) t_max]);
                         end
                         yl = minMax(e) + 2 * [-1 1];
                         ylim([min(-20, yl(1)) max(20, yl(2))]);
@@ -877,7 +880,7 @@ classdef Coordinates < Exportable & handle
                         end
                         ax(2) = gca(fh);
                         if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
+                            xlim([t(1) t_max]);
                         end
                         yl = minMax(n) + 2 * [-1 1];
                         ylim([min(-20, yl(1)) max(20, yl(2))]);
@@ -905,7 +908,7 @@ classdef Coordinates < Exportable & handle
                         end
                         ax(1) = gca(fh);
                         if (t(end) > t(1))
-                            xlim([t(1) t(end)]);
+                            xlim([t(1) t_max]);
                         end
                         yl = minMax(up) + 2 * [-1 1];
                         ylim([min(-20, yl(1)) max(20, yl(2))]);
