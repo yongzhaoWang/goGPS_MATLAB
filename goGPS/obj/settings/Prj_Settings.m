@@ -704,7 +704,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         
         sss_file_based = Prj_Settings.SSS_FILE_BASED;
         sss_duration   = Prj_Settings.SSS_DURATION;
-        sss_buffer    = Prj_Settings.SSS_BUFFER;
+        sss_buffer     = Prj_Settings.SSS_BUFFER;
         
         flag_smooth_tropo_out = Prj_Settings.FLAG_SMOOTH_TROPO_OUT;
         flag_separate_coo_at_boundary = Prj_Settings.FLAG_SEPARATE_COO_AT_BOUNDARY;
@@ -1208,7 +1208,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 
                 this.sss_file_based = state.getData('sss_file_based');
                 this.sss_duration   = state.getData('sss_duration');
-                this.sss_buffer    = state.getData('sss_buffer');
+                this.sss_buffer     = state.getData('sss_buffer');
 
                 this.flag_smooth_tropo_out  = state.getData('flag_smooth_tropo_out');
                 this.flag_separate_coo_at_boundary = state.getData('flag_separate_coo_at_boundary');
@@ -1600,7 +1600,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
                 
                 this.sss_file_based = state.sss_file_based;
                 this.sss_duration   = state.sss_duration;
-                this.sss_buffer    = state.sss_buffer;
+                this.sss_buffer     = state.sss_buffer;
 
                 this.flag_smooth_tropo_out = state.flag_smooth_tropo_out;
                 this.flag_separate_coo_at_boundary = state.flag_separate_coo_at_boundary;
@@ -1881,12 +1881,12 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             this.eph_full_name = '';
             this.clk_full_name = '';
             this.erp_full_name = '';
-            this.updateObsFileName();
 
             % Call to Super Methods
             this.import@Command_Settings(state);
 
             this.postImportInit();
+            this.updateObsFileName();
         end
 
         function str = toString(this, str)
@@ -4207,12 +4207,14 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             %   flag = this.getPreferredIono()
             flag = false(5, 1);
             for i = 1 : numel(this.preferred_iono)
-                switch this.preferred_iono{i}
-                    case 'final', flag(1) = true;
-                    case 'rapid', flag(2) = true;
-                    case 'predicted1', flag(3) = true;
-                    case 'predicted2', flag(4) = true;
-                    case 'broadcast', flag(5) = true;
+                if not(isempty(this.preferred_iono{i}))
+                    switch this.preferred_iono{i}
+                        case 'final', flag(1) = true;
+                        case 'rapid', flag(2) = true;
+                        case 'predicted1', flag(3) = true;
+                        case 'predicted2', flag(4) = true;
+                        case 'broadcast', flag(5) = true;
+                    end
                 end
             end
         end
