@@ -65,7 +65,9 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
         
         spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
         tmp(idf) = tmp(idf) - spline + trend(idf);
-        spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(2), 1e-6); % one week splines
+        spline = splinerMat(time, [data(idf) abs(tmp(idf))], spline_base(2), 1e-6); % one week splines
+        spline = splinerMat(time, [data(idf) abs(data(idf) - spline)], spline_base(2), 1e-6); % one week splines
+        spline = splinerMat(time, [data(idf) (data(idf) - spline).^2], spline_base(2), 1e-6); % one week splines
         tmp = data(idf) - spline;
     else
         if flag_time
