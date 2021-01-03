@@ -301,6 +301,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     end
                 end
             end
+            coo.setName(this.parent.getMarkerName4Ch)
                         
         end
         
