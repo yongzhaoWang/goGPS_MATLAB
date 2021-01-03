@@ -560,7 +560,7 @@ classdef Receiver_Output < Receiver_Commons
                 log.addError('Pre-processing sigma0 is above 5m, this means that it probably failed, not importing results as output');
                 flag_ok = false;
             end
-            if flag_ok && ~isempty(rec_work.quality_info.s0) && ~isnan(rec_work.quality_info.s0) && rec_work.quality_info.s0 > 0.05
+            if flag_ok && ~isempty(rec_work.quality_info.s0) && ~isnan(rec_work.quality_info.s0) && rec_work.quality_info.s0 > 0.25
                 log.addError('Processing sigma0 is above 5cm, this means that it probably failed, not importing results as output');
                 flag_ok = false;
             end

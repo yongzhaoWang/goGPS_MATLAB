@@ -529,7 +529,7 @@ classdef Network < handle
                         s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
                     end
                     
-                    if (s0 < 0.015 || (flag_try == 1 && s0 < 0.05))
+                    if (s0 < 0.015 || (flag_try == 1 && s0 < 0.25))
                         if ~log.isScreenOut
                             fprintf('    %s            Sigma0 = %.4f m \n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), s0);
                         end
