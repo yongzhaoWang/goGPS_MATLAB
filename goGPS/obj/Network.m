@@ -587,7 +587,7 @@ classdef Network < handle
             end
             this.clock = zeros(n_time, n_rec);
             this.coo = nan(n_rec, 3, n_set_coo);
-            this.coo_vcv = nan(n_rec, 6, n_set_coo);
+            this.coo_vcv = zeros(n_rec, 6, n_set_coo);
             this.ztd = nan(n_time, n_rec);
             this.ztd_gn = nan(n_time, n_rec);
             this.ztd_ge = nan(n_time, n_rec);
@@ -647,7 +647,7 @@ classdef Network < handle
                         
                         coo = [cox coy coz];
                     else
-                        if ~ismember(i, this.id_ref) && false
+                        if ~ismember(i, this.id_ref)
                             coo_vcv = ls.coo_vcv(rec_vcv == i,rec_vcv == i);
                             if ~isempty(coo_vcv)
                                 coo_vcv = [coo_vcv(1,1) (coo_vcv(1,2) + coo_vcv(2,1))/2  (coo_vcv(1,3) + coo_vcv(3,1))/2 coo_vcv(2,2) (coo_vcv(2,3) + coo_vcv(3,2))/2 coo_vcv(3,3)];
