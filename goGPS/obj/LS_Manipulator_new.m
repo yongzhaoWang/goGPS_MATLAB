@@ -473,7 +473,7 @@ classdef LS_Manipulator_new < handle
                         if phase_s(s)
                             A(lines_stream, par_iono_lid) = - iono_const*(obs_set.wl(s)/Core_Utils.V_LIGHT).^2; %obs_set.wl(s)^2/iono_const;
                         else
-                            A(lines_stream, par_iono_lid) =  iono_const*(obs_set.wl(s)/Core_Utils.V_LIGHT).^2; obs_set.wl(s)^2/iono_const;
+                            A(lines_stream, par_iono_lid) =  iono_const*(obs_set.wl(s)/Core_Utils.V_LIGHT).^2; %obs_set.wl(s)^2/iono_const;
                         end
                     end
                     obs_count = obs_count + n_obs_stream;
@@ -2039,6 +2039,12 @@ classdef LS_Manipulator_new < handle
                             
                             if any(~idx_amb)
                                 phys_par_amb(~idx_amb) = C_bb*B_ap_ap(~idx_amb);
+                                % extract vcv matrix for coordinates
+                                idx_x = find(c_p2(~idx_amb)  == this.PAR_REC_X);
+                                idx_y = find(c_p2(~idx_amb)  == this.PAR_REC_Y);
+                                idx_z = find(c_p2(~idx_amb)  == this.PAR_REC_Z);
+                                this.coo_vcv = C_bb([idx_x; idx_y; idx_z] ,[idx_x; idx_y; idx_z]);
+                                
                             end
                             phys_par_amb(idx_amb) = ambs;
                             x_reduced(~idx_bias) = phys_par_amb;
@@ -2065,6 +2071,20 @@ classdef LS_Manipulator_new < handle
                         x_reduced(~idx_bias) = ambs;
                         B(idx_bias) = B(idx_bias) - N(idx_bias,~idx_bias)*ambs;
                         x_reduced(idx_bias) = F \ B(idx_bias);
+                        % here coo vcv
+                        idx_x = find(c_p(idx_bias)  == this.PAR_REC_X);
+                        idx_y = find(c_p(idx_bias)  == this.PAR_REC_Y);
+                        idx_z = find(c_p(idx_bias)  == this.PAR_REC_Z);
+                        if any(idx_x)
+                            coo_vcv_B = sparse(zeros(size(N,1),length(idx_x)*3));
+                            for c = 1 : length(idx_x)
+                                coo_vcv_B( idx_x(c),(c-1)*3+1) = 1;
+                                coo_vcv_B(  idx_y(c),(c-1)*3+2) = 1;
+                                coo_vcv_B(  idx_z(c),(c)*3) = 1;
+                            end
+                            part_vcv = F \ coo_vcv_B;
+                            this.coo_vcv = part_vcv([idx_x; idx_y; idx_z],:);
+                        end
                         clearvars F
                     end
                 end
@@ -2074,48 +2094,51 @@ classdef LS_Manipulator_new < handle
                     idx_x = find(cp_red  == this.PAR_REC_X);
                     idx_y = find(cp_red  == this.PAR_REC_Y);
                     idx_z = find(cp_red  == this.PAR_REC_Z);
-                    if sum(  cp_red  == this.PAR_REC_X)> 0 & (length(idx_x) == length(idx_y))& (length(idx_x) == length(idx_z)) & this.ls_parametrization.rec_x(1) == LS_Parametrization.CONST && false
-                        coo_vcv_B = sparse(zeros(size(N,1),length(idx_x)*3));
-                        for c = 1 : length(idx_x)
-                            coo_vcv_B( idx_x(c),(c-1)*3+1) = 1;
-                            coo_vcv_B(  idx_y(c),(c-1)*3+2) = 1;
-                            coo_vcv_B(  idx_z(c),(c)*3) = 1;
-                        end
-                        result  = N\[B coo_vcv_B];
-                        x_reduced = result(:,1);
-                        this.coo_vcv = result([idx_x; idx_y; idx_z] ,2 : end);
-                    else
-                        if svd_strat
-                            [U,D,V] = svds(N,sum(size(N,1)));
-                            d = diag(D);
-                            tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                            if sum(d<tol) > 1
-                                d_d = diff(log10(d));
-                                [~,idx_min] = min(d_d(d(2:end) < tol));
-                                last_valid = find(d > tol,1,'last') + idx_min -1;
-                                keep_id = 1:sum(size(N,1)) <= last_valid;
-                                
-                            else
-                                keep_id = d > max(size(N)) * sqrt(eps(norm(diag(D),inf)));
-                            end
-                            real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
-                            clearvars U V D
-                            pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
-                            x_reduced = pinvB * B;
-                        else
-                            [L,D,P] = ldl(N);
-                            [d,idx_sort] = sort(diag(D),'descend');
-                            d(d<0) = d(find(d>0,1,'last'));
-                            tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
-                            [~,idx_min] = min(diff(log10(d(d<tol))));
-                            last_valid = find(d < tol,1,'first') + idx_min -1;
-                            keep_id = (1:sum(size(N,1)))' <= last_valid;
-                            keep_id(idx_sort) = keep_id;
-                            x_reduced = Core_Utils.solveLDL(L,D,B,P,keep_id);
+                    
+                    
+                    if svd_strat
+                        [U,D,V] = svds(N,sum(size(N,1)));
+                        d = diag(D);
+                        tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                        if sum(d<tol) > 1
+                            d_d = diff(log10(d));
+                            [~,idx_min] = min(d_d(d(2:end) < tol));
+                            last_valid = find(d > tol,1,'last') + idx_min -1;
+                            keep_id = 1:sum(size(N,1)) <= last_valid;
                             
+                        else
+                            keep_id = d > max(size(N)) * sqrt(eps(norm(diag(D),inf)));
                         end
-                        clearvars pinvB
+                        real_space = (U(:, keep_id) + V(:, keep_id)) / 2; % prevent asimmetryin reducing
+                        clearvars U V D
+                        pinvB = real_space * spdiags(1./d(keep_id),0,sum(keep_id),sum(keep_id)) * real_space';
+                        x_reduced = pinvB * B;
+                        % here coo vcv
+                        this.coo_vcv = pinvB([idx_x; idx_y; idx_z] ,[idx_x; idx_y; idx_z]);
+                    else
+                        [L,D,P] = ldl(N);
+                        [d,idx_sort] = sort(diag(D),'descend');
+                        d(d<0) = d(find(d>0,1,'last'));
+                        tol = max(size(N)) * sqrt(eps(norm(diag(D),inf)))*1e4;
+                        [~,idx_min] = min(diff(log10(d(d<tol))));
+                        last_valid = find(d < tol,1,'first') + idx_min -1;
+                        keep_id = (1:sum(size(N,1)))' <= last_valid;
+                        keep_id(idx_sort) = keep_id;
+                        x_reduced = Core_Utils.solveLDL(L,D,B,P,keep_id);
+                        % here coo vcv
+                        if any(idx_x)
+                            coo_vcv_B = sparse(zeros(size(N,1),length(idx_x)*3));
+                            for c = 1 : length(idx_x)
+                                coo_vcv_B( idx_x(c),(c-1)*3+1) = 1;
+                                coo_vcv_B(  idx_y(c),(c-1)*3+2) = 1;
+                                coo_vcv_B(  idx_z(c),(c)*3) = 1;
+                            end
+                            part_vcv = Core_Utils.solveLDL(L,D,coo_vcv_B,P,keep_id);
+                            this.coo_vcv = part_vcv([idx_x; idx_y; idx_z],:);
+                        end
+                        
                     end
+                    clearvars pinvB
                 end
                 % ------- substitute back
                 ii = 1;
