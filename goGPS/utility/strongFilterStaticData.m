@@ -54,8 +54,8 @@ if any(data(:,end))
     if size(data,2) == 2
         time = data(:,1);
         rate = round(median(diff(time*86400)))/86400;
-        time_full = linspace(time(1), time(end), (time(end) - time(1)) / rate + 1)';
-        [~, idf, idr] = intersect(round(time_full/rate), round(time/rate));
+        time_full = linspace(time(1), time(end), round((time(end) - time(1)) / rate + 1))';
+        [~, idf, idr] = intersect(floor(time_full/rate), floor(time/rate));
         tmp = data(:,2);
         data = nan(numel(time_full), 1);
         data(idf) = tmp;
