@@ -39,6 +39,7 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
 % 01100111 01101111 01000111 01010000 01010011
 %--------------------------------------------------------------------------
 
+if any(data(:,end))
     if nargin < 2
         robustness_perc = 0.8;
     end
@@ -86,4 +87,11 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
     data(lid_ko) = nan;
     % hold on; plot(data, '.-b', 'LineWidth', 2)
     % plot(tmp,'g');
+else
+    % no data
+    data = data(:,end);
+    lid_ko = true(size(data));
+    trend = data;
+    spline = data;
+end
 end
