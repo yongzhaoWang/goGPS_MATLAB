@@ -287,6 +287,10 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 end
             elseif flag_add_coo == 0
                 coo = this.coo;
+                % Fallback (in case of empty coo)
+                if isempty(coo)
+                    coo = this.getPos(-100);
+                end
             else
                 if ~isempty(this.add_coo)
                     coo = this.add_coo(min(numel(this.add_coo), flag_add_coo)).coo;
