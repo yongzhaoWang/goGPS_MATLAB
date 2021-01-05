@@ -3234,7 +3234,7 @@ classdef Core_Utils < handle
             
             P_red = P(id_est_amb,keep_id);
             
-            x(id_est_amb) = P_red * (L_red' \((1./d_red).*(L_red\(P_red' *b(id_est_amb)))));
+            x(id_est_amb,:) = P_red * (L_red' \((1./d_red).*(L_red\(P_red' *b(id_est_amb,:)))));
         end
         
         function sys_list = getPrefSys(sys_list)

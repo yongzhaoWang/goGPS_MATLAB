@@ -2200,6 +2200,23 @@ classdef LS_Manipulator_new < handle
                 x(idx_est) = x_est;
                 res = nan(size(this.obs));
                 
+                if any(this.coo_vcv)
+                    idx_x = this.class_par == this.PAR_REC_X;
+                    idx_y = this.class_par == this.PAR_REC_Y;
+                    idx_z = this.class_par == this.PAR_REC_Z;
+                    n_coo = sum(idx_x) + sum(idx_y) + sum(idx_z);
+                    coo_vcv = zeros(n_coo);
+                    idx_vcv_x = false(sum(idx_x),1);
+                    idx_vcv_x(idx_est(idx_x)) = true;
+                    idx_vcv_y = false(sum(idx_y),1);
+                    idx_vcv_y(idx_est(idx_y)) = true;
+                    idx_vcv_z = false(sum(idx_z),1);
+                    idx_vcv_z(idx_est(idx_z)) = true;
+                    idx_est_vcv = [idx_vcv_x; idx_vcv_y; idx_vcv_z];
+                    coo_vcv(idx_est_vcv,idx_est_vcv) = this.coo_vcv;
+                    this.coo_vcv = coo_vcv;
+                end
+                
                 % generate estimations also for the out par (to get a residual)
                 if n_out > 0 && false % to be debugged
                     res_out = this.obs(this.outlier_obs) - A_out(:,~this.out_par & ~Core_Utils.ordinal2logical(this.idx_rd,n_par))*x_est;

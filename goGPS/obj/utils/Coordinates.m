@@ -67,7 +67,7 @@ classdef Coordinates < Exportable & handle
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
-        info = struct('n_epo', [], 'n_obs', [], 's0', [], 'flag', [], 'fixing_ratio', []) % Additional info related to the coordinate in use
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 'flag', [], 'fixing_ratio', [],'obs_used',[]) % Additional info related to the coordinate in use
     end
         
     % =========================================================================
@@ -114,9 +114,10 @@ classdef Coordinates < Exportable & handle
             
             this.xyz = [this.xyz; pos.xyz];
             if ~isempty(this.Cxx) &&  ~isempty(pos.Cxx)
-                this.Cxx = cat(this.Cxx, pos.Cxx, 3);                
+                this.Cxx = cat(3,this.Cxx, pos.Cxx);                
             end
             this.time.append(pos.time);
+            this.info.obs_used = [ this.info.obs_used; pos.info.obs_used];
         end
         
         function rem(this, idx)

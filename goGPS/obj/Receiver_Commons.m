@@ -77,6 +77,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
         h_ortho        % orthometric height
         
         add_coo
+        coo
         %         = struct( ...
         %             'coo',  [], ...    % additional estimated coo
         %             'time', [], ...    % time of the coo
@@ -610,7 +611,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             elseif this.state.mapping_function == 2
                 [mfh, mfw] = atmo.vmf_grd(time, this.lat./180*pi, this.lon./180*pi, el./180*pi, this.h_ellips);
             elseif this.state.mapping_function == 1
-                [mfh, mfw] = atmo.gmf(ttime, thsi.lat./180*pi, this.lon./180*pi, this.h_ortho, el./180*pi);
+                [mfh, mfw] = atmo.gmf(time, this.lat./180*pi, this.lon./180*pi, this.h_ortho, el./180*pi);
             end
             if state.mapping_function_gradient == 1
                 cotan_term = zero2nan(Atmosphere.chenHerringGrad(zero2nan(el)));

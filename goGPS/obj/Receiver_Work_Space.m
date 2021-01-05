@@ -11616,6 +11616,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                 parametrization.rec_x(1) = state.tparam_coo_ppp;
                 parametrization.rec_y(1) = state.tparam_coo_ppp;
                 parametrization.rec_z(1) = state.tparam_coo_ppp;
+                parametrization.rec_x_opt.spline_rate = state.rate_coo_net;
+                parametrization.rec_y_opt.spline_rate = state.rate_coo_net;
+                parametrization.rec_z_opt.spline_rate = state.rate_coo_net;
                 
                 % Estimate different set of coordinates for the left and write buffer
                 if state.isSepCooAtBoundaries
@@ -11819,37 +11822,66 @@ classdef Receiver_Work_Space < Receiver_Commons
                     % Push coordinates from LS object to rec
                     idx_x = ls.class_par == ls.PAR_REC_X;
                     if sum(idx_x) > 0
-                        x_coo = ls.x(idx_x);
                         [x_coo_time1, x_coo_time2] = ls.getTimePar(idx_x);
                         idx_save = Core_Utils.timeIntersect(x_coo_time1, x_coo_time2, int_lim.first, int_lim.last);
-                        cox = mean(x_coo(idx_save));
+                        idx_x(idx_x) = idx_save;
+                        cox = ls.x(idx_x);
                     else
                         cox = 0;
                     end
                     
                     idx_y = ls.class_par == ls.PAR_REC_Y;
                     if sum(idx_y) > 0
-                        y_coo = ls.x(idx_y);
                         [y_coo_time1, y_coo_time2] = ls.getTimePar(idx_y);
                         idx_save = Core_Utils.timeIntersect(y_coo_time1, y_coo_time2, int_lim.first, int_lim.last);
-                        coy = mean(y_coo(idx_save));
+                        idx_y(idx_y) = idx_save;
+                        coy = ls.x(idx_y);
                     else
                         coy = 0;
                     end
                     
                     idx_z = ls.class_par == ls.PAR_REC_Z;
                     if sum(idx_z) > 0
-                        z_coo = ls.x(idx_z);
                         [z_coo_time1, z_coo_time2] = ls.getTimePar(idx_z);
                         idx_save = Core_Utils.timeIntersect(z_coo_time1, z_coo_time2, int_lim.first, int_lim.last);
-                        coz = mean(z_coo(idx_save));
-                        
+                        idx_z(idx_z) = idx_save;
+                        coz = ls.x(idx_z);
                     else
                         coz = 0;
                     end
-                    
+                    idx_save = find(idx_save);
                     coo = [cox coy coz];
-                    this.xyz = this.xyz + coo;
+                    this.xyz = this.xyz + mean(coo,1);
+
+                    
+                    
+                    n_coo = size(coo,1);
+                    coo_vcv = zeros(3,3,n_coo);
+                    for k = 1 : size(coo,1)
+                        idx_coo = idx_save(k) + [0:2]*n_coo;
+                        coo_vcv(:,:,k) = ls.coo_vcv(idx_coo,idx_coo);
+                    end
+                    
+                    time_coo = ls.getTimePar(idx_x);
+                    time_dt = (ls.time_par(idx_x,2) - ls.time_par(idx_x,1))/2;
+                    time_dt(ls.time_par(idx_x,2) == 0) = 0;
+                    time_coo.addSeconds(double(time_dt));
+                    obs_id_coo_tmp = ls.obs_codes_id_par(idx_x);
+                    obs_id_coo = zeros(size(obs_id_coo_tmp));
+                    u_o_id = unique(obs_id_coo_tmp);
+                    ency = Core.getEncyclopedia();
+                    for j = 1 :length(u_o_id)
+                        id = ency.getObsGroupId(ls.unique_obs_codes{-u_o_id(j)});
+                        obs_id_coo(obs_id_coo_tmp == u_o_id(j)) = id;
+                    end
+                    
+                    
+                    coo = Coordinates.fromXYZ(coo);
+                    coo.time = time_coo.getCopy();
+                    coo.Cxx = coo_vcv;
+                    coo.info.obs_used = obs_id_coo;
+                    this.coo = coo;
+                    
                                         
                     % Push clock from LS object to rec
                     idx_clk = ls.class_par == ls.PAR_REC_CLK | ls.class_par == ls.PAR_REC_CLK_PH;
