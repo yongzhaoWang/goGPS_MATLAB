@@ -861,6 +861,12 @@ classdef Receiver_Output < Receiver_Commons
                             end
                         end
                     end
+                    % insert coocomputed using new
+                    if isempty(this.coo)
+                        this.coo = rec_work.coo;
+                    else
+                        this.coo.append(rec_work.coo);
+                    end
                     log.addMarkedMessage(sprintf('Computed results for receiver "%s" have been imported into out object', this.parent.getMarkerName4Ch()));
                 else
                     rec_work.id_sync = id_sync_old; % restore id_sync_old
