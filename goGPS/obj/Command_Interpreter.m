@@ -1083,7 +1083,7 @@ classdef Command_Interpreter < handle
             this.KEY_PAR.name = {'PAR', 'par'};
             this.KEY_PAR.descr = ['Parallel section start (run on targets)' new_line 'use T$ as target in this section'];
             this.KEY_PAR.rec = '';
-            this.KEY_PAR.key = 'STP';
+            this.KEY_PAR.key = 'STPWO';
             this.KEY_PAR.par = [];
 
             this.KEY_END.name = {'END', 'end', 'ENDFOR', 'END_FOR', 'end_for', 'ENDPAR', 'END_PAR', 'end_par'};
