@@ -406,10 +406,10 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 set(win, 'CloseRequestFcn', @this.close);                
             end
             
-            
+            this.updateSessionFromState();
             this.updateRecList();
             this.is_gui_ready = true;
-                            
+            
             this.win.Visible = 'on';
             drawnow;
             
