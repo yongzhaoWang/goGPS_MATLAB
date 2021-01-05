@@ -1352,6 +1352,15 @@ classdef Core_Utils < handle
                 hold on;
             end
         end
+        
+        function [h,a] = plotconf(x,y,sy,color)
+            % plot data and confidence interval on top
+            %
+            % SYNTAX:
+            %  [h,a] = Core_Utils.plotconf(x,y,sy,color)
+            h = plot(x,y,'color',color,'LineWidth',2);
+            a = patch([x(:); flipud(x(:))],[y(:)-sy(:); flipud(y(:)+sy(:))],zeros(size([x(:); x(:)])),'FaceColor',color,'EdgeColor','none','FaceAlpha',0.2,'HandleVisibility','off');
+        end
 
         %--------------------------------------------------------------------------
         % SHOW FUNCTIONS

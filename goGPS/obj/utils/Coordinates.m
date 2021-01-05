@@ -369,6 +369,19 @@ classdef Coordinates < Exportable & handle
             end
         end
         
+        function cov_enu = getCovEnu(this)
+            % return variance covariance matrix in enu (local) coordinates
+            %
+            % SYNTAX
+            %   cov_enu = this.getCovEnu()
+            
+            [~, rot_mat] = Coordinates.cart2loca(this.getMedianPos.getXYZ, [0 0 0]);
+            cov_enu = this.Cxx;
+            for i = 1 :size(cov_enu,3)
+                cov_enu(:,:,i) = rot_mat*cov_enu(:,:,i)*rot_mat';
+            end
+        end
+        
         function status = isEmpty(this)
             % Return the status of emptyness of the object
             %
@@ -661,7 +674,7 @@ classdef Coordinates < Exportable & handle
                             if numel(id_cov) == 6
                                 tmp = [str2num(data_line{id_cov(1)}), str2num(data_line{id_cov(2)}), str2num(data_line{id_cov(3)}); ...
                                     str2num(data_line{id_cov(2)}), str2num(data_line{id_cov(4)}), str2num(data_line{id_cov(5)}); ...
-                                    str2num(data_line{id_cov(3)}), str2num(data_line{id_cov(5)}), str2num(data_line{id_cov(6)})];
+                                    str2num(data_line{id_cov(3)}), str2num(data_line{id_cov(5)}), str2num(data_line{id_cov(6)})]./1e6;
                                 if any(tmp(:))
                                     this.Cxx(:,:,l + 1) = tmp;
                                 end
