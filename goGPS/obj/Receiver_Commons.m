@@ -271,7 +271,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 flag_add_coo = 0;
             end
             
-            if flag_add_coo == 0
+            if flag_add_coo == -100
                 if ~isempty(this.xyz)
                     coo = Coordinates.fromXYZ(this.xyz);
                 elseif ~isempty(this.parent.work.xyz)
@@ -285,6 +285,8 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         coo.setTime(tmp);
                     end
                 end
+            elseif flag_add_coo == 0
+                coo = this.coo;
             else
                 if ~isempty(this.add_coo)
                     coo = this.add_coo(min(numel(this.add_coo), flag_add_coo)).coo;

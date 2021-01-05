@@ -702,7 +702,7 @@ classdef GNSS_Station < handle
             % Export the current value of the coordinate to a text coordinate file
             % One file per receiver, containing: time_stamp: 
             %   X, Y, Z, 
-            %   Cxx, Cyy, Czz, Cxy, Cxz, Cyz (not yet implemented)
+            %   Cxx, Cyy, Czz, Cxy, Cxz, Cyz
             %   n_epochs, n_obs
             %
             % INPUT:
@@ -801,6 +801,7 @@ classdef GNSS_Station < handle
                         str_tmp = sprintf('%s+SensorType     : GNSS\n', str_tmp);
                         str_tmp = sprintf('%s+SensorName     : GNSS\n', str_tmp);
                         str_tmp = sprintf('%s+DataScale      : m\n', str_tmp);
+                        str_tmp = sprintf('%s+DataScale Cov  : mm^2\n', str_tmp);
                         str_tmp = sprintf('%s+DataType       :\n', str_tmp);
                         str_tmp = sprintf('%s -00            : timeStamp\n', str_tmp);
                         str_tmp = sprintf('%s -01            : exportTime\n', str_tmp);
@@ -835,7 +836,7 @@ classdef GNSS_Station < handle
                                 if isempty(coo.Cxx)
                                     cov = zeros(3,3);
                                 else
-                                    cov = coo.Cxx(:,:,i);
+                                    cov = coo.Cxx(:,:,i)*1e6;
                                 end
                                 str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
                                     xyz(1), xyz(2), xyz(3), ...
