@@ -84,6 +84,7 @@ classdef Core < handle
         sky         % Core_Sky handler
         atx         % antenna manager (stores all the antennas available)
         atmo        % Atmosphere handler
+        encyclopedia % Collection of definitions
         mn          % Meteorological Network handler
         rf          % Reference Frame handler
         cmd         % Command_Interpreter handler
@@ -400,6 +401,20 @@ classdef Core < handle
             if isempty(atmo)
                 atmo = Atmosphere();
                 core.atmo = atmo;
+            end            
+        end
+        
+        function ency = getEncyclopedia()
+            % Return the pointer to the Encylcopedia Object
+            %
+            % SYNTAX
+            %   atmo = Core.getAtmosphere()
+            
+            core = Core.getInstance(false, true);
+            ency = core.encyclopedia;
+            if isempty(ency)
+                ency = Encyclopedia();
+                core.encyclopedia = ency;
             end            
         end
         
