@@ -117,7 +117,48 @@ classdef Coordinates < Exportable & handle
                 this.Cxx = cat(3,this.Cxx, pos.Cxx);                
             end
             this.time.append(pos.time);
-            this.info.obs_used = [ this.info.obs_used; pos.info.obs_used];
+            
+            % Number of epocs
+            if not(isempty(this.info.n_epo))
+                this.info.n_epo = [ this.info.n_epo; pos.info.n_epo];
+            else
+                this.info.n_epo(size(this.xyz,1)) = nan;
+            end
+            
+            % Number of observations
+            if not(isempty(this.info.n_obs))
+                this.info.n_obs = [ this.info.n_obs; pos.info.n_obs];
+            else
+                this.info.n_obs(size(this.xyz,1)) = nan;
+            end
+            
+            % Sigma0 of the solution
+            if not(isempty(this.info.s0))
+                this.info.s0 = [ this.info.s0; pos.info.s0];
+            else
+                this.info.s0(size(this.xyz,1)) = nan;
+            end
+            
+            % Validity flag
+            if not(isempty(this.info.flag))
+                this.info.flag = [ this.info.obs_used; pos.info.flag];
+            else
+                this.info.flag(size(this.xyz,1)) = -1;
+            end
+            
+            % Fixing ratio
+            if not(isempty(this.info.fixing_ratio))
+                this.info.fixing_ratio = [ this.info.obs_used; pos.info.fixing_ratio];
+            else
+                this.info.fixing_ratio(size(this.xyz,1)) = nan;
+            end
+            % Encyclopedia
+            if not(isempty(this.info.obs_used))
+                this.info.obs_used = [ this.info.obs_used; pos.info.obs_used];
+            else
+                this.info.obs_used(size(this.xyz,1)) = nan;
+            end
+            
         end
         
         function rem(this, idx)
