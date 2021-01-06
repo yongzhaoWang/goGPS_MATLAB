@@ -861,7 +861,8 @@ classdef Receiver_Output < Receiver_Commons
                             end
                         end
                     end
-                    % insert coocomputed using new
+                    
+                    % insert coo computed using new
                     if isempty(this.coo)
                         this.coo = rec_work.coo;
                     else
