@@ -673,7 +673,7 @@ classdef Network < handle
                 else
                     idx_x = [];
                 end
-                this.coo_vcv = ls.coo_vcv([idx_x; idx_x; idx_x],[idx_x; idx_x; idx_x])
+                this.coo_vcv = ls.coo_vcv([idx_x; idx_x; idx_x],[idx_x; idx_x; idx_x]);
             else
                 this.coo_vcv = ls.coo_vcv;
             end
@@ -890,18 +890,26 @@ classdef Network < handle
             state = Core.getState;
             % --- push back the results in the receivers
             for i = 1 : n_rec
+                s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
+                idx_obs = ls.receiver_obs == i & ~ls.outlier_obs;
                 if sum(ls.param_class == ls.PAR_REC_X | ls.param_class == ls.PAR_REC_Y  | ls.param_class == ls.PAR_REC_Z )>0
-                    idx_rec= find(this.rec_coo == i);
-                    this.rec_list(i).work.xyz = mean(this.coo(idx_rec,:));
-                    %generate a coordinates object and add it to receiver
+                    idx_rec = find(this.rec_coo == i);
+                    this.rec_list(i).work.xyz = mean(this.coo(idx_rec,:),1);
+                    % generate a coordinates object and add it to receiver
+                    n_coo = size(this.coo(idx_rec,:),1);
                     coo = Coordinates.fromXYZ(this.coo(idx_rec,:));
                     coo.Cxx = zeros(3,3,length(idx_rec));
-                    for j = 1 :length(idx_rec)
+                    for j = 1 : length(idx_rec)
                         idx_coo = [idx_rec(j) size(this.coo,1)+idx_rec(j) 2*size(this.coo,1)+idx_rec(j)];
                         coo.Cxx(:,:,j) = this.coo_vcv(idx_coo,idx_coo);
                     end
                     coo.time = this.time_coo.getEpoch(idx_rec);
-                    coo.info.obs_used = this.obs_id_coo;
+                    coo.info.obs_used = ones(n_coo,1) .* this.obs_id_coo(idx_rec);
+                    coo.info.n_epo = ones(n_coo,1) .* length(unique(ls.time_par(ls.rec_par == i & ~ls.out_par)));
+                    coo.info.n_obs = ones(n_coo,1) .* sum(idx_obs);
+                    coo.info.s0 = ones(n_coo,1) .* s0;
+                    coo.info.flag = zeros(n_coo,1);
+                    coo.info.fixing_ratio = ones(n_coo,1) .* ls.fix_ratio;
                     this.rec_list(i).work.coo = coo;
                 end
                 idx_res_av = ~isnan(this.clock(:, i));
@@ -921,43 +929,14 @@ classdef Network < handle
                     ge = this.ztd_ge(idx_res_av, i);
                     this.rec_list(i).work.tge(idx_pos) = ge(idx_is);
                 end
-                s0 = mean(abs(ls.res(ls.phase_obs > 0 & ~ls.outlier_obs)));
                 % sigma of the session
                 this.rec_list(i).work.quality_info.s0 = s0;
                 this.rec_list(i).work.quality_info.n_epochs = length(unique(ls.time_par(ls.rec_par == i & ~ls.out_par)));
-                idx_obs = ls.receiver_obs == i & ~ls.outlier_obs;
                 this.rec_list(i).work.quality_info.n_obs = sum(idx_obs);
                 this.rec_list(i).work.quality_info.n_sat = length(unique(ls.satellite_obs(idx_obs)));
                 this.rec_list(i).work.quality_info.n_sat_max = max(hist(unique(ls.time_obs.getEpoch(idx_obs).getNominalTime(ls.obs_rate).getRefTime(ls.time_obs.minimum.getMatlabTime) * 1000 + double(ls.satellite_obs(idx_obs))), this.rec_list(i).work.quality_info.n_epochs ));
                 this.rec_list(i).work.quality_info.fixing_ratio = ls.fix_ratio; %TBD
                 
-                % residual
-                % idx_rec = find( ls.receiver_obs == i);
-                % %                 % save phase residuals
-                % idx_ph = find(this.rec_list(i).work.obs_code(:,1) == 'L');
-                % this.rec_list(i).work.sat.res_ph_by_ph = nan(this.rec_list(i).work.time.length, length(idx_ph));
-                % for j = 1 : length(idx_ph)
-                %     ip = idx_ph(j);
-                %     id_code = Core_Utils.findAinB({[this.rec_list(i).work.system(ip) this.rec_list(i).work.obs_code(ip,:)]}, ls.unique_obs_codes);
-                %     idx_res = idx_rec(ls.obs_codes_id_obs(idx_rec) == id_code & ls.satellite_obs(idx_rec) == this.rec_list(i).work.go_id(ip));
-                %     if any(idx_res)
-                % 
-                %         [~,idx_time] = ismember(ls.ref_time_obs(idx_res),this.rec_list(i).work.time.getNominalTime.getRefTime(ls.time_min.getMatlabTime));     
-                %         this.rec_list(i).work.sat.res_ph_by_ph(idx_time,j) = ls.res(idx_res);
-                %     end
-                % end
-                % % save phase residuals
-                % idx_pr = find(this.rec_list(i).work.obs_code(:,1) == 'C');
-                % this.rec_list(i).work.sat.res_pr_by_pr = nan(this.rec_list(i).work.time.length, length(idx_ph));
-                % for j = 1 : length(idx_pr)
-                %     ip = idx_pr(j);
-                %     id_code = Core_Utils.findAinB({[this.rec_list(i).work.system(ip) this.rec_list(i).work.obs_code(ip,:)]}, ls.unique_obs_codes);
-                %     idx_res = idx_rec(ls.obs_codes_id_obs(idx_rec) == id_code & ls.satellite_obs(idx_rec) == this.rec_list(i).work.go_id(ip));
-                %     if any(idx_res)
-                %         [~,idx_time] = ismember(ls.ref_time_obs(idx_res),this.rec_list(i).work.time.getNominalTime.getRefTime(ls.time_min.getMatlabTime));
-                %         this.rec_list(i).work.sat.res_pr_by_pr(idx_time,j) = ls.res(idx_res);
-                %     end
-                % end
                 % push back electronic bias
                 if sum(ls.class_par == LS_Manipulator_new.PAR_REC_EB) > 0
                     idx_eb = find(ls.class_par == LS_Manipulator_new.PAR_REC_EB & ls.rec_par == i);
