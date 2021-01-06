@@ -58,18 +58,25 @@ if any(data(:,end))
         [~, idf, idr] = intersect(floor(time_full/rate), floor(time/rate));
         tmp = data(:,2);
         data = nan(numel(time_full), 1);
-        data(idf) = tmp;
+        if numel(idr) < numel(tmp)
+            Core.getLogger('StrongFilter is loosing some observations out of sync');
+        end
+        data(idf) = tmp(idr);
         flag_time = 1;
     end
     [tmp, trend] = strongDeTrend(data, robustness_perc, 1-((1-robustness_perc)/2), n_sigma);
     if any(tmp) && flag_time && (numel(data(idf)) > 4)
-        
-        spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
-        tmp(idf) = tmp(idf) - spline + trend(idf);
-        spline = splinerMat(time, [data(idf) abs(tmp(idf))], spline_base(2), 1e-6); % one week splines
-        spline = splinerMat(time, [data(idf) abs(data(idf) - spline)], spline_base(2), 1e-6); % one week splines
-        spline = splinerMat(time, [data(idf) (data(idf) - spline).^2], spline_base(2), 1e-6); % one week splines
-        tmp = data(idf) - spline;
+        if (numel(tmp(idf)) > 11)
+            spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
+            tmp(idf) = tmp(idf) - spline + trend(idf);
+            spline = splinerMat(time, [data(idf) abs(tmp(idf))], spline_base(2), 1e-6); % one week splines
+            spline = splinerMat(time, [data(idf) abs(data(idf) - spline)], spline_base(2), 1e-6); % one week splines
+            spline = splinerMat(time, [data(idf) (data(idf) - spline).^2], spline_base(2), 1e-6); % one week splines
+            tmp = data(idf) - spline;
+        else
+            tmp = tmp(idf);
+            spline = trend(idf);
+        end
     else
         if flag_time
             spline = trend(idf);
