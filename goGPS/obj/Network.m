@@ -807,7 +807,7 @@ classdef Network < handle
                 end
                 
                  % Build S tranform fro the coordinates
-                time_coo = round(this.time_coo.getNominalTime().getRefTime);
+                time_coo = round(this.time_coo.getNominalTime(1).getRefTime);
                 S = zeros(length(time_coo));
                 u_time = unique(time_coo);
                 for t = u_time'
