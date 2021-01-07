@@ -6787,29 +6787,31 @@ classdef GNSS_Station < handle
             %
             % SYNTAX
             %   sta_list.showBaselineENU(<baseline_ids = []>, <flag_add_coo>, <n_obs>)
-            
-            if flag_add_coo < 0
-                tmp_id = 1:numel(sta_list); % find valid
-            else
-                tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
-            end
-            id2valid = nan(numel(sta_list), 1);
-            id2valid(tmp_id) = 1:numel(tmp_id);
-            if flag_add_coo >= 0
-                sta_list = sta_list(~sta_list.isEmptyOut_mr);
-            end
-            out_list = [sta_list.out];
             if nargin < 4 || isempty(n_obs) || isnan(n_obs)
                 n_obs = 0;
             end
             if nargin < 3
                 flag_add_coo = 0;
             end
+            if flag_add_coo < 0
+                tmp_id = 1:numel(sta_list); % find valid
+            else
+                tmp_id = find(~sta_list.isEmptyOut_mr); % find valid
+            end
+            
+            if flag_add_coo >= 0
+                sta_list = sta_list(~sta_list.isEmptyOut_mr);
+            end
+            out_list = [sta_list.out];
+            
+            id2valid = nan(numel(sta_list), 1);
+            id2valid(tmp_id) = 1:numel(tmp_id);
             if nargin < 2
                 baseline_ids = [ones(numel(out_list)-1,1) (2:numel(out_list))'];
             else
                 baseline_ids(:) = id2valid(baseline_ids(:));
             end
+            
             fh_list = out_list.showBaselineENU(baseline_ids, flag_add_coo, n_obs);
         end
         
