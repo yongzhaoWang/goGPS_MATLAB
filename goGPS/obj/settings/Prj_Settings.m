@@ -338,7 +338,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
         FPARAM_COO_PPP = LS_Parametrization.ALL_FREQ; % frequenccy parametrization of coordinates ppp
         FPARAM_COO_NET = LS_Parametrization.ALL_FREQ;  % frequenccy parametrization of coordinates net
         
-        RATE_COO_PPP = 0; % time rate coordinates ppp
+        RATE_COO_PPP = 0;  % time rate coordinates ppp
         RATE_COO_NET = 0;  % time rate coordinates net
         
         AREG_COO_PPP  = [-1 -1];  % horizantial absolute regularization coordinates ppp
@@ -4078,7 +4078,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
     % =========================================================================
     %%  GETTERS IO
     % =========================================================================
-    methods       
+    methods
         function cur_ini = getIniPath(this)
             % Get the path of the current ini
             %
@@ -5190,7 +5190,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
     % =========================================================================
     %%  SETTERS IO
     % =========================================================================
-    methods        
+    methods
         function setFile(this, filename, resouce_name)
             % set file
             %
@@ -5728,6 +5728,24 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
             name = this.prj_name;
         end
 
+        function rate = getRateNet(this)
+            % get the rate of the coordinates in network
+            %
+            % SYNTAX
+            %   rate = this.getRateNet()
+            
+            rate = this.rate_coo_net;
+        end
+        
+        function rate = getRatePPP(this)
+            % get the rate of the coordinates in PPP
+            %
+            % SYNTAX
+            %   rate = this.getRatePPP()
+            
+            rate = this.rate_coo_ppp;
+        end
+        
         function file_path = getFilePath(this, file_path)
             % Get the file name of the current settings
             %   
@@ -6292,7 +6310,7 @@ classdef Prj_Settings < Settings_Interface & Command_Settings
     
     %%  SETTERS
     % =========================================================================
-    methods   
+    methods
         function err_code = set(this, par_name, new_value)
             % Generic set function to change a parameter of state
             % Used mainly by the command SET
