@@ -47,7 +47,7 @@ if any(data(:,end))
         n_sigma = 6;
     end
     if nargin < 4 || numel(spline_base) ~= 2
-        spline_base = [28, 7];
+        spline_base = [28, 3];
     end
     flag_time = false;
     idf = [];
@@ -55,7 +55,7 @@ if any(data(:,end))
         time = data(:,1);
         rate = round(median(diff(time*86400)))/86400;
         time_full = linspace(time(1), time(end), round((time(end) - time(1)) / rate + 1))';
-        [~, idf, idr] = intersect(floor(time_full/rate), floor(time/rate));
+        [~, idf, idr] = intersect(round((time_full-rate/2)/rate), round((time-rate/2)/rate));
         tmp = data(:,2);
         data = nan(numel(time_full), 1);
         if numel(idr) < numel(tmp)
@@ -65,6 +65,7 @@ if any(data(:,end))
         flag_time = 1;
     end
     [tmp, trend] = strongDeTrend(data, robustness_perc, 1-((1-robustness_perc)/2), n_sigma);
+    
     if any(tmp) && flag_time && (numel(data(idf)) > 4)
         if (numel(tmp(idf)) > 11)
             spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
