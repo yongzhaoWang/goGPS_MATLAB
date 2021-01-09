@@ -68,6 +68,7 @@ classdef Coordinates < Exportable & handle
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
         info = struct('n_epo', [], 'n_obs', [], 's0', [], 'flag', [], 'fixing_ratio', [],'obs_used',[]) % Additional info related to the coordinate in use
+        std_scaling_factor = 30;
     end
         
     % =========================================================================
@@ -410,16 +411,50 @@ classdef Coordinates < Exportable & handle
             end
         end
         
-        function cov_enu = getCovEnu(this)
+        function cov_xyz = getCovXYZ(this)
+            % return variance covariance matrix in XYZ coordinates
+            %
+            % SYNTAX
+            %   cov_xyz = this.getCovXYZ()
+            
+            cov_xyz = this.Cxx;
+        end
+        
+        function cov_enu = getCovENU(this)
             % return variance covariance matrix in enu (local) coordinates
             %
             % SYNTAX
-            %   cov_enu = this.getCovEnu()
+            %   cov_enu = this.getCovENU()
             
             [~, rot_mat] = Coordinates.cart2loca(this.getMedianPos.getXYZ, [0 0 0]);
             cov_enu = this.Cxx;
             for i = 1 :size(cov_enu,3)
                 cov_enu(:,:,i) = rot_mat*cov_enu(:,:,i)*rot_mat';
+            end
+        end
+        
+        function std_xyz = getStdXYZ(this)
+            % return std in XYZ coordinates
+            %
+            % SYNTAX
+            %   cov_xyz = this.getStdXYZ()
+            
+            std_xyz = nan(size(this.Cxx,3),3);
+            for i = 1 : size(this.Cxx,3)
+                std_xyz(i,:) = sqrt(diag(this.Cxx(:,:,i)));
+            end
+        end
+        
+        function std_enu = getStdENU(this)
+            % return vstd in ENU (local) coordinates
+            %
+            % SYNTAX
+            %   cov_enu = this.getStdENU()
+            
+            [~, rot_mat] = Coordinates.cart2loca(this.getMedianPos.getXYZ, [0 0 0]);
+            std_enu = nan(size(this.Cxx,3),3);
+            for i = 1 : size(this.Cxx,3)
+                std_enu(i,:) = sqrt(diag(rot_mat*this.Cxx(:,:,i)*rot_mat'));
             end
         end
         
