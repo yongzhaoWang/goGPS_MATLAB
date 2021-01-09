@@ -169,8 +169,14 @@ classdef Residuals < Exportable
                 if isempty(res.prn)
                     code_new = [];
                 else
-                    if size(res.obs_code,2) < 8
-                        res.obs_code = [res.obs_code, ' ' * char(ones(size(res.obs_code,1), 8 - size(res.obs_code,2), 'uint8'))];
+                    % uniform the size of obs_code
+                    if size(res.obs_code,2) < size(this.obs_code,2)
+                        n_el = size(this.obs_code,2);
+                        res.obs_code = [res.obs_code, ' ' * char(ones(size(res.obs_code,1), n_el - size(res.obs_code,2), 'uint8'))];
+                    end
+                    if size(res.obs_code,2) > size(this.obs_code,2)
+                        n_el = size(res.obs_code,2);
+                        this.obs_code = [this.obs_code, ' ' * char(ones(size(this.obs_code,1), n_el - size(this.obs_code,2), 'uint8'))];
                     end
                     code_new = Constellation_Collector.obsCode2num(res.obs_code, res.prn);
                     res.remEntry(code_new == 0);
@@ -643,7 +649,9 @@ classdef Residuals < Exportable
                         for  t = 1 : numel(uobs_id)
                             id = ids(obs_id_num == uobs_id(t)); % tracking for the specific obs_code
                             trk_code = obs_code(id(1),2:end);
-                            
+                            if (numel(trk_code) > 5) && (all((trk_code(5:end)) == '_'))
+                                trk_code = trk_code(1:4);
+                            end
                             % recompute id if grouping is present
                             if numel(sys_grp.(sys_c)) > 1
                                 ext_ids = find(ismember(obs_code(:,1), sys_grp.(sys_c)) & any((obs_code(:,2:3:end-1)) == search_obs, 2));
@@ -964,6 +972,9 @@ classdef Residuals < Exportable
                                     ant_mp.(sys_c) = struct;
                                 end
                                 if ~isfield(ant_mp.(sys_c), trk_code)
+                                    if (numel(trk_code) == 8) && sum(trk_code(5:end) == '_') == 4
+                                        trk_code = trk_code(1:4);
+                                    end
                                     trk_code = strrep(trk_code, ' ', '_'); % structures do not support spaces
                                     ant_mp.(sys_c).(trk_code) = struct;
                                 end
