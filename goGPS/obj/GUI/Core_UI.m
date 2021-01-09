@@ -611,14 +611,15 @@ classdef Core_UI < Logos
                     ax.Color = [0.2 0.2 0.2];
                     ax.Title.Color = [1 1 1];
                     ax.XLabel.Color = [0.8 0.8 0.8];
+                    if numel(ax.YAxis) == 2
+                        yyaxis(ax, 'left');
+                    end
                     ax.YLabel.Color = [0.8 0.8 0.8];
                     ax.ZLabel.Color = [0.8 0.8 0.8];
                     ax.XColor = [0.8 0.8 0.8];
                     if numel(ax.YAxis) == 2
-                        yyaxis left
+                        yyaxis(ax, 'left');
                         ax.YColor = [0.8 0.8 0.8];
-                        yyaxis right
-                        %ax.YColor = [0.8 0.2 0.2];
                     else
                         ax.YColor = [0.8 0.8 0.8];
                     end
@@ -690,13 +691,16 @@ classdef Core_UI < Logos
                     ax.Color = [1 1 1];
                     ax.Title.Color = 1-[1 1 1];
                     ax.XLabel.Color = 1-[0.8 0.8 0.8];
+                    if numel(ax.YAxis) == 2
+                        yyaxis(ax, 'left');
+                    end
                     ax.YLabel.Color = 1-[0.8 0.8 0.8];
                     ax.ZLabel.Color = 1-[0.8 0.8 0.8];
                     ax.XColor = 1-[0.8 0.8 0.8];
                     if numel(ax.YAxis) == 2
-                        yyaxis left
+                        yyaxis(ax, 'left');
                         ax.YColor = 1-[0.8 0.8 0.8];
-                        yyaxis right
+                        %yyaxis(ax, 'right');
                         %ax.YColor = [0.8 0.2 0.2];
                     else
                         ax.YColor = 1-[0.8 0.8 0.8];

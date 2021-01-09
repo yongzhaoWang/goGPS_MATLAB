@@ -10254,6 +10254,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                 if sum(this.hasAPriori) ~= 0 %%% if there is an apriori information on the position
                     s0 = iif(this.hasGoodApriori, 0.1, 5);
                     this.xyz = Core.getReferenceFrame.getCoo(this.parent.getMarkerName4Ch,this.time.getCentralTime);
+                    if isempty(this.dt)
+                        this.dt = 0;
+                    end
                 end
                 % if positioni is not fixed
                 if ~(this.isFixed || this.isFixedPrepro)
@@ -11065,6 +11068,9 @@ classdef Receiver_Work_Space < Receiver_Commons
                             %                         this.codeStaticPositioning();
                             
                             % if the clock is stable I can try to smooth more => this.smoothAndApplyDt([0 this.length/2]);
+                            if isempty(this.dt_ip)
+                                this.dt_ip = 0;
+                            end
                             this.dt_ip = this.dt_ip + simpleFill1D(this.dt, this.dt == 0, 'linear') + this.dt_pr; % save init_positioning clock
                             % smooth clock estimation
                             if perc(abs(this.dt), 0.97) > 1e-7 % 30 meters : is it only useful to reallining receivers that have a large drifts from the nominal value

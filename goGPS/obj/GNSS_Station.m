@@ -510,10 +510,6 @@ classdef GNSS_Station < handle
     %% METHODS ADVANCED
     % ==================================================================================================================================================
     methods
-        function getMP(this)
-            
-        end
-        
         function updateMultiPath(sta_list, day_span, mp_mode, sys_grp)
             sta_list = sta_list(~sta_list.isEmpty);
             log = Core.getLogger();
@@ -539,6 +535,9 @@ classdef GNSS_Station < handle
                 
                 % rec.ant_mp = rec.ant_mp + ant_mp;
                 flag_update = false;
+                if isempty(rec.ant_mp) && (nargin >= 3 && not(isempty(mp_mode)))
+                    rec.ant_mp = rec.getAntennaMultiPath();
+                end
                 if (isempty(rec.work) || isempty(rec.work.ant_mp)) && ~(nargin >= 3 && not(isempty(mp_mode)))
                     % Zerniche multipath is not yet in the receiver
                     rec.ant_mp = ant_mp;
@@ -559,9 +558,13 @@ classdef GNSS_Station < handle
                             else
                                 for trk = trk_list
                                     trk = strrep(trk{1}, ' ', '_'); % Spaces are not supported in structures
-                                    if ~isfield(rec.ant_mp.(sys_c), trk) || ((trk(end) == 'I') && Core.getCurrentSettings.flag_rec_mp == 0)
+                                    short_trk = trk;
+                                    if numel(short_trk) > 3 && all(short_trk(4:end) == '_')
+                                        short_trk = short_trk(1:3);
+                                    end
+                                    if (~isfield(rec.ant_mp.(sys_c), trk) && ~isfield(rec.ant_mp.(sys_c), short_trk)) || ((trk(end) == 'I') && Core.getCurrentSettings.flag_rec_mp == 0)
                                         % This tracking frequency is not present into the old Zernike MultiPath set of coefficients
-                                        rec.ant_mp.(sys_c).(trk) = ant_mp.(sys_c).(trk);
+                                        rec.ant_mp.(sys_c).(short_trk) = ant_mp.(sys_c).(trk);
                                     else
                                         % Get the old map that was applied
                                         if nargin >= 3 && not(isempty(mp_mode))
@@ -569,32 +572,47 @@ classdef GNSS_Station < handle
                                             if isempty(applied_ant)
                                                 applied_ant = rec.getAntennaMultiPath();
                                             end
+                                            if isfield(applied_ant.(sys_c), trk)
+                                                app_trk = trk; % longname
+                                            else
+                                                app_trk = short_trk; % shortname
+                                            end
                                             switch mp_mode
                                                 case 0, applied_map = 0;
-                                                case 1, applied_map = applied_ant.(sys_c).(trk).z_map;
-                                                case 2, applied_map = applied_ant.(sys_c).(trk).r_map;
-                                                case 3, applied_map = applied_ant.(sys_c).(trk).g_map;
-                                                case 4, applied_map = applied_ant.(sys_c).(trk).c_map;
-                                                case 5, applied_map = applied_ant.(sys_c).(trk).g1_map;
-                                                case 6, applied_map = applied_ant.(sys_c).(trk).c1_map;
+                                                case 1, applied_map = applied_ant.(sys_c).(app_trk).z_map;
+                                                case 2, applied_map = applied_ant.(sys_c).(app_trk).r_map;
+                                                case 3, applied_map = applied_ant.(sys_c).(app_trk).g_map;
+                                                case 4, applied_map = applied_ant.(sys_c).(app_trk).c_map;
+                                                case 5, applied_map = applied_ant.(sys_c).(app_trk).g1_map;
+                                                case 6, applied_map = applied_ant.(sys_c).(app_trk).c1_map;
                                             end
                                         else
+                                            if ~isfield(applied_ant.(sys_c), trk)
+                                                app_trk = trk; % longname
+                                            else
+                                                app_trk = short_trk; % shortname
+                                            end
                                             switch Core.getCurrentSettings.flag_rec_mp
                                                 case 0, applied_map = 0;
-                                                case 1, applied_map = applied_ant.(sys_c).(trk).z_map;
-                                                case 2, applied_map = applied_ant.(sys_c).(trk).r_map;
-                                                case 3, applied_map = applied_ant.(sys_c).(trk).g_map;
-                                                case 4, applied_map = applied_ant.(sys_c).(trk).c_map;
-                                                case 5, applied_map = applied_ant.(sys_c).(trk).g1_map;
-                                                case 6, applied_map = applied_ant.(sys_c).(trk).c1_map;
+                                                case 1, applied_map = applied_ant.(sys_c).(app_trk).z_map;
+                                                case 2, applied_map = applied_ant.(sys_c).(app_trk).r_map;
+                                                case 3, applied_map = applied_ant.(sys_c).(app_trk).g_map;
+                                                case 4, applied_map = applied_ant.(sys_c).(app_trk).c_map;
+                                                case 5, applied_map = applied_ant.(sys_c).(app_trk).g1_map;
+                                                case 6, applied_map = applied_ant.(sys_c).(app_trk).c1_map;
                                             end
                                         end
-                                        rec.ant_mp.(sys_c).(trk).z_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).z_map)) + ant_mp.(sys_c).(trk).z_map;
-                                        rec.ant_mp.(sys_c).(trk).r_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).r_map)) + ant_mp.(sys_c).(trk).r_map;
-                                        rec.ant_mp.(sys_c).(trk).g_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g_map)) + ant_mp.(sys_c).(trk).g_map;
-                                        rec.ant_mp.(sys_c).(trk).c_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c_map)) + ant_mp.(sys_c).(trk).c_map;
-                                        rec.ant_mp.(sys_c).(trk).g1_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g1_map)) + ant_mp.(sys_c).(trk).g1_map;
-                                        rec.ant_mp.(sys_c).(trk).c1_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c1_map)) + ant_mp.(sys_c).(trk).c1_map;
+                                        if isfield(rec.ant_mp.(sys_c), trk) && numel(trk) > 3
+                                            % I prefer short names
+                                            rec.ant_mp.(sys_c).(short_trk) = rec.ant_mp.(sys_c).(trk); % copy short name
+                                            rec.ant_mp.(sys_c) = rmfield(rec.ant_mp.(sys_c), trk); % remove long name;
+                                        end
+                                        rec.ant_mp.(sys_c).(short_trk).z_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).z_map)) + ant_mp.(sys_c).(trk).z_map;
+                                        rec.ant_mp.(sys_c).(short_trk).r_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).r_map)) + ant_mp.(sys_c).(trk).r_map;
+                                        rec.ant_mp.(sys_c).(short_trk).g_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g_map)) + ant_mp.(sys_c).(trk).g_map;
+                                        rec.ant_mp.(sys_c).(short_trk).c_map  = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c_map)) + ant_mp.(sys_c).(trk).c_map;
+                                        rec.ant_mp.(sys_c).(short_trk).g1_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).g1_map)) + ant_mp.(sys_c).(trk).g1_map;
+                                        rec.ant_mp.(sys_c).(short_trk).c1_map = Core_Utils.resize2(applied_map, size(ant_mp.(sys_c).(trk).c1_map)) + ant_mp.(sys_c).(trk).c1_map;
                                     end
                                 end
                             end
