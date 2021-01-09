@@ -47,11 +47,14 @@ if any(data(:,end))
         n_sigma = 6;
     end
     if nargin < 4 || numel(spline_base) ~= 2
-        spline_base = [28, 3];
+        spline_base = [28, 2.5];
     end
     flag_time = false;
     idf = [];
-    if size(data,2) == 2
+    if size(data,2) >= 2
+        if size(data,2) >= 3
+            data_var = data(:,3);
+        end
         time = data(:,1);
         rate = round(median(diff(time*86400)))/86400;
         time_full = linspace(time(1), time(end), round((time(end) - time(1)) / rate + 1))';
@@ -68,7 +71,11 @@ if any(data(:,end))
     
     if any(tmp) && flag_time && (numel(data(idf)) > 4)
         if (numel(tmp(idf)) > 11)
-            spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
+            if size(data,2) >= 3
+                spline = splinerMat(time, [data(idf) data_var], spline_base(1), 1e-6); % one month splines
+            else
+                spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
+            end
             tmp(idf) = tmp(idf) - spline + trend(idf);
             spline = splinerMat(time, [data(idf) abs(tmp(idf))], spline_base(2), 1e-6); % one week splines
             spline = splinerMat(time, [data(idf) abs(data(idf) - spline)], spline_base(2), 1e-6); % one week splines
