@@ -1,6 +1,6 @@
 function [y_splined, x_spline, s_weights, y_splined_ext] = splinerMat(x, y, dxs, reg_factor, x_ext)
 % SYNTAX:
-%   [y_splined, x_spline, s_weights y_splined_ext] = splinerMat(x, y, dxs, reg_factor, <x_ext>)
+%   [y_splined, x_spline, s_weights, y_splined_ext] = splinerMat(x, y, dxs, reg_factor, <x_ext>)
 %
 % EXAMPLE:
 %   [y_splined, x_spline, s_weights, y_splined_ext] = splinerMat(x, y, 4, 0, x_ext);
