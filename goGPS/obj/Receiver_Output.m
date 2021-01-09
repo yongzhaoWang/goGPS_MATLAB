@@ -864,9 +864,9 @@ classdef Receiver_Output < Receiver_Commons
                     
                     % insert coo computed using new
                     if isempty(this.coo)
-                        this.coo = rec_work.coo;
+                        this.coo = rec_work.getPos;
                     else
-                        this.coo.append(rec_work.coo);
+                        this.coo.append(rec_work.getPos);
                     end
                     log.addMarkedMessage(sprintf('Computed results for receiver "%s" have been imported into out object', this.parent.getMarkerName4Ch()));
                 else
