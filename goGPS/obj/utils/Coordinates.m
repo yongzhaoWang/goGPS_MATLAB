@@ -942,6 +942,7 @@ classdef Coordinates < Exportable & handle
                         if nargin >= 4 && n_obs > 0
                             id_ok = (max(1, size(pos_diff,1) - n_obs + 1)) : size(pos_diff,1);
                             pos_diff = pos_diff(id_ok, :);
+                            pos_std = pos_std(id_ok, :);
                             t = t(id_ok);
                         end
                         
