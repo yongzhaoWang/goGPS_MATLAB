@@ -903,7 +903,14 @@ classdef Network < handle
                         idx_coo = [idx_rec(j) size(this.coo,1)+idx_rec(j) 2*size(this.coo,1)+idx_rec(j)];
                         coo.Cxx(:,:,j) = this.coo_vcv(idx_coo,idx_coo);
                     end
+                    rate = state.getRateNet;
+                    if rate == 0
+                        rate = state.getSessionDuration;
+                    end
                     coo.time = this.time_coo.getEpoch(idx_rec);
+                    coo.time.addIntSeconds(round(rate/2));
+                    coo.time = coo.time.getNominalTime(rate);
+                    coo.time.addIntSeconds(-round(rate/2));
                     coo.info.obs_used = ones(n_coo,1) .* this.obs_id_coo(idx_rec);
                     coo.info.n_epo = ones(n_coo,1) .* length(unique(ls.time_par(ls.rec_par == i & ~ls.out_par)));
                     coo.info.n_obs = ones(n_coo,1) .* sum(idx_obs);
