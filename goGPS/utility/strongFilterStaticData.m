@@ -62,7 +62,7 @@ if any(data(:,end))
         tmp = data(:,2);
         data = nan(numel(time_full), 1);
         if numel(idr) < numel(tmp)
-            Core.getLogger('StrongFilter is loosing some observations out of sync');
+            Core.getLogger.addWarning('StrongFilter is loosing some observations out of sync');
         end
         data(idf) = tmp(idr);
         flag_time = 1;

@@ -115,51 +115,54 @@ classdef Coordinates < Exportable & handle
             
             if not(isempty(pos))
                 this.xyz = [this.xyz; pos.xyz];
+                n_epo = size(this.xyz, 1);
                 
-                if ~isempty(this.Cxx) &&  ~isempty(pos.Cxx)
+                if ~isempty(this.Cxx) && ~isempty(pos.Cxx)
                     this.Cxx = cat(3,this.Cxx, pos.Cxx);
+                else
+                    this.Cxx(:,:,n_epo) = nan(3,3);
                 end
                 this.time.append(pos.time);
                 
                 % Number of epocs
-                if not(isempty(this.info.n_epo))
-                    this.info.n_epo = [ this.info.n_epo; pos.info.n_epo];
+                if not(isempty(pos.info.n_epo))
+                    this.info.n_epo(n_epo) = pos.info.n_epo;
                 else
-                    this.info.n_epo(size(this.xyz,1)) = nan;
+                    this.info.n_epo(n_epo) = nan;
                 end
                 
                 % Number of observations
-                if not(isempty(this.info.n_obs))
-                    this.info.n_obs = [ this.info.n_obs; pos.info.n_obs];
+                if not(isempty(pos.info.n_obs))
+                    this.info.n_obs(n_epo) = pos.info.n_obs;
                 else
-                    this.info.n_obs(size(this.xyz,1)) = nan;
+                    this.info.n_obs(n_epo) = nan;
                 end
                 
                 % Sigma0 of the solution
-                if not(isempty(this.info.s0))
-                    this.info.s0 = [ this.info.s0; pos.info.s0];
+                if not(isempty(pos.info.s0))
+                    this.info.s0(n_epo) = pos.info.s0;
                 else
-                    this.info.s0(size(this.xyz,1)) = nan;
+                    this.info.s0(n_epo) = nan;
                 end
                 
                 % Validity flag
-                if not(isempty(this.info.flag))
-                    this.info.flag = [ this.info.obs_used; pos.info.flag];
+                if not(isempty(pos.info.flag))
+                    this.info.flag(n_epo) = pos.info.flag;
                 else
-                    this.info.flag(size(this.xyz,1)) = -1;
+                    this.info.flag(n_epo) = -1;
                 end
                 
                 % Fixing ratio
-                if not(isempty(this.info.fixing_ratio))
-                    this.info.fixing_ratio = [ this.info.obs_used; pos.info.fixing_ratio];
+                if not(isempty(pos.info.fixing_ratio))
+                    this.info.fixing_ratio(n_epo) = pos.info.fixing_ratio;
                 else
-                    this.info.fixing_ratio(size(this.xyz,1)) = nan;
+                    this.info.fixing_ratio(n_epo) = nan;
                 end
                 % Encyclopedia
-                if not(isempty(this.info.obs_used))
-                    this.info.obs_used = [ this.info.obs_used; pos.info.obs_used];
+                if not(isempty(pos.info.obs_used))
+                    this.info.obs_used(n_epo) = pos.info.obs_used;
                 else
-                    this.info.obs_used(size(this.xyz,1)) = nan;
+                    this.info.obs_used(n_epo) = nan;
                 end
             end
         end
