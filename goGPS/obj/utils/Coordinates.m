@@ -995,6 +995,7 @@ classdef Coordinates < Exportable & handle
                                 data_smooth =  nan(size(t));
                                 trend =  nan(size(t));
                                 lid_ko = true(size(t));
+                                data{c} = nan(size(data_component{c}));
                                 [data{c}(not_nan), lid_ko(not_nan), trend(not_nan), data_smooth(not_nan)] = strongFilterStaticData([t(not_nan) data_component{c}(not_nan) pos_var(not_nan)], 0.8, 7);
                                 setAxis(fh, c);
                                 
@@ -1029,6 +1030,7 @@ classdef Coordinates < Exportable & handle
                             end
                             h = ylabel([axis_label{c} ' [mm]']); h.FontWeight = 'bold';
                             grid on;
+                            
                             str_title{c} = sprintf('%s %s%.2f', str_title{c}, iif(i>1, '- ', ''), std((data{c}(~lid_ko) - data_smooth(~lid_ko)), 'omitnan'));
                             h = title(str_title{c}, 'interpreter', 'none'); h.FontWeight = 'bold';
                         end     
