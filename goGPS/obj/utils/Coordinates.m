@@ -925,6 +925,7 @@ classdef Coordinates < Exportable & handle
                         else
                             if numel(coo_ref.xyz) == numel(pos.xyz)
                                 pos_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz - coo_ref.xyz)*1e3;
+                                pos_std = [];
                                 t = t(1:size(pos_diff,1),:);
                                 flag_time = false;
                             else
@@ -935,6 +936,9 @@ classdef Coordinates < Exportable & handle
                         pos_diff = bsxfun(@minus, pos_diff,median(pos_diff,1,'omitnan'));
                     end
                     
+                    if any(pos_std)
+                        pos_std(pos_std == 0) = 100e3; % no std => std set to 100m
+                    end
                     
                     fh = figure('Visible', 'off');
                     if flag_distr
@@ -976,10 +980,10 @@ classdef Coordinates < Exportable & handle
                             % Plot confidence level
                             if any(pos_std(:))
                                 yyaxis right; ylabel('Formal std [mm]');
-                                patch([t(:); t(end); t(1)], [pos_std(:, c); 0; 0], color_order(c,:), 'FaceColor', color_order(c,:),'EdgeColor','none','FaceAlpha',0.1,'HandleVisibility','off'); hold on;
+                                Core_Utils.patchSep(t(:), pos_std(:, c), color_order(c,:), 'FaceColor', color_order(c,:),'EdgeColor','none','FaceAlpha',0.2,'HandleVisibility','off'); hold on;
                                 tmp_ax = gca;
                                 tmp_ax.YColor = min(1, color_order(c,:)+0.2);
-                                p = plot(t, pos_std(:, c), 'Color', [tmp_ax.YColor 0.2]);
+                                p = Core_Utils.plotSep(t, pos_std(:, c), '-', 'Color', [tmp_ax.YColor 0.3], 'zeros');
                                 ylim([0 max(0.5, 4 * perc(pos_std(:),0.95))]);
                                 yyaxis left;
                             end
@@ -1159,7 +1163,7 @@ classdef Coordinates < Exportable & handle
             % Plot East North Up coordinates
             %
             % SYNTAX 
-            %   this.showCoordinatesENU(coo_list);
+            %   this.showCoordinatesENU(coo_list, coo_ref,n_obs);
             
             switch nargin
                 case 1, fh = showCoordinates('ENU', coo_list);
@@ -1180,7 +1184,7 @@ classdef Coordinates < Exportable & handle
             % Plot X Y Z coordinates
             %
             % SYNTAX
-            %   this.showCoordinatesXYZ(coo_list);
+            %   this.showCoordinatesXYZ(coo_list, coo_ref,n_obs);
             switch nargin
                 case 1, fh = showCoordinates('XYZ', coo_list);
                 case 2, fh = showCoordinates('XYZ', coo_list, coo_ref);
@@ -1241,8 +1245,8 @@ classdef Coordinates < Exportable & handle
                         end
                         enu_diff = bsxfun(@minus, enu_diff,median(enu_diff,1,'omitnan'));
                     end
+                    
                     if size(enu_diff, 1) > 1
-                        
                         if nargin >= 2 && n_obs > 0
                             id_ok = (max(1, size(enu_diff,1) - n_obs + 1)) : size(enu_diff,1);
                             enu_diff = enu_diff(id_ok, :);

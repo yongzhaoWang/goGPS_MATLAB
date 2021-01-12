@@ -47,7 +47,7 @@ if any(data(:,end))
         n_sigma = 6;
     end
     if nargin < 4 || numel(spline_base) ~= 2
-        spline_base = [28, 2.5];
+        spline_base = [28, 7, 3.5];
     end
     flag_time = false;
     idf = [];
@@ -71,15 +71,25 @@ if any(data(:,end))
     
     if any(tmp) && flag_time && (numel(data(idf)) > 4)
         if (numel(tmp(idf)) > 11)
+            warning off;
             if size(data,2) >= 3
-                spline = splinerMat(time, [data(idf) data_var], spline_base(1), 1e-6); % one month splines
+                long_spline = splinerMat(time, [data(idf) data_var], spline_base(1), 1e-5); % long splines
             else
-                spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-6); % one month splines
+                long_spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-5); % long splines
             end
-            tmp(idf) = tmp(idf) - spline + trend(idf);
-            spline = splinerMat(time, [data(idf) abs(tmp(idf))], spline_base(2), 1e-6); % one week splines
-            spline = splinerMat(time, [data(idf) abs(data(idf) - spline)], spline_base(2), 1e-6); % one week splines
-            spline = splinerMat(time, [data(idf) (data(idf) - spline).^2], spline_base(2), 1e-6); % one week splines
+            tmp(idf) = data(idf) - long_spline;
+            spline = splinerMat(time, [tmp(idf) abs(tmp(idf))], spline_base(2), 1e-5); % medium splines
+            spline = splinerMat(time, [tmp(idf) abs(tmp(idf) - spline)], spline_base(2), 1e-5); % medium splines
+            long_spline = long_spline + spline;
+            tmp(idf) = data(idf) - long_spline;
+            warning on;
+            thr = 12 * strongStd(tmp(idf) - spline, robustness_perc);
+            lid_ko = abs(tmp(idf) - spline) > thr;
+            if sum(lid_ko == 0) > 2
+                tmp(idf) = data(idf) - long_spline;
+                [~, ~, ~, spline] = splinerMat(time(~lid_ko), [tmp(idf(~lid_ko)) data_var(~lid_ko)], spline_base(3), 1e-2, time); % short splines
+            end
+            spline = spline + long_spline;
             tmp = data(idf) - spline;
         else
             tmp = tmp(idf);
