@@ -1430,8 +1430,8 @@ classdef GNSS_Station < handle
                     try
                         date_lim = regexp(file_info(f).name, '(?<=_)[0-9]*(?=_|.mat)', 'match');
                         date_lim = [datenum(date_lim{1}, 'yyyymmddHHMM'); datenum(date_lim{2}, 'yyyymmddHHMM')];
-                        date = [date; date_lim];
-                        idf = [idf; f; f];
+                        date = [date; date_lim'];
+                        idf = [idf; f f];
                     catch ex
                         log.addWarning(sprintf('File not valid found in MP dir "%s"', file_info(f).name));
                     end
@@ -1439,14 +1439,22 @@ classdef GNSS_Station < handle
                 % Find the closer multipath map file
                 if ~isempty(date)
                     try
-                        [date, id_sort] = sort(date);
                         if isempty(this.work) || isempty(this.work.getTime)
                             sss_center = core.state.sss_date_start.getMatlabTime + core.state.sss_duration/86400 * (core.getCurrentSession -0.5);
                         else
                             sss_center = this.work.getTime.getCentralTime.getMatlabTime;
                         end
-                        [~, id_min] = min(abs(date - sss_center)); 
-                        closer_fid = idf(id_sort(id_min));
+                        % check if the data is inside a MP map
+                        closer_fid = idf(find((date(:,2) >= sss_center) & (date(:,1) <= sss_center), 1, 'last'), 2);
+                        % Always take the newer map in case of overlap
+                        if isempty(closer_fid)
+                            % Check for the closer map
+                            date = date(:);
+                            idf = idf(:);
+                            [date, id_sort] = sort(date);
+                            [~, id_min] = min(abs(date - sss_center));
+                            closer_fid = idf(id_sort(id_min));
+                        end
                         file_name = fullfile(out_dir, file_info(closer_fid).name);
                         log.addMarkedMessage(sprintf('%s - Importing Multipath mitigation model from "%s"',  marker_name, file_name));
                         load(file_name, 'ant_mp');
