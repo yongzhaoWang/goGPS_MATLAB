@@ -444,9 +444,11 @@ classdef Coordinates < Exportable & handle
             % SYNTAX
             %   cov_xyz = this.getStdXYZ()
             
-            std_xyz = nan(size(this.Cxx,3),3);
-            for i = 1 : size(this.Cxx,3)
-                std_xyz(i,:) = sqrt(diag(this.Cxx(:,:,i)));
+            std_xyz = nan(size(this.xyz,1),3);
+            if ~isempty(this.Cxx)
+                for i = 1 : size(this.Cxx,3)
+                    std_xyz(i,:) = sqrt(diag(this.Cxx(:,:,i)));
+                end
             end
         end
         
@@ -457,9 +459,11 @@ classdef Coordinates < Exportable & handle
             %   cov_enu = this.getStdENU()
             
             [~, rot_mat] = Coordinates.cart2loca(this.getMedianPos.getXYZ, [0 0 0]);
-            std_enu = nan(size(this.Cxx,3),3);
-            for i = 1 : size(this.Cxx,3)
-                std_enu(i,:) = sqrt(diag(rot_mat*this.Cxx(:,:,i)*rot_mat'));
+            std_enu = nan(size(this.xyz,1),3);
+            if ~isempty(this.Cxx)
+                for i = 1 : size(this.Cxx,3)
+                    std_enu(i,:) = sqrt(diag(rot_mat*this.Cxx(:,:,i)*rot_mat'));
+                end
             end
         end
         
@@ -983,7 +987,11 @@ classdef Coordinates < Exportable & handle
                             if thr < 1
                                 pos_var = nan2zero(pos_std(:, c).^2);
                                 pos_var(pos_var == 0) = 100.^2; % 100 meters of std
-                                [data{c}, lid_ko, trend, data_smooth] = strongFilterStaticData([t data_component{c} pos_var], 0.8, 7);
+                                not_nan =  ~isnan(data_component{c});
+                                data_smooth =  nan(size(t));
+                                trend =  nan(size(t));
+                                lid_ko = true(size(t));
+                                [data{c}(not_nan), lid_ko(not_nan), trend(not_nan), data_smooth(not_nan)] = strongFilterStaticData([t(not_nan) data_component{c}(not_nan) pos_var(not_nan)], 0.8, 7);
                                 setAxis(fh, c);
                                 
                                 % Plot all the data

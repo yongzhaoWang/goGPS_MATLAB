@@ -119,7 +119,7 @@ classdef Core_Utils < handle
         end
         
         
-        function y_out = interp1LS(x_in, y_in, degree, x_out)
+        function [y_out,coeff] = interp1LS(x_in, y_in, degree, x_out)
             % Least squares interpolant of a 1D dataset
             %
             % SYNTAX
@@ -128,7 +128,7 @@ classdef Core_Utils < handle
             if nargin < 4
                 x_out = x_in;
             end
-            
+            coeff = nan(degree+1, iif(min(size(y_in)) == 1, 1, size(y_in,2)));
             for c = 1 : iif(min(size(y_in)) == 1, 1, size(y_in,2))
                 if size(y_in, 1) == 1
                     y_tmp = y_in';
@@ -160,10 +160,12 @@ classdef Core_Utils < handle
                 warning('off')
                 if min(size(y_in)) == 1
                     %y_out = A2 * ((A' * A) \ (A' * y_tmp(:)));
-                    y_out = A2 * (A \ y_tmp(:));
+                    coeff(:,c) = (A \ y_tmp(:));
+                    y_out = A2 * coeff(:,c);
                     y_out = reshape(y_out, size(x_out, 1), size(x_out, 2));
                 else
-                    y_out(:,c) = A2 * ((A' * A + 1e-6 * eye(size(A,2))) \ (A' * y_tmp(:)));
+                    coeff(:,c) = ((A' * A + 1e-6 * eye(size(A,2))) \ (A' * y_tmp(:)));
+                    y_out(:,c) = A2 * coeff(:,c);
                 end
                 warning('on')
             end

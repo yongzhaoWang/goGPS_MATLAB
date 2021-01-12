@@ -1932,7 +1932,7 @@ classdef Core_Sky < handle
             % supposing SP3_time regularly sampled
             t_diff = gps_time.getRefTime(this.time_ref_coord.getMatlabTime);
 
-            p = round(t_diff / interval) + 1;
+            p = round((t_diff / interval)+eps(t_diff / interval)) + 1;
             
             b = (p-1)*interval - t_diff;
                         
@@ -1948,6 +1948,7 @@ classdef Core_Sky < handle
             A = sparse(rows(idx),A_idx(idx),A(idx),n_obs,n_par);
             idx_empty = sum(A~=0,1) == 0;
             A(:,idx_empty) = [];
+            n_par = size(A,2);
             N = A'*A + eye(n_par)*0.001;
             n_coord = size(this.coord,1);
             for s = 1 : length(go_ids)
