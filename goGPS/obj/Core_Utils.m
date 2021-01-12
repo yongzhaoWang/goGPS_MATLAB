@@ -1286,6 +1286,32 @@ classdef Core_Utils < handle
             end
         end
         
+        function [t, data_set] = insertZeros4Plots(t, data_set)
+            % Insert a zero in a regularly sampled dataset to make
+            % plots interrupt continuous lines
+            %
+            % INPUT
+            %   t      epoch of the data [matrix of column arrays]
+            %   data   epoch of the data [matrix of column arrays]
+            %
+            % SYNTAX
+            %   [t, data] = Core_Utils.insertNan4Plots(t, data)
+                        
+            t = t(:);
+            if size(t, 1) ~= size(data_set, 1)
+                % data should be a column array
+                data_set = data_set';
+            end
+            n_set = size(data_set, 2);
+            dt = diff(t);
+            rate = median(dt);
+            id_in = find(dt > 1.5 * rate);
+            for x = numel(id_in) : -1 : 1
+                t = [t(1 : id_in(x)); (t(id_in(x)) + 1e-9 * rate); (t(id_in(x) + 1) - 1e-9 * rate); t((id_in(x)+1) : end)];
+                data_set = [data_set(1 : id_in(x), :); zeros(1, n_set); zeros(1, n_set); data_set((id_in(x)+1) : end, :)];
+            end
+        end
+        
         function lh = plotSep(t, data, varargin)
             % Special wrapper to regular plot
             % Works on regularly sampled data
@@ -1309,6 +1335,23 @@ classdef Core_Utils < handle
                 varargin = varargin(2:end);
             else
                 ax = gca;
+            end
+            
+            flag_zeros = false;
+            if nargin >= 3
+                for i = 1 : numel(varargin)
+                    if iscell(varargin)
+                        if ischar(varargin{i}) && strcmp(varargin{i}, 'zeros')
+                            flag_zeros = true;
+                            varargin(i) = [];
+                        end
+                    else
+                        if ischar(varargin) && strcmp(varargin, 'zeros')
+                            flag_zeros = true;
+                            varargin = [];
+                        end
+                    end
+                end
             end
             try
                 if numel(t) ~= numel(data) && numel(t) ~= size(data, 1)
@@ -1338,9 +1381,17 @@ classdef Core_Utils < handle
             
             for c = 1 : size(data, 2)
                 if numel(data) == numel(t)
-                    [t_col, data_col] = Core_Utils.insertNan4Plots(t(:,c), data(:,c));
+                    if flag_zeros
+                        [t_col, data_col] = Core_Utils.insertZeros4Plots(t(:,c), data(:,c));
+                    else
+                        [t_col, data_col] = Core_Utils.insertNan4Plots(t(:,c), data(:,c));
+                    end
                 else
+                    if flag_zeros
+                    [t_col, data_col] = Core_Utils.insertZeros4Plots(t, data(:,c));
+                    else
                     [t_col, data_col] = Core_Utils.insertNan4Plots(t, data(:,c));
+                    end
                 end
                 if isempty(varargin)
                     lh = plot(ax, t_col, data_col);
@@ -1352,6 +1403,41 @@ classdef Core_Utils < handle
                     end
                 end
                 hold on;
+            end
+        end
+        
+        function lh = patchSep(t, data, color, varargin)
+            % Special wrapper to regular plot
+            % Works on regularly sampled data
+            % When there is a gap of data, it closes the patch
+            %
+            % INPUT
+            %   t           column array of epochs
+            %   data        columns of data (could be a matrix)
+            %   color       color of the patch
+            %   varagin     add other useful parameters of the plot
+            %
+            % SYNTAX
+            %   lh = Core_Utils.patchSep(t, data, color, varargin);
+            %
+            % SEE ALSO
+            %   plot
+            
+            
+            if size(data, 1) == 1
+                % I want the data to be columnwise
+                data = data';
+            end
+            [t_col, data_col] = Core_Utils.insertZeros4Plots(t, data);
+            data_col = nan2zero(data_col);
+            if nargin > 3
+                if iscell(varargin)
+                    patch([t_col(:); t_col(end); t_col(1)], [data_col(:); 0; 0], color, varargin{:});
+                else
+                    patch([t_col(:); t_col(end); t_col(1)], [data_col(:); 0; 0], color, varargin);
+                end
+            else
+                patch([t_col(:); t_col(end); t_col(1)], [data_col(:); 0; 0], color);
             end
         end
         
