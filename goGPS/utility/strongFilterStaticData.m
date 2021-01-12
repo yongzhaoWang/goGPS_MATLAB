@@ -39,84 +39,107 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
 % 01100111 01101111 01000111 01010000 01010011
 %--------------------------------------------------------------------------
 
-if any(data(:,end))
-    if nargin < 2
-        robustness_perc = 0.8;
-    end
-    if nargin < 3
-        n_sigma = 6;
-    end
-    if nargin < 4 || numel(spline_base) ~= 2
-        spline_base = [28, 7, 3.5];
-    end
-    flag_time = false;
-    idf = [];
-    if size(data,2) >= 2
-        if size(data,2) >= 3
-            data_var = data(:,3);
+    if any(data(:,end))
+        if nargin < 2
+            robustness_perc = 0.8;
         end
-        time = data(:,1);
-        rate = round(median(diff(time*86400)))/86400;
-        time_full = linspace(time(1), time(end), round((time(end) - time(1)) / rate + 1))';
-        [~, idf, idr] = intersect(round((time_full-rate/2)/rate), round((time-rate/2)/rate));
-        tmp = data(:,2);
-        data = nan(numel(time_full), 1);
-        if numel(idr) < numel(tmp)
-            Core.getLogger.addWarning('StrongFilter is loosing some observations out of sync');
+        if nargin < 3
+            n_sigma = 6;
         end
-        data(idf) = tmp(idr);
-        flag_time = 1;
-    end
-    [tmp, trend] = strongDeTrend(data, robustness_perc, 1-((1-robustness_perc)/2), n_sigma);
-    
-    if any(tmp) && flag_time && (numel(data(idf)) > 4)
-        if (numel(tmp(idf)) > 11)
-            warning off;
+        if nargin < 4 || numel(spline_base) ~= 2
+            spline_base = [28, 7, 3.5];
+        end
+        flag_time = false;
+        idf = [];
+        if size(data,2) >= 2
             if size(data,2) >= 3
-                long_spline = splinerMat(time, [data(idf) data_var], spline_base(1), 1e-5); % long splines
-            else
-                long_spline = splinerMat(time, [data(idf) tmp(idf).^2], spline_base(1), 1e-5); % long splines
+                data_var = data(:,3);
             end
-            tmp(idf) = data(idf) - long_spline;
-            spline = splinerMat(time, [tmp(idf) abs(tmp(idf))], spline_base(2), 1e-5); % medium splines
-            spline = splinerMat(time, [tmp(idf) abs(tmp(idf) - spline)], spline_base(2), 1e-5); % medium splines
-            long_spline = long_spline + spline;
-            tmp(idf) = data(idf) - long_spline;
-            warning on;
-            thr = 12 * strongStd(tmp(idf) - spline, robustness_perc);
-            lid_ko = abs(tmp(idf) - spline) > thr;
-            if sum(lid_ko == 0) > 2
+            % Suppose regularly sampled data, fill missing epochs with nan
+            time = data(:,1);
+            rate = round(median(diff(time*86400)))/86400;
+            time_full = linspace(time(1), time(end), round((time(end) - time(1)) / rate + 1))';
+            [~, idf, idr] = intersect(round((time_full-rate/2)/rate), round((time-rate/2)/rate));
+            tmp = data(:,2);
+            data = nan(numel(time_full), 1);
+            if numel(idr) < numel(tmp)
+                Core.getLogger.addWarning('StrongFilter is loosing some observations out of sync');
+            end
+            data(idf) = tmp(idr);
+            flag_time = 1;
+        end
+
+        % Compute a trend "robust" using the robustness_perc of data
+        [tmp, trend] = strongDeTrend(data, robustness_perc, 1-((1-robustness_perc)/2), n_sigma);
+
+        if any(tmp) && flag_time && (numel(data(idf)) > 4)
+            if (numel(tmp(idf)) > 11)
+                spline_base = min(floor(time(end)-time(1)), spline_base);
+                warning off;
+                % Perform a bit of outlier detection before computing splines
+                thr = 6 * perc(abs(tmp), 0.8);
+                lid_ok = abs(tmp(idf)) < thr;
+
+                % Computer long splines (reduce the signal, montly splines)
+                if size(data,2) >= 3
+                    [~, ~, ~, long_spline] = splinerMat(time(lid_ok), [data(idf(lid_ok)) data_var(lid_ok)], spline_base(1), 1e-5, time); % long splines
+                else
+                    [~, ~, ~, long_spline] = splinerMat(time(lid_ok), [data(idf(lid_ok)) tmp(idf(lid_ok)).^2], spline_base(1), 1e-5, time); % long splines
+                end
+
+                % Keep in tmp the reduced value
                 tmp(idf) = data(idf) - long_spline;
-                [~, ~, ~, spline] = splinerMat(time(~lid_ko), [tmp(idf(~lid_ko)) data_var(~lid_ko)], spline_base(3), 1e-2, time); % short splines
+
+                % Compute medium splines (reduce the signal weekly splines)
+                [~, ~, ~, spline] = splinerMat(time(lid_ok), [tmp(idf(lid_ok)) abs(tmp(idf(lid_ok)))], spline_base(2), 1e-5, time); % medium splines
+                [~, ~, ~, spline] = splinerMat(time(lid_ok), [tmp(idf(lid_ok)) abs(tmp(idf(lid_ok)) - spline(lid_ok))], spline_base(2), 1e-5, time); % medium splines
+
+                % These are the medium long frequencies, I reduce the signal so that the interpolation will be more stable
+                long_spline = long_spline + spline;
+
+                % Keep in tmp the reduced value
+                tmp(idf) = data(idf) - long_spline;
+
+                % Remove high frequencies
+                thr = 12 * strongStd(tmp(idf), robustness_perc);
+                lid_ok = abs(tmp(idf)) < thr;
+                if sum(lid_ok) > 2
+                    [~, ~, ~, spline] = splinerMat(time(lid_ok), [tmp(idf(lid_ok)) data_var(lid_ok)], spline_base(3), 1e-2, time); % short splines
+                end
+                warning on;
+
+                spline = spline + long_spline;
+                tmp = data(idf) - spline;
+            else
+                tmp = tmp(idf);
+                spline = trend(idf);
             end
-            spline = spline + long_spline;
-            tmp = data(idf) - spline;
         else
-            tmp = tmp(idf);
-            spline = trend(idf);
+            if flag_time
+                spline = trend(idf);
+            else
+                spline = trend;
+            end
         end
-    else
+
         if flag_time
-            spline = trend(idf);
-        else
-            spline = trend;
+            data = data(idf);
+            trend = trend(idf);
         end
+
+        % Outlier detection based on the interpolation
+        thr = n_sigma * strongStd(tmp, robustness_perc);
+        lid_ko = abs(tmp) > thr;
+
+        % figure; plot(data, 'Color', [0.5 0.5 0.5]);
+        data(lid_ko) = nan;
+        % hold on; plot(data, '.-b', 'LineWidth', 2)
+        % plot(tmp,'g');
+    else
+        % no data
+        data = data(:,end);
+        lid_ko = true(size(data));
+        trend = data;
+        spline = data;
     end
-    if flag_time
-        data = data(idf);
-        trend = trend(idf);
-    end
-    thr = n_sigma * strongStd(tmp, robustness_perc);
-    lid_ko = abs(tmp) > thr;
-    % figure; plot(data, 'Color', [0.5 0.5 0.5]);
-    data(lid_ko) = nan;
-    % hold on; plot(data, '.-b', 'LineWidth', 2)
-    % plot(tmp,'g');
-else
-    % no data
-    data = data(:,end);
-    lid_ko = true(size(data));
-    trend = data;
-    spline = data;
-end
 end
