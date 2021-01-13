@@ -1463,7 +1463,12 @@ classdef Coordinates < Exportable & handle
                     else
                         % Verify the file version (it should match 1.0):
                         id_ver = find(txt(lim(:,1) + 1) == 'F'); % +FileVersion
-                        file_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), '(?<=FileVersion[ ]*: )1.0', 'once')));
+                        version_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), ['(?<=FileVersion[ ]*: )' this.VERSION], 'once')));
+                        if not(version_ok)
+                            log = Logger.getInstance;
+                            log.addWarning(sprintf('"%s" is in an older format', out_file_name));
+                        end
+                        file_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), '(?<=FileVersion[ ]*: )1.', 'once')));
                         
                         % Data should be present
                         timestamp = [];
@@ -1585,7 +1590,7 @@ classdef Coordinates < Exportable & handle
                         catch
                             s0 = nan;
                         end
-                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.3f;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
+                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
                             xyz(1), xyz(2), xyz(3), ...
                             cov(1,1), cov(2,2), cov(3,3), cov(1,2), cov(1,3), cov(2,3), ...
                             n_epo, ...
