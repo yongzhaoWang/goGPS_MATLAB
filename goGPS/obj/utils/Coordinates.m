@@ -58,6 +58,8 @@ classdef Coordinates < Exportable & handle
         
         DEG2RAD = pi/180;           % Convert degree to radius
         RAD2DEG = 180/pi;           % Convert radius to degree
+        
+        VERSION = '1.1';              % New file version
     end
     
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
@@ -69,7 +71,7 @@ classdef Coordinates < Exportable & handle
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
-        info = struct('n_epo', [], 'n_obs', [], 's0', [], 'flag', [], 'fixing_ratio', [],'obs_used',[]) % Additional info related to the coordinate in use
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[]) % Additional info related to the coordinate in use
         std_scaling_factor = 30;
     end
         
@@ -145,6 +147,13 @@ classdef Coordinates < Exportable & handle
                     this.info.s0(n_epo) = pos.info.s0;
                 else
                     this.info.s0(n_epo) = nan;
+                end
+                
+                % Sigma0 of the initial (pre-processing) solution
+                if not(isempty(pos.info.s0_ip))
+                    this.info.s0_ip(n_epo) = pos.info.s0_ip;
+                else
+                    this.info.s0_ip(n_epo) = nan;
                 end
                 
                 % Validity flag
@@ -790,7 +799,8 @@ classdef Coordinates < Exportable & handle
                 else
                     % Verify the file version (it should match 1.0):
                     id_ver = find(txt(lim(:,1) + 1) == 'F'); % +FileVersion
-                    file_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), '(?<=FileVersion[ ]*: )1.0', 'once')));
+                    version_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), ['(?<=FileVersion[ ]*: )' this.VERSION], 'once')));
+                    file_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), '(?<=FileVersion[ ]*: )1.', 'once')));
                     
                     % Data should be present
                     timestamp = [];
@@ -843,7 +853,7 @@ classdef Coordinates < Exportable & handle
                     if file_ok
                         this.xyz = nan(data_stop - data_start + 1, 3);
                         n_data = data_stop - data_start + 1;
-                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'));
+                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'));
                         this.Cxx = zeros(3, 3, n_data);
                         
                         id_cov = [col(data_type == categorical({'Cxx'})), ...
@@ -855,6 +865,8 @@ classdef Coordinates < Exportable & handle
                         
                         id_n_epo = col(data_type == categorical({'nEpochs'}));
                         id_n_obs = col(data_type == categorical({'nObs'}));
+                        id_s0_ip = col(data_type == categorical({'initialSigma0'}));
+                        id_s0 = col(data_type == categorical({'sigma0'}));
                         id_fix = col(data_type == categorical({'fixingRatio'}));
                         for l = 0 : (data_stop - data_start)
                             data_line = strsplit(txt(lim(data_start + l, 1) : lim(data_start + l, 2)), ';');
@@ -862,7 +874,6 @@ classdef Coordinates < Exportable & handle
                             this.xyz(l + 1, 2) = str2double(data_line{data_col(2)});
                             this.xyz(l + 1, 3) = str2double(data_line{data_col(3)});
                             
-                             
                             if numel(id_cov) == 6
                                 tmp = [str2num(data_line{id_cov(1)}), str2num(data_line{id_cov(2)}), str2num(data_line{id_cov(3)}); ...
                                     str2num(data_line{id_cov(2)}), str2num(data_line{id_cov(4)}), str2num(data_line{id_cov(5)}); ...
@@ -878,6 +889,12 @@ classdef Coordinates < Exportable & handle
                             if any(id_n_obs)
                                 this.info.n_obs(l + 1) = uint32(str2double(data_line{id_n_obs}));
                             end
+                            if any(id_s0_ip)
+                                this.info.s0_ip(l + 1) = single(str2double(data_line{id_s0_ip}));
+                            end
+                            if any(id_s0)
+                                this.info.s0(l + 1) = single(str2double(data_line{id_s0}));
+                            end
                             if any(id_fix)
                                 this.info.fixing_ratio(l + 1) = single(str2double(data_line{id_fix}));
                             end
@@ -887,6 +904,13 @@ classdef Coordinates < Exportable & handle
                     
                     % Check description field
                     % use the old one for the file
+                end
+                
+                if not(version_ok)
+                    % If the version is changed re-export the coordinates to update the file
+                    log = Core.getLogger();
+                    log.addMarkedMessage(sprintf('Update "%s" to the current Coordinates version %s', file_name, this.VERSION));
+                    this.exportAsCoo(file_name);
                 end
             else
                 log = Core.getLogger();
@@ -1113,7 +1137,9 @@ classdef Coordinates < Exportable & handle
                                 Core_Utils.plotSep(t, data{c}, '.-', 'MarkerSize', 15, 'LineWidth', 2, 'Color', color_order(c,:));
                                 
                                 % Plot smoothed signal
-                                plot(t, data_smooth, '.--', 'LineWidth', 1.5, 'Color', max(0, color_order(c,:)-0.2));
+                                if std(data_smooth) < 100
+                                    plot(t, data_smooth, '.--', 'LineWidth', 1.5, 'Color', max(0, color_order(c,:)-0.2));
+                                end
                             else
                                 data{c} = data_component{c};
                                 setAxis(fh, c);
@@ -1489,7 +1515,7 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s+LastChange     : %s\n', str_tmp, now_time.toString('dd-mmm-yyyy HH:MM'));
                 str_tmp = sprintf('%s+Software       : goGPS\n', str_tmp);
                 str_tmp = sprintf('%s+Version        : %s\n', str_tmp, Core.GO_GPS_VERSION);
-                str_tmp = sprintf('%s+FileVersion    : 1.0\n', str_tmp);
+                str_tmp = sprintf('%s+FileVersion    : %s\n', str_tmp, this.VERSION);
                 str_tmp = sprintf('%s+MonitoringPoint: %s\n', str_tmp, this.name);
                 str_tmp = sprintf('%s+LongName       : %s\n', str_tmp, this.description);
                 str_tmp = sprintf('%s+SensorType     : GNSS\n', str_tmp);
@@ -1510,7 +1536,9 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s -10            : Cyz\n', str_tmp);
                 str_tmp = sprintf('%s -11            : nEpochs\n', str_tmp);
                 str_tmp = sprintf('%s -12            : nObs\n', str_tmp);
-                str_tmp = sprintf('%s -13            : fixingRatio\n', str_tmp);
+                str_tmp = sprintf('%s -13            : initialSigma0\n', str_tmp);
+                str_tmp = sprintf('%s -14            : sigma0\n', str_tmp);
+                str_tmp = sprintf('%s -15            : fixingRatio\n', str_tmp);
                 str_tmp = sprintf('%s+DataStart\n', str_tmp);
                 fprintf(fid, str_tmp);
                 
@@ -1547,11 +1575,23 @@ classdef Coordinates < Exportable & handle
                         catch
                             fix_ratio = nan;
                         end
-                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
+                        try
+                            s0_ip = this.info.s0_ip(i);
+                        catch
+                            s0_ip = nan;
+                        end
+                        try
+                            s0 = this.info.s0(i);
+                        catch
+                            s0 = nan;
+                        end
+                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.3f;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
                             xyz(1), xyz(2), xyz(3), ...
                             cov(1,1), cov(2,2), cov(3,3), cov(1,2), cov(1,3), cov(2,3), ...
                             n_epo, ...
                             n_obs, ...
+                            s0_ip, ...
+                            s0, ...
                             fix_ratio);
                     catch ex
                         % There is an inconsistency with the entry
