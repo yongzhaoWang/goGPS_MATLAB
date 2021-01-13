@@ -62,6 +62,8 @@ classdef Coordinates < Exportable & handle
     
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
         name = ''                   % Name of the point (not yet used extensively)
+        description = ''            % Point description
+        
         time = GPS_Time             % Position time
         xyz = []                    % Coordinates are stored in meters in as cartesian XYZ ECEF [m]
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
@@ -196,6 +198,23 @@ classdef Coordinates < Exportable & handle
     % =========================================================================
     
     methods
+        function [name, descr] = getName(this)
+            name = this.name;
+            % In legacy coordinate the field description was not present
+            try
+                descr = this.description;
+            catch
+                % use name instead
+                descr = name;
+            end
+            if isempty(name)
+                name = 'UNKN'; % Unknown name
+            end
+            if isempty(descr)
+                descr = name;
+            end
+        end
+        
         function time = getTime(this)
             % Get the time of the coordinates
             %
@@ -520,6 +539,86 @@ classdef Coordinates < Exportable & handle
             Dsigma = B*sin_sigma*(cos_2sigmam + 1/4*B*(cos_sigma*(-1 + 2*cos_2sigmam^2) -B/6*cos_2sigmam*(-3 + 4 * sin_sigma^2)*(- 3 + 4 * cos_2sigmam^2)));
             dist = b*A*(sigma -Dsigma);            
         end
+        
+        function [lid_ko, time, lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs)
+            % Get outliers in East North Up coordinates
+            %
+            % SYNTAX
+            %   [lid_ko lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs);
+            %
+            % SEE ALSO
+            %   core.printKoSessions_experimental
+            
+            thr = 0.8;
+            time = {};
+            log = Core.getLogger();
+            fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
+            for i = 1 : numel(coo_list)
+                pos = coo_list(i);
+                if ~pos.isEmpty
+                    
+                    if nargin == 1 || isempty(coo_ref)
+                        enu_diff = pos.getLocal(pos.getMedianPos) * 1e3;
+                        flag_time = true;
+                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
+                            t = pos.time.getMatlabTime;
+                            if numel(t) < size(enu_diff,1)
+                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more coordinates than times\n plotting only the positions with time'))
+                                enu_diff = enu_diff(1:numel(t),:);
+                            elseif numel(t) > size(enu_diff,1)
+                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more times than coordinates\n plotting only the first positions'))
+                                t = t(1:size(enu_diff,1),:);
+                            end
+                        else
+                            flag_time = false;
+                            t = (1 : size(enu_diff, 1))';
+                        end
+                    elseif nargin > 1 % plot baseline
+                        enu_diff = [];
+                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
+                            [t_comm, idx_1, idx2] = intersect(round(coo_ref.time.getRefTime(pos.time.first.getMatlabTime)),round(pos.time.getRefTime(pos.time.first.getMatlabTime)));
+                            t = pos.time.first.getMatlabTime + t_comm/86400;
+                            enu_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:) )*1e3;
+                            flag_time = true;
+                        else
+                            if numel(coo_ref.xyz) == numel(pos.xyz)
+                                enu_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz - coo_ref.xyz)*1e3;
+                                t = t(1:size(enu_diff,1),:);
+                                flag_time = false;
+                            else
+                                log.addError(sprintf('No time in coordinates and number off coordinates in ref different from coordinate in the second receiver'))
+                            end
+                        end
+                        enu_diff = bsxfun(@minus, enu_diff,median(enu_diff,1,'omitnan'));
+                    end
+                    
+                    if nargin >= 2 && n_obs > 0
+                        id_ok = (max(1, size(enu_diff,1) - n_obs + 1)) : size(enu_diff,1);
+                        enu_diff = enu_diff(id_ok, :);
+                        t = t(id_ok);
+                    end
+                    
+                    e = enu_diff(1:numel(t),1);
+                    [data, lid_ko_enu{i}(:,1), trend_enu{i}(:,1)] = strongFilterStaticData(e, 0.8, 7);
+                    
+                    n = enu_diff(:,2);
+                    [data, lid_ko_enu{i}(:,2), trend_enu{i}(:,1)] = strongFilterStaticData(n, 0.8, 7);
+                    
+                    up = enu_diff(:,3);
+                    [data, lid_ko_enu{i}(:,3), trend_enu{i}(:,1)] = strongFilterStaticData(up, 0.8, 7);
+                    
+                    lid_ko = isnan(e) | lid_ko_enu{i}(:,1) | isnan(n) | lid_ko_enu{i}(:,2) | isnan(up) | lid_ko_enu{i}(:,3);
+                    time{i} = t;
+                end
+            end
+            if numel(lid_ko) == 1
+                lid_ko = lid_ko{1};
+                lid_ko_enu = lid_ko_enu{1};
+                trend_enu = trend_enu{1};
+                time = time{1};
+            end
+        end
+
     end
     
     % =========================================================================
@@ -527,13 +626,20 @@ classdef Coordinates < Exportable & handle
     % =========================================================================
     
     methods
-        function setName(this, name)
+        function setName(this, name, description)
             % Set the name of the coordinates
             %
             % SYNTAX
             %   this.setName(time)
             
             this.name = name;
+            if nargin == 2
+                try
+                    this.description = description;
+                catch ex
+                    % this try catch is here only for legacy support of old missing description field
+                end
+            end
 
         end
         
@@ -713,6 +819,7 @@ classdef Coordinates < Exportable & handle
                             file_ok = false;
                         else
                             this.name = regexp(txt(lim(id_line, 1):lim(id_line, 2)), '(?<=MonitoringPoint[ ]*: ).*', 'match', 'once');
+                            this.description = regexp(txt(lim(id_line, 1):lim(id_line, 2)), '(?<=LongName[ ]*: ).*', 'match', 'once');
                         end
                         
                         % DataType
@@ -789,7 +896,7 @@ classdef Coordinates < Exportable & handle
     end
     
     % =========================================================================
-    %    SHOWs
+    %    SHOW
     % =========================================================================
     
     methods (Access = 'public')
@@ -984,7 +1091,7 @@ classdef Coordinates < Exportable & handle
                                 tmp_ax = gca;
                                 tmp_ax.YColor = min(1, color_order(c,:)+0.2);
                                 p = Core_Utils.plotSep(t, pos_std(:, c), '-', 'Color', [tmp_ax.YColor 0.3], 'zeros');
-                                ylim([0 max(0.5, 4 * perc(pos_std(:),0.95))]);
+                                ylim([0 min(1e2,max(0.5, 4 * perc(pos_std(:),0.8)))]);
                                 yyaxis left;
                             end
                             
@@ -1083,82 +1190,6 @@ classdef Coordinates < Exportable & handle
                 end
             end
             
-        end
-
-        function [lid_ko, time, lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs)
-            % Get outliers in East North Up coordinates
-            %
-            % SYNTAX 
-            %   [lid_ko lid_ko_enu, trend_enu] = getBadSession(coo_list, coo_ref, n_obs);
-            
-            thr = 0.8;
-            time = {};
-            log = Core.getLogger();
-            fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
-            for i = 1 : numel(coo_list)
-                pos = coo_list(i);
-                if ~pos.isEmpty
-                    
-                    if nargin == 1 || isempty(coo_ref)
-                        enu_diff = pos.getLocal(pos.getMedianPos) * 1e3;
-                        flag_time = true;
-                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
-                            t = pos.time.getMatlabTime;
-                            if numel(t) < size(enu_diff,1)
-                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more coordinates than times\n plotting only the positions with time'))
-                                enu_diff = enu_diff(1:numel(t),:);
-                            elseif numel(t) > size(enu_diff,1)
-                                log.addWarning(sprintf('Coordinates are corrupted, it seems that there are more times than coordinates\n plotting only the first positions'))
-                                t = t(1:size(enu_diff,1),:);
-                            end
-                        else
-                            flag_time = false;
-                            t = (1 : size(enu_diff, 1))';
-                        end
-                    elseif nargin > 1 % plot baseline
-                        enu_diff = [];
-                        if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
-                            [t_comm, idx_1, idx2] = intersect(round(coo_ref.time.getRefTime(pos.time.first.getMatlabTime)),round(pos.time.getRefTime(pos.time.first.getMatlabTime)));
-                            t = pos.time.first.getMatlabTime + t_comm/86400;
-                            enu_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz(idx2,:) - coo_ref.xyz(idx_1,:) )*1e3;
-                            flag_time = true;
-                        else
-                            if numel(coo_ref.xyz) == numel(pos.xyz)
-                                enu_diff = Coordinates.cart2local(median(coo_ref.xyz,1,'omitnan'),pos.xyz - coo_ref.xyz)*1e3;
-                                t = t(1:size(enu_diff,1),:);
-                                flag_time = false;
-                            else
-                                log.addError(sprintf('No time in coordinates and number off coordinates in ref different from coordinate in the second receiver'))
-                            end
-                        end
-                        enu_diff = bsxfun(@minus, enu_diff,median(enu_diff,1,'omitnan'));
-                    end
-                    
-                    if nargin >= 2 && n_obs > 0
-                        id_ok = (max(1, size(enu_diff,1) - n_obs + 1)) : size(enu_diff,1);
-                        enu_diff = enu_diff(id_ok, :);
-                        t = t(id_ok);
-                    end
-                    
-                    e = enu_diff(1:numel(t),1);
-                    [data, lid_ko_enu{i}(:,1), trend_enu{i}(:,1)] = strongFilterStaticData(e, 0.8, 7);
-                    
-                    n = enu_diff(:,2);
-                    [data, lid_ko_enu{i}(:,2), trend_enu{i}(:,1)] = strongFilterStaticData(n, 0.8, 7);
-                    
-                    up = enu_diff(:,3);
-                    [data, lid_ko_enu{i}(:,3), trend_enu{i}(:,1)] = strongFilterStaticData(up, 0.8, 7);
-                    
-                    lid_ko = isnan(e) | lid_ko_enu{i}(:,1) | isnan(n) | lid_ko_enu{i}(:,2) | isnan(up) | lid_ko_enu{i}(:,3);
-                    time{i} = t;
-                end
-            end
-            if numel(lid_ko) == 1
-                lid_ko = lid_ko{1};
-                lid_ko_enu = lid_ko_enu{1};
-                trend_enu = trend_enu{1};
-                time = time{1};
-            end
         end
 
         function fh = showCoordinatesENU(coo_list, coo_ref, n_obs)
@@ -1352,6 +1383,200 @@ classdef Coordinates < Exportable & handle
                     end
                 end
             end            
+        end
+    end
+    
+    % =========================================================================
+    %    EXPORT
+    % =========================================================================
+   
+    methods (Access = 'public')
+        
+        function out_file_name = getCooOutPath(this, out_file_prefix)
+            % Get the path to the coordinatefile
+            %
+            % SYNTAX
+            %   out_file_path = this.getCooOutPath(<out_file_prefix>)
+            
+            state = Core.getState();
+            if nargin < 2 || isempty(out_file_prefix)
+                out_file_prefix = strrep([state.getPrjName '_'], ' ', '_');
+            end
+            % Add the folder if not present
+            if sum(out_file_prefix == filesep) == 0
+                out_dir = state.getOutDir();
+                out_file_prefix = fullfile(out_dir, out_file_prefix);
+            end
+            out_file_name = strrep([out_file_prefix this.name '.coo'], ' ', '_');
+        end
+        
+        function exportAsCoo(this, out_file_name)
+            % Export as coo file (progressive appended file)
+            % Any new entry is inserted sorted in the file
+            %
+            % INPUT
+            %   out_file_name   full path of the filename (as default exported into outDir with the name of the coo)
+            %
+            % SYNTAX
+            %   coo.exportAsCoo(>out_file_name>)
+            
+            now_time = GPS_Time.now();
+            if nargin < 2 || isempty(out_file_name)
+                out_file_name = this.getCooOutPath();
+            end
+            log  = Logger.getInstance;
+            log.addMarkedMessage(sprintf('Updating coordinates to %s', out_file_name));
+            try
+                
+                if exist(out_file_name, 'file') == 2
+                    % Read and append
+                    [txt, lim] = Core_Utils.readTextFile(out_file_name, 3);
+                    if isempty(lim)
+                        file_ok = false;
+                        timestamp = [];
+                    else
+                        % Verify the file version (it should match 1.0):
+                        id_ver = find(txt(lim(:,1) + 1) == 'F'); % +FileVersion
+                        file_ok = not(isempty(regexp(txt(lim(id_ver, 1):lim(id_ver, 2)), '(?<=FileVersion[ ]*: )1.0', 'once')));
+                        
+                        % Data should be present
+                        timestamp = [];
+                        if file_ok
+                            id_len_ok = find(lim(:,3)+1 >= 9);
+                            try
+                                data_start = id_len_ok(find(txt(lim(id_len_ok,1) + 9) == 't') + 1); % +DataStart
+                                id_len_ok = find(lim(:,3)+1 >= 8);
+                                data_stop = id_len_ok(find(txt(lim(id_len_ok,1) + 7) == 'd') -1); % +DataStop
+                                if isempty(data_stop)
+                                    data_stop = size(lim, 1);
+                                end
+                                if isempty(data_start)
+                                    file_ok = false;
+                                else
+                                    id_data = lim(data_start:data_stop,1);
+                                    % Read old timestamps
+                                    timestamp = datenum(txt(repmat(id_data, 1, 19) + repmat(0:18, numel(id_data), 1)), 'yyyy-mm-dd HH:MM:SS');
+                                end
+                            catch
+                                file_ok = false;
+                                timestamp = [];
+                            end
+                        else
+                            data_start = 0;
+                        end
+                        
+                        % Check description field
+                        % use the old one for the file
+                        if file_ok
+                            id_descr = find(txt(lim(:,1) + 4) == 'c'); % + Description
+                            if isempty(id_descr)
+                                file_ok = false;
+                            else
+                                str_tmp = sprintf('%s\n', txt(lim(id_descr,1):lim(id_descr,2))); % Keep the description of the old file
+                            end
+                        end
+                    end
+                else
+                    file_ok = false;
+                    timestamp = [];
+                end
+                
+                fid = fopen(out_file_name, 'Wb');
+                if not(file_ok)
+                    str_tmp = sprintf('+Description    : XYZ Position file generated on %s\n', now_time.toString('dd-mmm-yyyy HH:MM'));
+                end
+                [name, descr] = this.getName();
+                str_tmp = sprintf('%s+LastChange     : %s\n', str_tmp, now_time.toString('dd-mmm-yyyy HH:MM'));
+                str_tmp = sprintf('%s+Software       : goGPS\n', str_tmp);
+                str_tmp = sprintf('%s+Version        : %s\n', str_tmp, Core.GO_GPS_VERSION);
+                str_tmp = sprintf('%s+FileVersion    : 1.0\n', str_tmp);
+                str_tmp = sprintf('%s+MonitoringPoint: %s\n', str_tmp, this.name);
+                str_tmp = sprintf('%s+LongName       : %s\n', str_tmp, this.description);
+                str_tmp = sprintf('%s+SensorType     : GNSS\n', str_tmp);
+                str_tmp = sprintf('%s+SensorName     : GNSS\n', str_tmp);
+                str_tmp = sprintf('%s+DataScale      : m\n', str_tmp);
+                str_tmp = sprintf('%s+DataScale Cov  : mm^2\n', str_tmp);
+                str_tmp = sprintf('%s+DataType       :\n', str_tmp);
+                str_tmp = sprintf('%s -00            : timeStamp\n', str_tmp);
+                str_tmp = sprintf('%s -01            : exportTime\n', str_tmp);
+                str_tmp = sprintf('%s -02            : x\n', str_tmp);
+                str_tmp = sprintf('%s -03            : y\n', str_tmp);
+                str_tmp = sprintf('%s -04            : z\n', str_tmp);
+                str_tmp = sprintf('%s -05            : Cxx\n', str_tmp);
+                str_tmp = sprintf('%s -06            : Cyy\n', str_tmp);
+                str_tmp = sprintf('%s -07            : Czz\n', str_tmp);
+                str_tmp = sprintf('%s -08            : Cxy\n', str_tmp);
+                str_tmp = sprintf('%s -09            : Cxz\n', str_tmp);
+                str_tmp = sprintf('%s -10            : Cyz\n', str_tmp);
+                str_tmp = sprintf('%s -11            : nEpochs\n', str_tmp);
+                str_tmp = sprintf('%s -12            : nObs\n', str_tmp);
+                str_tmp = sprintf('%s -13            : fixingRatio\n', str_tmp);
+                str_tmp = sprintf('%s+DataStart\n', str_tmp);
+                fprintf(fid, str_tmp);
+                
+                % Append New
+                str_tmp = '';
+                e = 1; % old epoch
+                for i = 1 : this.time.length
+                    cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
+                    while e <= numel(timestamp) && (cur_time > timestamp(e))
+                        old_line = txt(lim(data_start + (e-1),1):lim(data_start + (e-1),2));
+                        str_tmp = sprintf('%s%s\n', str_tmp, old_line);
+                        e = e +1;
+                    end
+                    try
+                        time = this.time.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS');
+                        xyz = this.xyz(i,:);
+                        if isempty(this.Cxx)
+                            cov = zeros(3,3);
+                        else
+                            cov = this.Cxx(:,:,i)*1e6;
+                        end
+                        try
+                        n_epo = this.info.n_epo(i);
+                        catch
+                            n_epo = nan;
+                        end
+                        try
+                            n_obs = this.info.n_obs(i);
+                        catch
+                            n_obs = nan;
+                        end
+                        try
+                            fix_ratio = this.info.fixing_ratio(i);
+                        catch
+                            fix_ratio = nan;
+                        end
+                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
+                            xyz(1), xyz(2), xyz(3), ...
+                            cov(1,1), cov(2,2), cov(3,3), cov(1,2), cov(1,3), cov(2,3), ...
+                            n_epo, ...
+                            n_obs, ...
+                            fix_ratio);
+                    catch ex
+                        % There is an inconsistency with the entry
+                        % could not add this epoch
+                        log.addWarning('There is a corrupted coordinate');
+                    end
+                    % Skip recomputed old epochs
+                    while e <= numel(timestamp) && (cur_time == timestamp(e))
+                        e = e +1;
+                    end
+                end
+                %  Insert old epochs not yet recomputed
+                while e <= numel(timestamp)
+                    old_line = txt(lim(data_start + (e-1),1):lim(data_start + (e-1),2));
+                    str_tmp = sprintf('%s%s\n', str_tmp, old_line);
+                    e = e +1;
+                end
+                fprintf(fid, str_tmp);
+                fprintf(fid, '+DataEnd\n');
+                fclose(fid);
+                log.addStatusOk(sprintf('Exporting completed successfully'));
+            catch ex
+                Core_Utils.printEx(ex);
+                log.addError(sprintf('Exporting failed'));
+            end
         end
     end
     

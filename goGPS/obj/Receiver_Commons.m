@@ -308,8 +308,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     end
                 end
             end
-            coo.setName(this.parent.getMarkerName4Ch)
-                        
+            coo.setName(this.parent.getMarkerName4Ch, this.parent.getMarkerName);
         end
         
         function xyz = getPosXYZ(this)
