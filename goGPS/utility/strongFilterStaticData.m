@@ -115,6 +115,7 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
                 spline = trend(idf);
             end
         else
+            tmp = tmp(idf);
             if flag_time
                 spline = trend(idf);
             else
