@@ -101,7 +101,7 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
                 tmp(idf) = data(idf) - long_spline;
 
                 % Remove high frequencies
-                thr = 12 * strongStd(tmp(idf), robustness_perc);
+                thr = n_sigma * min(strongStd(tmp, robustness_perc), perc(abs(tmp(idf) - median(tmp(idf), 'omitnan')), robustness_perc));
                 lid_ok = abs(tmp(idf)) < thr;
                 if sum(lid_ok) > 2
                     [~, ~, ~, spline] = splinerMat(time(lid_ok), [tmp(idf(lid_ok)) data_var(lid_ok)], spline_base(3), 1e-2, time); % short splines
@@ -129,7 +129,7 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
         end
 
         % Outlier detection based on the interpolation
-        thr = n_sigma * strongStd(tmp, robustness_perc);
+        thr = n_sigma * min(strongStd(tmp, robustness_perc), perc(abs(tmp - median(tmp, 'omitnan')), robustness_perc));
         lid_ko = abs(tmp) > thr;
 
         % figure; plot(data, 'Color', [0.5 0.5 0.5]);
