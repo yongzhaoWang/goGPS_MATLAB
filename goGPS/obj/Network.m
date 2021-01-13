@@ -914,6 +914,8 @@ classdef Network < handle
                     coo.info.obs_used = ones(n_coo,1) .* this.obs_id_coo(idx_rec);
                     coo.info.n_epo = ones(n_coo,1) .* length(unique(ls.time_par(ls.rec_par == i & ~ls.out_par)));
                     coo.info.n_obs = ones(n_coo,1) .* sum(idx_obs);
+                    s0_ip = this.rec_list(i).work.quality_info.s0_ip;
+                    coo.info.s0_ip= ones(n_coo,1) .* s0_ip;
                     coo.info.s0 = ones(n_coo,1) .* s0;
                     coo.info.flag = zeros(n_coo,1);
                     coo.info.fixing_ratio = ones(n_coo,1) .* ls.fix_ratio;
