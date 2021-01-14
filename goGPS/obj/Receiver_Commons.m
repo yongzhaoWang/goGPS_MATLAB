@@ -1714,7 +1714,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         coo_ref = Coordinates();
                     end
                     
-                    coo_path = recs(baseline_ids(b, 2)).parent.getPos.getCooOutPath();
+                    coo_path = recs(baseline_ids(b, 2)).getPos.getCooOutPath();
                     if exist(coo_path, 'file') == 2
                         coo_trg = Coordinates.fromCooFile(coo_path);
                     else
@@ -1814,7 +1814,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 else
                     % Use coordinates from coo files
                     % If they exist
-                    coo_path = recs(baseline_ids(b, 1)).parent.getCooOutPath();
+                    coo_path = recs(baseline_ids(b, 1)).getCooOutPath();
                     if exist(coo_path, 'file') == 2
                         coo_ref = Coordinates.fromCooFile(coo_path);
                         flag_ready = true;
@@ -1823,7 +1823,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         coo_ref = Coordinates();
                     end
                     
-                    coo_path = recs(baseline_ids(b, 2)).parent.getCooOutPath();
+                    coo_path = recs(baseline_ids(b, 2)).getCooOutPath();
                     if exist(coo_path, 'file') == 2
                         coo_trg = Coordinates.fromCooFile(coo_path);
                     else
@@ -1910,7 +1910,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         else
                             % Use coordinates from coo files
                             % If they exist
-                            coo_path = rec.parent.getCooOutPath();
+                            coo_path = rec.getPos.getCooOutPath();
                             if exist(coo_path, 'file') == 2
                                 coo = Coordinates.fromCooFile(coo_path);
                             else
@@ -1979,7 +1979,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         else
                             % Use coordinates from coo files
                             % If they exist
-                            coo_path = rec.parent.getCooOutPath();
+                            coo_path = rec.getPos.getCooOutPath();
                             if exist(coo_path, 'file') == 2
                                 coo = Coordinates.fromCooFile(coo_path);
                             else
@@ -2045,7 +2045,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         else
                             % Use coordinates from coo files
                             % If they exist
-                            coo_path = rec.parent.getCooOutPath();
+                            coo_path = rec.getPos.getCooOutPath();
                             if exist(coo_path, 'file') == 2
                                 coo = Coordinates.fromCooFile(coo_path);
                             else
