@@ -59,9 +59,10 @@ classdef Coordinates < Exportable & handle
         DEG2RAD = pi/180;           % Convert degree to radius
         RAD2DEG = 180/pi;           % Convert radius to degree
         
-        VERSION = '1.2';            % New file version
+        VERSION = '1.3';            % New file version
                                     % 1.1 => adding s0_ip
                                     % 1.2 => adding observation rate
+                                    % 1.3 => adding coo_type (fixed / non fixed)
     end
     
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
@@ -73,7 +74,8 @@ classdef Coordinates < Exportable & handle
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
-        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', []) % Additional info related to the coordinate in use
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', []) % Additional info related to the coordinate in use
+        
         std_scaling_factor = 30;
     end
         
@@ -152,10 +154,14 @@ classdef Coordinates < Exportable & handle
                 end
                 
                 % Sigma0 of the initial (pre-processing) solution
+                try
                 if not(isempty(pos.info.s0_ip))
                     this.info.s0_ip(n_epo) = pos.info.s0_ip;
                 else
                     this.info.s0_ip(n_epo) = nan;
+                end
+                catch
+                    keyboard
                 end
                 
                 % Validity flag
@@ -184,6 +190,13 @@ classdef Coordinates < Exportable & handle
                     this.info.rate(n_epo) = pos.info.rate;
                 else
                     this.info.rate(n_epo) = nan;
+                end
+                
+                % Rate of the original observations
+                if not(isempty(pos.info.coo_type))
+                    this.info.coo_type(n_epo) = pos.info.coo_type;
+                else
+                    this.info.coo_type(n_epo) = 'U';
                 end
             end
         end
@@ -863,7 +876,7 @@ classdef Coordinates < Exportable & handle
                     if file_ok
                         this.xyz = nan(data_stop - data_start + 1, 3);
                         n_data = data_stop - data_start + 1;
-                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'), 'rate', zeros(n_data, 1, 'single'));
+                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'), 'rate', zeros(n_data, 1, 'single'), 'coo_type', char(ones(n_data, 1, 'uint8')) * 'U');
                         this.Cxx = zeros(3, 3, n_data);
                         
                         id_cov = [col(data_type == categorical({'Cxx'})), ...
@@ -879,6 +892,7 @@ classdef Coordinates < Exportable & handle
                         id_s0 = col(data_type == categorical({'sigma0'}));
                         id_fix = col(data_type == categorical({'fixingRatio'}));
                         id_rate = col(data_type == categorical({'obsRate'}));
+                        id_ctype = col(data_type == categorical({'cooType'}));
                         for l = 0 : (data_stop - data_start)
                             data_line = strsplit(txt(lim(data_start + l, 1) : lim(data_start + l, 2)), ';');
                             this.xyz(l + 1, 1) = str2double(data_line{data_col(1)});
@@ -922,10 +936,17 @@ classdef Coordinates < Exportable & handle
                                 end
                             end
                             if any(id_rate)
-                                if id_s0 > numel(data_line)
+                                if id_rate > numel(data_line)
                                     this.info.rate(l + 1) = nan;
                                 else
                                     this.info.rate(l + 1) = single(str2double(data_line{id_rate}));
+                                end
+                            end
+                            if any(id_ctype)
+                                if id_ctype > numel(data_line)
+                                    this.info.coo_type(l + 1) = nan;
+                                else
+                                    this.info.coo_type(l + 1) = single(str2double(data_line{id_ctype}));
                                 end
                             end
                         end
@@ -1448,7 +1469,7 @@ classdef Coordinates < Exportable & handle
    
     methods (Access = 'public')
         
-        function out_file_name = getOutPath(this, out_file_prefix)
+        function out_file_path = getOutPath(this, out_file_prefix)
             % Get the path to ag eneriv coordinate file (noextension)
             %
             % SYNTAX
@@ -1463,7 +1484,7 @@ classdef Coordinates < Exportable & handle
                 out_dir = state.getOutDir();
                 out_file_prefix = fullfile(out_dir, out_file_prefix);
             end
-            out_file_name = strrep([out_file_prefix this.name '.coo'], ' ', '_');
+            out_file_path = strrep([out_file_prefix this.name], ' ', '_');
         end
         
         function out_file_name = getCooOutPath(this, out_file_prefix)
@@ -1473,9 +1494,9 @@ classdef Coordinates < Exportable & handle
             %   out_file_path = this.getCooOutPath(<out_file_prefix>)
             
             if (nargin == 2)
-                out_file_path = [this.getOutPath(out_file_prefix) '.coo'];
+                out_file_name = [this.getOutPath(out_file_prefix) '.coo'];
             else
-                out_file_path = [this.getOutPath() '.coo'];
+                out_file_name = [this.getOutPath() '.coo'];
             end
         end
 
@@ -1639,7 +1660,12 @@ classdef Coordinates < Exportable & handle
                         catch
                             s0 = nan;
                         end
-                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f;%d\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
+                        try
+                            coo_type = this.info.coo_type(i);
+                        catch
+                            coo_type = 'U';
+                        end
+                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f;%d;%c\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
                             xyz(1), xyz(2), xyz(3), ...
                             cov(1,1), cov(2,2), cov(3,3), cov(1,2), cov(1,3), cov(2,3), ...
                             n_epo, ...
@@ -1647,7 +1673,8 @@ classdef Coordinates < Exportable & handle
                             s0_ip, ...
                             s0, ...
                             fix_ratio, ...
-                            rate);
+                            rate, ...
+                            coo_type);
                     catch ex
                         % There is an inconsistency with the entry
                         % could not add this epoch

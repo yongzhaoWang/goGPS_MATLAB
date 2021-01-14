@@ -88,7 +88,8 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
                 end
 
                 % Keep in tmp the reduced value
-                tmp(idf) = data(idf) - long_spline;
+                
+                tmp(idf) = data(idf) - long_spline(idr);
 
                 % Compute medium splines (reduce the signal weekly splines)
                 [~, ~, ~, spline] = splinerMat(time(lid_ok), [tmp(idf(lid_ok)) abs(tmp(idf(lid_ok)))], spline_base(2), 1e-5, time); % medium splines
@@ -98,7 +99,7 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
                 long_spline = long_spline + spline;
 
                 % Keep in tmp the reduced value
-                tmp(idf) = data(idf) - long_spline;
+                tmp(idf) = data(idf) - long_spline(idr);
 
                 % Remove high frequencies
                 thr = n_sigma * min(strongStd(tmp, robustness_perc), perc(abs(tmp(idf) - median(tmp(idf), 'omitnan')), robustness_perc));
@@ -108,7 +109,7 @@ function [data, lid_ko, trend, spline] = strongFilterStaticData(data, robustness
                 end
                 warning on;
 
-                spline = spline + long_spline;
+                spline = spline(idr) + long_spline(idr);
                 tmp = data(idf) - spline;
             else
                 tmp = tmp(idf);
