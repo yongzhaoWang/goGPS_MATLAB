@@ -59,7 +59,9 @@ classdef Coordinates < Exportable & handle
         DEG2RAD = pi/180;           % Convert degree to radius
         RAD2DEG = 180/pi;           % Convert radius to degree
         
-        VERSION = '1.1';              % New file version
+        VERSION = '1.2';            % New file version
+                                    % 1.1 => adding s0_ip
+                                    % 1.2 => adding observation rate
     end
     
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
@@ -71,7 +73,7 @@ classdef Coordinates < Exportable & handle
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
-        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[]) % Additional info related to the coordinate in use
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', []) % Additional info related to the coordinate in use
         std_scaling_factor = 30;
     end
         
@@ -169,11 +171,19 @@ classdef Coordinates < Exportable & handle
                 else
                     this.info.fixing_ratio(n_epo) = nan;
                 end
+                
                 % Encyclopedia
                 if not(isempty(pos.info.obs_used))
                     this.info.obs_used(n_epo) = pos.info.obs_used;
                 else
                     this.info.obs_used(n_epo) = nan;
+                end
+                
+                % Rate of the original observations
+                if not(isempty(pos.info.rate))
+                    this.info.rate(n_epo) = pos.info.rate;
+                else
+                    this.info.rate(n_epo) = nan;
                 end
             end
         end
@@ -853,7 +863,7 @@ classdef Coordinates < Exportable & handle
                     if file_ok
                         this.xyz = nan(data_stop - data_start + 1, 3);
                         n_data = data_stop - data_start + 1;
-                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'));
+                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'), 'rate', zeros(n_data, 1, 'single'));
                         this.Cxx = zeros(3, 3, n_data);
                         
                         id_cov = [col(data_type == categorical({'Cxx'})), ...
@@ -868,6 +878,7 @@ classdef Coordinates < Exportable & handle
                         id_s0_ip = col(data_type == categorical({'initialSigma0'}));
                         id_s0 = col(data_type == categorical({'sigma0'}));
                         id_fix = col(data_type == categorical({'fixingRatio'}));
+                        id_rate = col(data_type == categorical({'obsRate'}));
                         for l = 0 : (data_stop - data_start)
                             data_line = strsplit(txt(lim(data_start + l, 1) : lim(data_start + l, 2)), ';');
                             this.xyz(l + 1, 1) = str2double(data_line{data_col(1)});
@@ -890,13 +901,32 @@ classdef Coordinates < Exportable & handle
                                 this.info.n_obs(l + 1) = uint32(str2double(data_line{id_n_obs}));
                             end
                             if any(id_s0_ip)
-                                this.info.s0_ip(l + 1) = single(str2double(data_line{id_s0_ip}));
+                                if id_s0_ip > numel(data_line)
+                                    this.info.s0_ip(l + 1) = nan;
+                                else
+                                    this.info.s0_ip(l + 1) = single(str2double(data_line{id_s0_ip}));
+                                end
                             end
                             if any(id_s0)
-                                this.info.s0(l + 1) = single(str2double(data_line{id_s0}));
+                                if id_s0 > numel(data_line)
+                                    this.info.s0(l + 1) = nan;
+                                else
+                                    this.info.s0(l + 1) = single(str2double(data_line{id_s0}));
+                                end
                             end
                             if any(id_fix)
-                                this.info.fixing_ratio(l + 1) = single(str2double(data_line{id_fix}));
+                                if id_fix > numel(data_line)
+                                    this.info.fixing_ratio(l + 1) = nan;
+                                else
+                                    this.info.fixing_ratio(l + 1) = single(str2double(data_line{id_fix}));
+                                end
+                            end
+                            if any(id_rate)
+                                if id_s0 > numel(data_line)
+                                    this.info.rate(l + 1) = nan;
+                                else
+                                    this.info.rate(l + 1) = single(str2double(data_line{id_rate}));
+                                end
                             end
                         end
                         this.time = GPS_Time(timestamp);
@@ -1418,11 +1448,11 @@ classdef Coordinates < Exportable & handle
    
     methods (Access = 'public')
         
-        function out_file_name = getCooOutPath(this, out_file_prefix)
-            % Get the path to the coordinatefile
+        function out_file_name = getOutPath(this, out_file_prefix)
+            % Get the path to ag eneriv coordinate file (noextension)
             %
             % SYNTAX
-            %   out_file_path = this.getCooOutPath(<out_file_prefix>)
+            %   out_file_path = this.getOutPath(<out_file_prefix>)
             
             state = Core.getState();
             if nargin < 2 || isempty(out_file_prefix)
@@ -1436,6 +1466,19 @@ classdef Coordinates < Exportable & handle
             out_file_name = strrep([out_file_prefix this.name '.coo'], ' ', '_');
         end
         
+        function out_file_name = getCooOutPath(this, out_file_prefix)
+            % Get the path to the coordinate file
+            %
+            % SYNTAX
+            %   out_file_path = this.getCooOutPath(<out_file_prefix>)
+            
+            if (nargin == 2)
+                out_file_path = [this.getOutPath(out_file_prefix) '.coo'];
+            else
+                out_file_path = [this.getOutPath() '.coo'];
+            end
+        end
+
         function exportAsCoo(this, out_file_name)
             % Export as coo file (progressive appended file)
             % Any new entry is inserted sorted in the file
@@ -1544,6 +1587,7 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s -13            : initialSigma0\n', str_tmp);
                 str_tmp = sprintf('%s -14            : sigma0\n', str_tmp);
                 str_tmp = sprintf('%s -15            : fixingRatio\n', str_tmp);
+                str_tmp = sprintf('%s -16            : obsRate\n', str_tmp);
                 str_tmp = sprintf('%s+DataStart\n', str_tmp);
                 fprintf(fid, str_tmp);
                 
@@ -1581,6 +1625,11 @@ classdef Coordinates < Exportable & handle
                             fix_ratio = nan;
                         end
                         try
+                            rate = this.info.rate(i);
+                        catch
+                            rate = nan;
+                        end
+                        try
                             s0_ip = this.info.s0_ip(i);
                         catch
                             s0_ip = nan;
@@ -1590,14 +1639,15 @@ classdef Coordinates < Exportable & handle
                         catch
                             s0 = nan;
                         end
-                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
+                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f;%d\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
                             xyz(1), xyz(2), xyz(3), ...
                             cov(1,1), cov(2,2), cov(3,3), cov(1,2), cov(1,3), cov(2,3), ...
                             n_epo, ...
                             n_obs, ...
                             s0_ip, ...
                             s0, ...
-                            fix_ratio);
+                            fix_ratio, ...
+                            rate);
                     catch ex
                         % There is an inconsistency with the entry
                         % could not add this epoch

@@ -919,6 +919,7 @@ classdef Network < handle
                     coo.info.s0 = ones(n_coo,1) .* s0;
                     coo.info.flag = zeros(n_coo,1);
                     coo.info.fixing_ratio = ones(n_coo,1) .* ls.fix_ratio;
+                    coo.info.rate = ones(n_coo,1) .* ls.obs_rate;
                     this.rec_list(i).work.coo = coo;
                 end
                 idx_res_av = ~isnan(this.clock(:, i));
