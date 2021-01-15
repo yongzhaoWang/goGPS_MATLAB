@@ -59,12 +59,13 @@ classdef Coordinates < Exportable & handle
         DEG2RAD = pi/180;           % Convert degree to radius
         RAD2DEG = 180/pi;           % Convert radius to degree
         
-        VERSION = '1.3';            % New file version
+        VERSION = '1.4';            % New file version
                                     % 1.1 => adding s0_ip
                                     % 1.2 => adding observation rate
                                     % 1.3 => adding coo_type (fixed / non fixed)
+                                    % 1.4 => adding master_name (name of the master station used as reference, one per epoch)
     end
-    
+   
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
         name = ''                   % Name of the point (not yet used extensively)
         description = ''            % Point description
@@ -74,7 +75,7 @@ classdef Coordinates < Exportable & handle
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
-        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', []) % Additional info related to the coordinate in use
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', [], 'master_name', categorical()) % Additional info related to the coordinate in use
         
         std_scaling_factor = 30;
     end
@@ -107,7 +108,7 @@ classdef Coordinates < Exportable & handle
             try % legacy support
                 this.info = pos.info;
             catch
-                this.info =  struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', []) % Additional info related to the coordinate in use
+                this.info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', [], 'master_name', categorical()); % Additional info related to the coordinate in use
             end
             
         end
@@ -198,11 +199,18 @@ classdef Coordinates < Exportable & handle
                     this.info.rate(n_epo) = nan;
                 end
                 
-                % Rate of the original observations
+                % Coordinate type (Bernese style: F: fixed / G: rover)
                 if not(isempty(pos.info.coo_type))
                     this.info.coo_type(n_epo) = pos.info.coo_type;
                 else
                     this.info.coo_type(n_epo) = 'U';
+                end
+                
+                % Rate of the original observations
+                if not(isempty(pos.info.master_name))
+                    this.info.master_name(n_epo) = categorical(pos.info.master_name);
+                else
+                    this.info.master_name(n_epo) = categorical({this.name});
                 end
             end
         end
@@ -242,6 +250,9 @@ classdef Coordinates < Exportable & handle
             end
             if ~isempty(this.info.coo_type)
                 this.info.coo_type(idx) = [];
+            end
+            if ~isempty(this.info.master_name)
+                this.info.master_name(idx) = [];
             end
             
             this.time.remEpoch(idx);
@@ -910,7 +921,7 @@ classdef Coordinates < Exportable & handle
                     if file_ok
                         this.xyz = nan(data_stop - data_start + 1, 3);
                         n_data = data_stop - data_start + 1;
-                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'), 'rate', zeros(n_data, 1, 'single'), 'coo_type', char(ones(n_data, 1, 'uint8')) * 'U');
+                        this.info = struct('n_epo', zeros(n_data, 1, 'uint32'), 'n_obs', zeros(n_data, 1, 'uint32'), 's0', zeros(n_data, 1, 'single'), 's0_ip', zeros(n_data, 1, 'single'), 'flag', zeros(n_data, 1, 'uint8'), 'fixing_ratio', zeros(n_data, 1, 'single'), 'rate', zeros(n_data, 1, 'single'), 'coo_type', char(ones(n_data, 1, 'uint8')) * 'U', 'master_name', repmat(categorical({'UNKN'}), n_data, 1));
                         this.Cxx = zeros(3, 3, n_data);
                         
                         id_cov = [col(data_type == categorical({'Cxx'})), ...
@@ -927,6 +938,7 @@ classdef Coordinates < Exportable & handle
                         id_fix = col(data_type == categorical({'fixingRatio'}));
                         id_rate = col(data_type == categorical({'obsRate'}));
                         id_ctype = col(data_type == categorical({'cooType'}));
+                        id_master = col(data_type == categorical({'masterName'}));
                         for l = 0 : (data_stop - data_start)
                             data_line = strsplit(txt(lim(data_start + l, 1) : lim(data_start + l, 2)), ';');
                             this.xyz(l + 1, 1) = str2double(data_line{data_col(1)});
@@ -981,6 +993,13 @@ classdef Coordinates < Exportable & handle
                                     this.info.coo_type(l + 1) = nan;
                                 else
                                     this.info.coo_type(l + 1) = data_line{id_ctype};
+                                end
+                            end
+                            if any(id_master)
+                                if id_master > numel(data_line)
+                                    this.info.master_name(l + 1) = nan;
+                                else
+                                    this.info.master_name(l + 1) = categorical({data_line{id_master}});
                                 end
                             end
                         end
@@ -1644,6 +1663,7 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s -15            : fixingRatio\n', str_tmp);
                 str_tmp = sprintf('%s -16            : obsRate\n', str_tmp);
                 str_tmp = sprintf('%s -17            : cooType\n', str_tmp);
+                str_tmp = sprintf('%s -18            : masterName\n', str_tmp);
                 str_tmp = sprintf('%s+DataStart\n', str_tmp);
                 fprintf(fid, str_tmp);
                 
@@ -1700,7 +1720,12 @@ classdef Coordinates < Exportable & handle
                         catch
                             coo_type = 'U';
                         end
-                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f;%d;%c\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
+                        try
+                            master_name = this.info.master_name(i);
+                        catch
+                            master_name = this.name;
+                        end
+                        str_tmp = sprintf('%s%s;%s;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%.4f;%d;%d;%.3f;%.4f;%.2f;%d;%c;%s\n', str_tmp, time, now_time.toString('yyyy-mm-dd HH:MM:SS'), ...
                             xyz(1), xyz(2), xyz(3), ...
                             cov(1,1), cov(2,2), cov(3,3), cov(1,2), cov(1,3), cov(2,3), ...
                             n_epo, ...
@@ -1709,7 +1734,8 @@ classdef Coordinates < Exportable & handle
                             s0, ...
                             fix_ratio, ...
                             rate, ...
-                            char(coo_type));
+                            char(coo_type), ...
+                            master_name);
                     catch ex
                         % There is an inconsistency with the entry
                         % could not add this epoch
@@ -1764,7 +1790,8 @@ classdef Coordinates < Exportable & handle
             clear base name ext;
             
             log  = Logger.getInstance;
-            log.addMarkedMessage(sprintf('Updating coordinates to %s', out_file_name));
+            log.addMarkedMessage(sprintf('Berny Export to "%s"', [out_file_name, '.crd']));
+            log.addMarkedMessage(sprintf('Berny Export to "%s"', [out_file_name, '.out']));
             try
                 data_start = 3;
                 if exist([out_file_name, '.crd'], 'file') == 2
@@ -1819,7 +1846,7 @@ classdef Coordinates < Exportable & handle
                 e = 1; % old epoch
                 for i = 1 : this.time.length
                     cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
-                    while e <= numel(timestamp) && (cur_time > (timestamp(e) + (sol_rate / 86400)/2))
+                    while e <= numel(timestamp) && ((cur_time - 1e-5) > (timestamp(e) + (sol_rate / 86400)/2))
                         old_line = txt_crd(lim_crd(data_start + (e-1),1):lim_crd(data_start + (e-1),2));
                         str_crd = sprintf('%s%s\n', str_crd, old_line);
                         old_line = txt_out(lim_out(data_start + (e-1),1):lim_out(data_start + (e-1),2));
@@ -1876,15 +1903,26 @@ classdef Coordinates < Exportable & handle
                         end
                         try
                             coo_type = char(this.info.coo_type(i));
+                            if coo_type == 'F'
+                                std_enu(i,:) = nan;
+                                std_xyz(i,:) = nan;
+                            end
                         catch
-                            coo_type = 0;
+                            coo_type = 'U';
                         end
+                        try
+                            master_name = sprintf('%4s', this.info.master_name(i));
+                        catch
+                            master_name = sprintf('%4s', this.name);
+                        end
+                        master_name = master_name(1:4);
+                        
                         str_crd = sprintf('%s%04d-%1d %04d-%03d %s 0 %s %s %4s %6.2f %15.5f %15.5f %15.5f %15.5f %15.5f %15.5f %1c %8.2f %8.2f %8.2f %8.2f\n', str_crd, ...
                             week,dow, ...
                             year,doy, ...
                             date_str, ...
                             time_start, time_stop, ...
-                            upper(this.name(1:max(4,numel(this.name)))), ...
+                            master_name, ...
                             s0_ip, ...
                             xyz(1), xyz(2), xyz(3), ...
                             enu(i,1), enu(i,2), enu(i,3), ...
@@ -1905,7 +1943,7 @@ classdef Coordinates < Exportable & handle
                         log.addWarning('There is a corrupted coordinate');
                     end
                     % Skip recomputed old epochs
-                    while e <= numel(timestamp) && (cur_time == (timestamp(e) + (sol_rate / 86400)/2))
+                    while e <= numel(timestamp) && (abs(cur_time - (timestamp(e) + (sol_rate / 86400)/2)) < 1e-5)
                         e = e +1;
                     end
                 end
