@@ -868,7 +868,7 @@ classdef Receiver_Output < Receiver_Commons
                     else
                         try
                             state = Core.getState;
-                            discard_time = state.getSessionLimits;
+                            [~, discard_time] = state.getSessionLimits;
                             idx_rem = this.coo.time >= discard_time.first & this.coo.time <= discard_time.last;
                             this.coo.rem(idx_rem);
                         catch ex

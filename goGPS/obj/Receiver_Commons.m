@@ -312,6 +312,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 coo.info.fixing_ratio = 0;
                 coo.info.coo_type = iif(this.isFixed || this.isFixedPrepro, 'F', 'G');
                 coo.info.rate = this.time.getRate;
+                coo.info.master_name = categorical({this.parent.getMarkerName4Ch});
             elseif flag_add_coo == 0
                 coo = this.coo;
                 % Fallback (in case of empty coo)
