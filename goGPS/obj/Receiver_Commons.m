@@ -193,6 +193,24 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             cc = Core.getState.getConstellationCollector;
         end
         
+        function is_fixed = isFixed(this)
+            % Is the position of this station fixed?
+            %
+            % SYNTAX
+            %   is_fixed = this.isFixed()
+            rf = Core.getReferenceFrame;
+            is_fixed = rf.isFixed(this.parent.getMarkerName4Ch);
+        end
+        
+        function is_fixed = isFixedPrepro(this)
+            % Is the position of this station fixed for pre-processing?
+            %
+            % SYNTAX
+            %   is_fixed = this.isFixedPrepro()
+            rf = Core.getReferenceFrame;
+            is_fixed = rf.isFixedPrepro(this.parent.getMarkerName4Ch);
+        end
+        
         function toStringPos(this)
             % Display on screen information about the receiver position
             % SYNTAX this.toStringPos();
@@ -272,6 +290,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             end
             
             if flag_add_coo == -100
+                % Get it from PrePro (or old PPP)
                 if ~isempty(this.xyz)
                     coo = Coordinates.fromXYZ(this.xyz);
                 elseif ~isempty(this.parent.work.xyz)
@@ -285,6 +304,14 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         coo.setTime(tmp);
                     end
                 end
+                coo.info.n_epo = this.quality_info.n_epochs;
+                coo.info.n_obs = this.quality_info.n_obs;
+                coo.info.s0 = this.quality_info.s0;
+                coo.info.s0_ip = this.quality_info.s0_ip;
+                coo.info.flag = 0;
+                coo.info.fixing_ratio = 0;
+                coo.info.coo_type = iif(this.isFixed || this.isFixedPrepro, 'F', 'G');
+                coo.info.rate = this.time.getRate;
             elseif flag_add_coo == 0
                 coo = this.coo;
                 % Fallback (in case of empty coo)

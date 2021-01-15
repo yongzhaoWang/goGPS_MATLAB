@@ -732,8 +732,42 @@ classdef GNSS_Station < handle
                         out_file_name = coo.getCooOutPath(out_file_prefix);
                     end
                     coo.exportAsCoo(out_file_name)
+                end
+            end
+        end
+        
+        function exportAppendedBernyCoo(sta_list, mode, out_file_prefix)
+            % Export the current value of the coordinate to a CRD and OUT file as Bernese software does
+            %
+            % INPUT:
+            %   mode             it could be 'out' (dafault), 'work', ...(future modes)
+            %   out_file_prefix  prefix of the out file
+            %
+            % SYNTAX:
+            %   this.exportAppendedBernyCoo(this, <mode = 'out'>, <out_file_name>)
+            
+            % Remove empty receivers
+            if nargin < 2 || isempty(mode)
+                mode = 'out'; % use median out coordinates
+            end
+            flag_out = strcmpi(mode, 'out');
+            
+            sta_list = sta_list(~sta_list.isEmpty_mr);
+            if ~isempty(sta_list)
+                log = Core.getLogger;
+                for rec = sta_list(:)'
+                    if flag_out && not(rec.isEmptyOut_mr)
+                        coo = rec.out.getPos;
+                    else
+                        coo = rec.work.getPos;
+                    end
                     
-                    
+                    if nargin < 3 || isempty(out_file_prefix)
+                        out_file_name = coo.getOutPath();
+                    else
+                        out_file_name = coo.getOutPath(out_file_prefix);
+                    end
+                    coo.exportAsBerny(out_file_name)
                 end
             end
         end

@@ -1036,7 +1036,7 @@ classdef GPS_Time < Exportable & handle
                 is_ext = false;
             end
             
-            nominal_time_zero = round(this.first.getMatlabTime() * 2)/2; % round at the closest time
+            nominal_time_zero = round(this.first.getMatlabTime()); % round at the closest time
             rinex_time = this.getRefTime(nominal_time_zero);
             nominal_time = round(rinex_time / rate) * rate;
                 

@@ -104,6 +104,12 @@ classdef Coordinates < Exportable & handle
             catch
                 this.v_xyz = [];
             end
+            try % legacy support
+                this.info = pos.info;
+            catch
+                this.info =  struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', []) % Additional info related to the coordinate in use
+            end
+            
         end
         
         function copy = getCopy(this)
@@ -210,6 +216,34 @@ classdef Coordinates < Exportable & handle
             if ~isempty(this.Cxx) 
                 this.Cxx(:,:,idx) = [];
             end
+            if ~isempty(this.v_xyz) 
+                this.v_xyz(idx,:) = [];
+            end
+            if ~isempty(this.info.n_epo)
+                this.info.n_epo(idx) = [];
+            end
+            if ~isempty(this.info.n_obs)
+                this.info.n_obs(idx) = [];
+            end
+            if ~isempty(this.info.s0)
+                this.info.s0(idx) = [];
+            end
+            if ~isempty(this.info.s0_ip)
+                this.info.s0_ip(idx) = [];
+            end
+            if ~isempty(this.info.flag)
+                this.info.flag(idx) = [];
+            end
+            if ~isempty(this.info.fixing_ratio)
+                this.info.fixing_ratio(idx) = [];
+            end
+            if ~isempty(this.info.rate)
+                this.info.rate(idx) = [];
+            end
+            if ~isempty(this.info.coo_type)
+                this.info.coo_type(idx) = [];
+            end
+            
             this.time.remEpoch(idx);
         end
         
@@ -946,7 +980,7 @@ classdef Coordinates < Exportable & handle
                                 if id_ctype > numel(data_line)
                                     this.info.coo_type(l + 1) = nan;
                                 else
-                                    this.info.coo_type(l + 1) = single(str2double(data_line{id_ctype}));
+                                    this.info.coo_type(l + 1) = data_line{id_ctype};
                                 end
                             end
                         end
@@ -1029,8 +1063,8 @@ classdef Coordinates < Exportable & handle
             thr = 0.8;
             flag_distr = false;
             
-            str_title{2} = sprintf('STD (detrended)');
-            str_title{3} = sprintf('STD (detrended)');
+            str_title{2} = sprintf('STD (vs smoothed signal)');
+            str_title{3} = sprintf('STD (vs smoothed signal)');
             log = Core.getLogger();
             for i = 1 : numel(coo_list)
                 pos = coo_list(i);
@@ -1362,8 +1396,8 @@ classdef Coordinates < Exportable & handle
                             enu_diff = enu_diff(id_ok, :);
                             t = t(id_ok);
                         end
-                        str_title{1} = sprintf('Position detrended planar Up [mm]\nSTD (detrended)');
-                        str_title{3} = sprintf('STD (detrended)');
+                        str_title{1} = sprintf('Position detrended planar Up [mm]\nSTD (vs smoothed signal)');
+                        str_title{3} = sprintf('STD (vs smoothed signal)');
                         fh = figure('Visible', 'off'); Core_UI.beautifyFig(fh);
                         if numel(coo_list) > 1
                             fh.Name = sprintf('%03d: dPUP MR', fh.Number); fh.NumberTitle = 'off';
@@ -1609,6 +1643,7 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s -14            : sigma0\n', str_tmp);
                 str_tmp = sprintf('%s -15            : fixingRatio\n', str_tmp);
                 str_tmp = sprintf('%s -16            : obsRate\n', str_tmp);
+                str_tmp = sprintf('%s -17            : cooType\n', str_tmp);
                 str_tmp = sprintf('%s+DataStart\n', str_tmp);
                 fprintf(fid, str_tmp);
                 
@@ -1674,7 +1709,7 @@ classdef Coordinates < Exportable & handle
                             s0, ...
                             fix_ratio, ...
                             rate, ...
-                            coo_type);
+                            char(coo_type));
                     catch ex
                         % There is an inconsistency with the entry
                         % could not add this epoch
@@ -1694,6 +1729,204 @@ classdef Coordinates < Exportable & handle
                 fprintf(fid, str_tmp);
                 fprintf(fid, '+DataEnd\n');
                 fclose(fid);
+                log.addStatusOk(sprintf('Exporting completed successfully'));
+            catch ex
+                Core_Utils.printEx(ex);
+                log.addError(sprintf('Exporting failed'));
+            end
+        end
+
+        function exportAsBerny(this, out_file_name)
+            % Export as CRD and OUT file as Bernese does
+            % Compatibility layer with GeoGuard
+            %
+            % INPUT
+            %   out_file_name   full path of the filename (as default exported into outDir with the name of the coo) 
+            %                   without extension
+            %
+            % SYNTAX
+            %   coo.exportAsBerny(<out_file_name>)
+            
+            now_time = GPS_Time.now();
+            if nargin < 2 || isempty(out_file_name)
+                out_file_name = this.getOutPath();
+            end
+            %remove extension if present
+            [base, fname, fext] = fileparts(out_file_name);
+            if not(exist(base, 'dir'))
+                try
+                    mkdir(base);
+                catch ex
+                    Core_UI.printEx(ex);
+                end
+            end
+            out_file_name = fullfile(base, fname);
+            clear base name ext;
+            
+            log  = Logger.getInstance;
+            log.addMarkedMessage(sprintf('Updating coordinates to %s', out_file_name));
+            try
+                data_start = 3;
+                if exist([out_file_name, '.crd'], 'file') == 2
+                    % Read and append
+                    [txt_crd, lim_crd] = Core_Utils.readTextFile([out_file_name, '.crd'], 3);
+                    [txt_out, lim_out] = Core_Utils.readTextFile([out_file_name, '.out'], 3);
+                    if isempty(lim_crd)
+                        file_ok = false;
+                        timestamp = [];
+                    else
+                        % Data should be present
+                        file_ok = true;
+                        timestamp = [];
+                        id_len_ok = find(lim_crd(:,3)+1 >= 9);
+                        lim_crd = lim_crd(id_len_ok,:);
+                        try
+                            % Read old timestamps
+                            timestamp = datenum(txt_crd(lim_crd(data_start:end,1) + repmat([16:25 28:36],size(lim_crd,1)-2,1)), 'yyyy-mm-dd HH:MM:SS');
+                        catch
+                            file_ok = false;
+                            timestamp = [];
+                        end   
+                    end
+                else
+                    file_ok = false;
+                    timestamp = [];
+                end
+                
+                % Write header OUT
+                str_out = '';
+                str_out = sprintf('%swwww-d yyyy-ddd yyyy-mm-dd s   start    end    n epochs    n C1     n C2     n L1     n L2    RMSCode (m) Rate (s) \n',str_out);
+                str_out = sprintf('%s------+--------+----------+-+--------+--------+---------+--------+--------+--------+--------+------------+--------+\n',str_out);
+
+                % Write header CRD
+                str_crd = '';
+                str_crd = sprintf('%swwww-d yyyy-ddd yyyy-mm-dd s   start    end    MAST  CRMS        X (m)          Y (m)            Z (m)         EAST (m)       NORTH (m)         UP (m)     F  sE(mm)   sN(mm)   sU(mm)  s3D (mm) \n',str_crd);
+                str_crd = sprintf('%s------+--------+----------+-+--------+--------+----+------+---------------+---------------+---------------+---------------+---------------+---------------+-+--------+--------+--------+--------+\n',str_crd);
+
+                sol_rate = median(diff(this.time.getMatlabTime*86400), 'omitnan');
+                if isempty(sol_rate) || isnan(sol_rate)
+                    if numel(timestamp) < 2
+                        sol_rate = Core.getState.sss_duration;
+                    else
+                        sol_rate = median(diff(timestamp * 86400), 'omitnan');
+                    end
+                end
+                enu = this.getENU;
+                std_enu = this.getStdENU;
+                std_xyz = this.getStdXYZ;
+                
+                % Append New
+                e = 1; % old epoch
+                for i = 1 : this.time.length
+                    cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
+                    while e <= numel(timestamp) && (cur_time > (timestamp(e) + (sol_rate / 86400)/2))
+                        old_line = txt_crd(lim_crd(data_start + (e-1),1):lim_crd(data_start + (e-1),2));
+                        str_crd = sprintf('%s%s\n', str_crd, old_line);
+                        old_line = txt_out(lim_out(data_start + (e-1),1):lim_out(data_start + (e-1),2));
+                        str_out = sprintf('%s%s\n', str_out, old_line);
+                        e = e +1;
+                    end
+                    try
+                        tmp_time = this.time.getEpoch(i);
+                        [year, doy] = tmp_time.getDOY;
+                        [week, sow, dow] = tmp_time.getGpsWeek;
+                        date_str = tmp_time.toString('yyyy-mm-dd');
+                        tmp_time.addIntSeconds(-sol_rate/2);
+                        time_start = tmp_time.toString('HH:MM:SS');
+                        tmp_time.addIntSeconds(+sol_rate-1);
+                        time_stop = tmp_time.toString('HH:MM:SS');
+                        xyz = this.xyz(i,:);
+                        if isempty(this.Cxx)
+                            cov = zeros(3,3);
+                        else
+                            cov = this.Cxx(:,:,i)*1e6;
+                        end
+                        try
+                        n_epo = this.info.n_epo(i);
+                        catch
+                            n_epo = nan;
+                        end
+                        try
+                            n_obs = this.info.n_obs(i);
+                        catch
+                            n_obs = nan;
+                        end
+                        try
+                            fix_ratio = this.info.fixing_ratio(i);
+                        catch
+                            fix_ratio = nan;
+                        end
+                        try
+                            rate = this.info.rate(i);
+                        catch
+                            rate = nan;
+                        end
+                        try
+                            s0_ip = this.info.s0_ip(i);
+                        catch
+                            s0_ip = nan;
+                        end
+                        if s0_ip > 999
+                            s0_ip = 999;
+                        end
+                        try
+                            s0 = this.info.s0(i);
+                        catch
+                            s0 = nan;
+                        end
+                        try
+                            coo_type = char(this.info.coo_type(i));
+                        catch
+                            coo_type = 0;
+                        end
+                        str_crd = sprintf('%s%04d-%1d %04d-%03d %s 0 %s %s %4s %6.2f %15.5f %15.5f %15.5f %15.5f %15.5f %15.5f %1c %8.2f %8.2f %8.2f %8.2f\n', str_crd, ...
+                            week,dow, ...
+                            year,doy, ...
+                            date_str, ...
+                            time_start, time_stop, ...
+                            upper(this.name(1:max(4,numel(this.name)))), ...
+                            s0_ip, ...
+                            xyz(1), xyz(2), xyz(3), ...
+                            enu(i,1), enu(i,2), enu(i,3), ...
+                            char(coo_type), ...
+                            std_enu(i,1).*1e3, std_enu(i,2).*1e3, std_enu(i,3).*1e3, ...
+                            sqrt(sum(std_xyz(i,:).^2)).*1e3);
+                        str_out = sprintf('%s%04d-%1d %04d-%03d %s 0 %s %s %8d  %7d  %7d  %7d  %7d %12.2f %8d\n', str_out, ...
+                            week,dow, ...
+                            year,doy, ...
+                            date_str, ...
+                            time_start, time_stop, ...
+                            n_epo, 0, 0, n_obs, 0, ...
+                            s0_ip, ...
+                            rate);
+                    catch ex
+                        % There is an inconsistency with the entry
+                        % could not add this epoch
+                        log.addWarning('There is a corrupted coordinate');
+                    end
+                    % Skip recomputed old epochs
+                    while e <= numel(timestamp) && (cur_time == (timestamp(e) + (sol_rate / 86400)/2))
+                        e = e +1;
+                    end
+                end
+                
+                %  Insert old epochs not yet recomputed
+                while e <= numel(timestamp)
+                    old_line = txt_crd(lim_crd(data_start + (e-1),1):lim_crd(data_start + (e-1),2));
+                    str_crd = sprintf('%s%s\n', str_crd, old_line);
+                    old_line = txt_out(lim_out(data_start + (e-1),1):lim_out(data_start + (e-1),2));
+                    str_out = sprintf('%s%s\n', str_out, old_line);
+                    e = e +1;
+                end
+                
+                fid_out = fopen([out_file_name '.out'], 'Wb');                
+                fprintf(fid_out, str_out);
+                fclose(fid_out);
+                
+                fid_crd = fopen([out_file_name '.crd'], 'Wb');
+                fprintf(fid_crd, str_crd);
+                fclose(fid_crd);
+                
                 log.addStatusOk(sprintf('Exporting completed successfully'));
             catch ex
                 Core_Utils.printEx(ex);
