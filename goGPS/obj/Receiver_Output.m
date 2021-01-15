@@ -866,6 +866,15 @@ classdef Receiver_Output < Receiver_Commons
                     if isempty(this.coo)
                         this.coo = rec_work.getPos;
                     else
+                        try
+                            state = Core.getState;
+                            discard_time = state.getSessionLimits;
+                            idx_rem = this.coo.time >= discard_time.first & this.coo.time <= discard_time.last;
+                            this.coo.rem(idx_rem);
+                        catch ex
+                            Core_Utils.printEx(ex);
+                        end
+                        
                         this.coo.append(rec_work.getPos);
                     end
                     log.addMarkedMessage(sprintf('Computed results for receiver "%s" have been imported into out object', this.parent.getMarkerName4Ch()));

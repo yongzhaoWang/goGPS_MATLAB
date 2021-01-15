@@ -4420,20 +4420,10 @@ classdef Receiver_Work_Space < Receiver_Commons
             end
         end
         
-        function is_fixed = isFixed(this)
-            rf = Core.getReferenceFrame;
-            is_fixed = rf.isFixed(this.parent.getMarkerName4Ch);
-        end
-        
-         function is_fixed = isFixedPrepro(this)
-            rf = Core.getReferenceFrame;
-            is_fixed = rf.isFixedPrepro(this.parent.getMarkerName4Ch);
-        end
-        
-        function is_fixed = hasGoodApriori(this)
+        function has_good = hasGoodApriori(this)
             % this is meant to skip any positionin based on code and estimate the postionon only in PPP or network phase adjutsment
             rf = Core.getReferenceFrame;
-            is_fixed = rf.hasGoodAPriori(this.parent.getMarkerName4Ch);
+            has_good = rf.hasGoodAPriori(this.parent.getMarkerName4Ch);
         end
         
         function has_apr = hasAPriori(this)

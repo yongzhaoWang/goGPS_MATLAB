@@ -207,6 +207,7 @@ classdef Command_Interpreter < handle
         PAR_E_TROPO_HN  % Tropo export Parameter hn format
 
         PAR_E_COO_TXT   % Coordinates in goGPS coo format
+        PAR_E_COO_BRN   % Coordinates in goGPS Bernese CRD + OUT format
         PAR_E_COO_CRD   % Coordinates in goGPS crd format
         PAR_E_XYZ_TXT   % Coordinates XYZ in plain text format
         PAR_E_ENU_TXT   % Coordinates ENU in plain text format
@@ -872,6 +873,13 @@ classdef Command_Interpreter < handle
             this.PAR_E_COO_TXT.limits = [];
             this.PAR_E_COO_TXT.accepted_values = {};
             
+            this.PAR_E_COO_BRN.name = 'Stored coordinates Bernese format';
+            this.PAR_E_COO_BRN.descr = 'COO_BRN            Coordinates .CRD + .OUT file (one per receiver)';
+            this.PAR_E_COO_BRN.par = '(coo_brn)|(COO_BRN)';
+            this.PAR_E_COO_BRN.class = '';
+            this.PAR_E_COO_BRN.limits = [];
+            this.PAR_E_COO_BRN.accepted_values = {};
+            
             this.PAR_E_XYZ_TXT.name = 'Coordinates XYZ in plain text format';
             this.PAR_E_XYZ_TXT.descr = 'XYZ_TXT            Coordinates XYZ in plain text format';
             this.PAR_E_XYZ_TXT.par = '(xyz_txt)|(XYZ_TXT)';
@@ -1038,7 +1046,7 @@ classdef Command_Interpreter < handle
             this.CMD_EXPORT.name = {'EXPORT', 'export'};
             this.CMD_EXPORT.descr = 'Export';
             this.CMD_EXPORT.rec = 'T';
-            this.CMD_EXPORT.par = [this.PAR_E_CORE_MAT this.PAR_E_PLAIN_MAT this.PAR_E_REC_MAT this.PAR_E_REC_RIN this.PAR_E_MP this.PAR_E_COO_CRD this.PAR_E_COO_TXT this.PAR_E_XYZ_TXT this.PAR_E_ENU_TXT  this.PAR_E_GEO_TXT this.PAR_E_TROPO_SNX this.PAR_E_TROPO_MAT this.PAR_E_TROPO_CSV this.PAR_E_TROPO_HN];
+            this.CMD_EXPORT.par = [this.PAR_E_CORE_MAT this.PAR_E_PLAIN_MAT this.PAR_E_REC_MAT this.PAR_E_REC_RIN this.PAR_E_MP this.PAR_E_COO_CRD this.PAR_E_COO_TXT this.PAR_E_COO_BRN this.PAR_E_XYZ_TXT this.PAR_E_ENU_TXT  this.PAR_E_GEO_TXT this.PAR_E_TROPO_SNX this.PAR_E_TROPO_MAT this.PAR_E_TROPO_CSV this.PAR_E_TROPO_HN];
             
             this.CMD_PUSHOUT.name = {'PUSHOUT', 'pushout'};
             this.CMD_PUSHOUT.descr = ['Push results in output' new_line 'when used it disables automatic push'];
@@ -1618,6 +1626,7 @@ classdef Command_Interpreter < handle
                 par = strrep(par, '''', '');
                 if ~isempty(par)                    
                     % Try to modify par into state
+                    full_tok{p} = strrep(full_tok{p}, '${PRJ_NAME}', strrep(Core.getState.getPrjName,' ', '_'));
                     value = Ini_Manager.str2value(strrep(full_tok{p},'''', '"'));
                     err_code = state.set(par, value);
                     if ~err_code
@@ -3082,6 +3091,13 @@ classdef Command_Interpreter < handle
                         rec.exportAppendedCoo('out');
                     else % run in single session mode (work)
                         rec.exportAppendedCoo('work');
+                    end
+                    flag_crd = flag_crd + 1;
+                elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_E_COO_BRN.par ')*$'], 'once'))
+                    if sss_lev == 0 % run on all the results (out)
+                        rec.exportAppendedBernyCoo('out');
+                    else % run in single session mode (work)
+                        rec.exportAppendedBernyCoo('work');
                     end
                     flag_crd = flag_crd + 1;
                 elseif ~isempty(regexp(tok{t}, ['^(' this.PAR_E_XYZ_TXT.par ')*$'], 'once'))
