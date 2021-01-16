@@ -1677,13 +1677,12 @@ classdef Coordinates < Exportable & handle
                 for i = id_time(:)'
                     cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
                     while e <= numel(timestamp) && (cur_time - 1e-5 > timestamp(e))
-                        old_line = txt(lim(data_start + (e-1),1):lim(data_start + (e-1),2))
+                        old_line = txt(lim(data_start + (e-1),1):lim(data_start + (e-1),2));
                         str_tmp = sprintf('%s%s\n', str_tmp, old_line);
-                        e = e +1
+                        e = e + 1;
                     end
                     try
                         time = this.time.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS');
-                        fprintf('%d - %s\n', i, time);
                         xyz = this.xyz(i,:);
                         if isempty(this.Cxx)
                             cov = zeros(3,3);
@@ -1748,9 +1747,8 @@ classdef Coordinates < Exportable & handle
                     end
                     % Skip recomputed old epochs
                     while e <= numel(timestamp) && (abs(cur_time - timestamp(e)) < 1e-5)
-                        e = e + 1
+                        e = e + 1;
                     end
-                    fprintf('%d) Actual e %d\n',i, e);
                 end
                 %  Insert old epochs not yet recomputed
                 while e <= numel(timestamp)
