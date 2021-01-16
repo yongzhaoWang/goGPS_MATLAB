@@ -208,7 +208,13 @@ classdef Coordinates < Exportable & handle
                 
                 % Rate of the original observations
                 if not(isempty(pos.info.master_name))
-                    this.info.master_name(n_epo) = categorical(pos.info.master_name);
+                    if ischar(pos.info.master_name)
+                        % This should not appen but now it's managed.... mmmm
+                        tmp_name = sprintf('%4s', pos.info.master_name);
+                        this.info.master_name(n_epo) = categorical({tmp_name(1:4)});
+                    else
+                        this.info.master_name(n_epo) = categorical(pos.info.master_name);
+                    end
                 else
                     this.info.master_name(n_epo) = categorical({this.name});
                 end
@@ -1629,7 +1635,6 @@ classdef Coordinates < Exportable & handle
                     timestamp = [];
                 end
                 
-                fid = fopen(out_file_name, 'Wb');
                 if not(file_ok)
                     str_tmp = sprintf('+Description    : XYZ Position file generated on %s\n', now_time.toString('dd-mmm-yyyy HH:MM'));
                 end
@@ -1665,20 +1670,20 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s -17            : cooType\n', str_tmp);
                 str_tmp = sprintf('%s -18            : masterName\n', str_tmp);
                 str_tmp = sprintf('%s+DataStart\n', str_tmp);
-                fprintf(fid, str_tmp);
                 
                 % Append New
-                str_tmp = '';
                 e = 1; % old epoch
-                for i = 1 : this.time.length
+                [~, id_time] = sort(this.time.getMatlabTime);
+                for i = id_time(:)'
                     cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
-                    while e <= numel(timestamp) && (cur_time > timestamp(e))
-                        old_line = txt(lim(data_start + (e-1),1):lim(data_start + (e-1),2));
+                    while e <= numel(timestamp) && (cur_time - 1e-5 > timestamp(e))
+                        old_line = txt(lim(data_start + (e-1),1):lim(data_start + (e-1),2))
                         str_tmp = sprintf('%s%s\n', str_tmp, old_line);
-                        e = e +1;
+                        e = e +1
                     end
                     try
                         time = this.time.getEpoch(i).toString('yyyy-mm-dd HH:MM:SS');
+                        fprintf('%d - %s\n', i, time);
                         xyz = this.xyz(i,:);
                         if isempty(this.Cxx)
                             cov = zeros(3,3);
@@ -1742,9 +1747,10 @@ classdef Coordinates < Exportable & handle
                         log.addWarning('There is a corrupted coordinate');
                     end
                     % Skip recomputed old epochs
-                    while e <= numel(timestamp) && (cur_time == timestamp(e))
-                        e = e +1;
+                    while e <= numel(timestamp) && (abs(cur_time - timestamp(e)) < 1e-5)
+                        e = e + 1
                     end
+                    fprintf('%d) Actual e %d\n',i, e);
                 end
                 %  Insert old epochs not yet recomputed
                 while e <= numel(timestamp)
@@ -1752,6 +1758,7 @@ classdef Coordinates < Exportable & handle
                     str_tmp = sprintf('%s%s\n', str_tmp, old_line);
                     e = e +1;
                 end
+                fid = fopen(out_file_name, 'Wb');
                 fprintf(fid, str_tmp);
                 fprintf(fid, '+DataEnd\n');
                 fclose(fid);
@@ -1844,7 +1851,8 @@ classdef Coordinates < Exportable & handle
                 
                 % Append New
                 e = 1; % old epoch
-                for i = 1 : this.time.length
+                [~, id_time] = sort(this.time.getMatlabTime);
+                for i = id_time(:)'
                     cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
                     while e <= numel(timestamp) && ((cur_time - 1e-5) > (timestamp(e) + (sol_rate / 86400)/2))
                         old_line = txt_crd(lim_crd(data_start + (e-1),1):lim_crd(data_start + (e-1),2));
