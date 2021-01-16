@@ -1003,7 +1003,7 @@ classdef Coordinates < Exportable & handle
                             end
                             if any(id_master)
                                 if id_master > numel(data_line)
-                                    this.info.master_name(l + 1) = nan;
+                                    this.info.master_name(l + 1) = categorical({'UNKN'});
                                 else
                                     this.info.master_name(l + 1) = categorical({data_line{id_master}});
                                 end
