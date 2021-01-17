@@ -138,7 +138,7 @@ classdef Network < handle
                 mp_type = 0;
             end
             
-            recs = Core.getRecList();
+            recs = this.rec_list;
             
             for i = 1 : length(recs)
                 if ~recs(i).work.isEmpty
@@ -146,7 +146,6 @@ classdef Network < handle
                     recs(i).work.remGroupDelayNew();
                 end
             end
-            
             
             if nargin < 2 || any(isnan(id_ref)) || isempty(id_ref)
                 lid_ref = true(size(this.net_id));
@@ -156,7 +155,19 @@ classdef Network < handle
                 [~, idx_ref] = intersect(this.net_id, id_ref);
                 lid_ref(idx_ref) = true;
             end
+            
             works = [this.rec_list.work];
+            % If the network start, the flag of the a-priori coordinate of a rover should not be fixed 
+            % Even if it was fixed during pre-processing
+            for w = 1 : numel(works)
+                if isempty(works(w).coo)
+                    works(w).coo = works(w).getPos;
+                end
+                if w ~= id_ref && ~works(w).isFixed
+                    works(w).coo.info.coo_type(:) = 'G';
+                end
+            end
+            
             is_empty_recs = ~works.hasRangeObs_mr;
             n_valid_rec = sum(~is_empty_recs);
             n_valid_ref = sum(~is_empty_recs(lid_ref));
@@ -190,7 +201,6 @@ classdef Network < handle
                     [~, id_ref] = intersect(this.net_id, id_ref);
                     lid_ref(id_ref) = true;
                 end
-                l_fixed = 0; % nothing is Fixed
                 is_empty_recs = ~this.rec_list.hasRangeObs_mr;
                 e = find(is_empty_recs);
                 if ~isempty(e)
@@ -199,13 +209,6 @@ classdef Network < handle
                 end
                 id_ref = find(lid_ref);
                 this.id_ref = id_ref;
-                
-                if state.getReweightNET() < 2
-                    n_clean = 0;
-                else
-                    log.addMessage(this.log.indent('Network solution performing 4 loops of outlier detection on the residuals'), 2);
-                    n_clean = 3;
-                end
                 
                 % If buffers are present perform a mximum of two iterations (one with them,
                 % one without) otherwise just loop once
@@ -885,10 +888,7 @@ classdef Network < handle
             % Save in work the results computed by the network object
             %
             % INPUT
-            %   s0          sigma of the solution
-            %   res         all the residuals
             %   ls          Least Squares solver object
-            %   l_fixed     array of flag for the fixed ambiguities
             %
             % SYNTAX
             %    this = pushBackInReceiver(s0, res, l_fixed)
@@ -1046,48 +1046,48 @@ classdef Network < handle
             idx_sat_y = ls.class_par == LS_Manipulator_new.PAR_SAT_Y;
             idx_sat_z = ls.class_par == LS_Manipulator_new.PAR_SAT_Z;
             if sum(idx_sat_x) > 0 |  sum(idx_sat_y) > 0 | sum(idx_sat_z) > 0
-            coord = zeros(this.common_time.length,length(ls.unique_sat_goid),3);
-            spline_rate = ls.ls_parametrization.sat_x_opt.spline_rate;
-            spline_order = 3;
-            for s = 1 : length(ls.unique_sat_goid)
-                idx_sat_x_s = idx_sat_x & ls.sat_par == ls.unique_sat_goid(s);
-                idx_sat_y_s = idx_sat_y & ls.sat_par == ls.unique_sat_goid(s);
-                idx_sat_z_s = idx_sat_z & ls.sat_par == ls.unique_sat_goid(s);
-                if sum(idx_sat_x_s) > 0
-                    xs = ls.x(idx_sat_x_s);
-                    x_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
-                    x_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
-                    [~,x_idx] = ismember(x_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
-                    valid_ep = x_idx ~=0 & x_idx <= (length(xs)-3);
-                    spline_base = Core_Utils.spline(x_dt(valid_ep),3);
-                    xcoord =sum(spline_base .* xs(repmat(x_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(x_idx(valid_ep)), 1)), 2);
-                    
-                    ys = ls.x(idx_sat_y_s);
-                    y_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
-                    y_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
-                    [~,y_idx] = ismember(y_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
-                    valid_ep = y_idx ~=0 & y_idx <= (length(ys)-3);
-                    spline_base = Core_Utils.spline(y_dt(valid_ep),3);
-                    ycoord =sum(spline_base .* ys(repmat(y_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(y_idx(valid_ep)), 1)), 2);
-                    
-                    zs = ls.x(idx_sat_z_s);
-                    z_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
-                    z_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
-                    [~,z_idx] = ismember(z_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
-                    valid_ep = z_idx ~=0 & z_idx <= (length(zs)-3);
-                    spline_base = Core_Utils.spline(z_dt(valid_ep),3);
-                    zcoord =sum(spline_base .* zs(repmat(z_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(z_idx(valid_ep)), 1)), 2);
-                    
-                    coord(valid_ep,s,1) = coord(valid_ep,s,1) + xcoord;
-                    coord(valid_ep,s,2) = coord(valid_ep,s,2) + ycoord;
-                    coord(valid_ep,s,3) = coord(valid_ep,s,3) + zcoord;
-
+                coord = zeros(this.common_time.length,length(ls.unique_sat_goid),3);
+                spline_rate = ls.ls_parametrization.sat_x_opt.spline_rate;
+                spline_order = 3;
+                for s = 1 : length(ls.unique_sat_goid)
+                    idx_sat_x_s = idx_sat_x & ls.sat_par == ls.unique_sat_goid(s);
+                    idx_sat_y_s = idx_sat_y & ls.sat_par == ls.unique_sat_goid(s);
+                    idx_sat_z_s = idx_sat_z & ls.sat_par == ls.unique_sat_goid(s);
+                    if sum(idx_sat_x_s) > 0
+                        xs = ls.x(idx_sat_x_s);
+                        x_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
+                        x_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
+                        [~,x_idx] = ismember(x_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
+                        valid_ep = x_idx ~=0 & x_idx <= (length(xs)-3);
+                        spline_base = Core_Utils.spline(x_dt(valid_ep),3);
+                        xcoord =sum(spline_base .* xs(repmat(x_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(x_idx(valid_ep)), 1)), 2);
+                        
+                        ys = ls.x(idx_sat_y_s);
+                        y_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
+                        y_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
+                        [~,y_idx] = ismember(y_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
+                        valid_ep = y_idx ~=0 & y_idx <= (length(ys)-3);
+                        spline_base = Core_Utils.spline(y_dt(valid_ep),3);
+                        ycoord =sum(spline_base .* ys(repmat(y_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(y_idx(valid_ep)), 1)), 2);
+                        
+                        zs = ls.x(idx_sat_z_s);
+                        z_dt = rem(this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum, spline_rate)/ spline_rate;
+                        z_idx = floor((this.common_time.getNominalTime(ls.obs_rate) - ls.getTimePar(idx_sat_x_s).minimum)/spline_rate);
+                        [~,z_idx] = ismember(z_idx*spline_rate, ls.getTimePar(idx_sat_x_s).getNominalTime(ls.obs_rate).getRefTime(ls.getTimePar(idx_sat_x_s).minimum.getMatlabTime));
+                        valid_ep = z_idx ~=0 & z_idx <= (length(zs)-3);
+                        spline_base = Core_Utils.spline(z_dt(valid_ep),3);
+                        zcoord =sum(spline_base .* zs(repmat(z_idx(valid_ep), 1, spline_order + 1) + repmat((0 : spline_order), numel(z_idx(valid_ep)), 1)), 2);
+                        
+                        coord(valid_ep,s,1) = coord(valid_ep,s,1) + xcoord;
+                        coord(valid_ep,s,2) = coord(valid_ep,s,2) + ycoord;
+                        coord(valid_ep,s,3) = coord(valid_ep,s,3) + zcoord;
+                        
+                    end
                 end
+                cs.coordFit(this.common_time, coord, ls.unique_sat_goid);
             end
-            cs.coordFit(this.common_time, coord, ls.unique_sat_goid);  
-            end
-            recs = Core.getRecList();
-            % piush back bias
+            recs = this.rec_list;
+            % push back bias
             if sum(ls.param_class == LS_Manipulator_new.PAR_SAT_EB) > 0
                 cs = Core.getCoreSky();
                 n_sat = max(ls.sat_par);
