@@ -2174,6 +2174,17 @@ classdef Command_Interpreter < handle
                        id_trg(i) = [];
                     end
                 end
+                id_rover = setdiff(id_trg, id_ref);
+                works = [rec(id_rover).work];
+                % If the network start, the flag of the a-priori coordinate of a rover should not be fixed
+                % Even if it was fixed during pre-processing
+                for w = 1 : numel(works)
+                    if isempty(works(w).coo)
+                        works(w).coo = works(w).getPos;
+                    end
+                    works(w).coo.info.coo_type(:) = 'G';
+                end
+                
                 if numel(id_trg) <= 1
                     log.addError('A network adjustment cannot be completed with less than 2 receivers');
                 else

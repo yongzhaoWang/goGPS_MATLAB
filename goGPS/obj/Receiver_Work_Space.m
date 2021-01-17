@@ -9383,7 +9383,7 @@ classdef Receiver_Work_Space < Receiver_Commons
             %
             % SYNTAX
             %   is_empty = this.isEmpty();
-            has_range =  zeros(numel(this), 1);
+            has_range =  zeros(numel(this), 1, 'logical');
             for r = 1 : numel(this)
                 has_range(r) =  this(r).hasRangeObs();
             end
