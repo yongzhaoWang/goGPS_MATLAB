@@ -130,6 +130,12 @@ classdef Network < handle
                 coo_rate = [];
             end
             
+            if isempty(coo_rate)
+                coo_rate = state.rate_coo_net;
+            end
+            this.coo_rate = iif(coo_rate == 0, state.getSessionDuration, coo_rate);
+            
+            
             if nargin < 4 || isempty(free_net)
                 free_net = false;
             end
@@ -236,9 +242,9 @@ classdef Network < handle
                         parametrization.rec_y(1) = state.tparam_coo_net;
                         parametrization.rec_z(1) = state.tparam_coo_net;
                         
-                        parametrization.rec_x_opt.spline_rate = state.rate_coo_net;
-                        parametrization.rec_y_opt.spline_rate = state.rate_coo_net;
-                        parametrization.rec_z_opt.spline_rate = state.rate_coo_net;
+                        parametrization.rec_x_opt.spline_rate = coo_rate;
+                        parametrization.rec_y_opt.spline_rate = coo_rate;
+                        parametrization.rec_z_opt.spline_rate = coo_rate;
                         
                         
                         % tracking parametrization
@@ -405,9 +411,9 @@ classdef Network < handle
                     if flag_try == 1
                         % Try without buffers\
                         [~, lim_sss] = Core.getState.getSessionLimits();
-                        ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization, lim_sss);
+                        ls.setUpNET(this.rec_list, '???', param_selection, parametrization, lim_sss);
                     else
-                        ls.setUpNET(this.rec_list, coo_rate, '???', param_selection, parametrization);
+                        ls.setUpNET(this.rec_list, '???', param_selection, parametrization);
                     end
                     
                     % If is a baseline and MP reduction is requested,
@@ -820,8 +826,16 @@ classdef Network < handle
                     end
                 end
                 
-                 % Build S tranform fro the coordinates
-                time_coo = round(this.time_coo.getNominalTime(1).getRefTime);
+                % Build S tranform from the coordinates
+                
+                % use tmp to move the time to the central time of the session
+                % Needed to syncronize coordinates from different receivers
+                tmp = this.time_coo.getCopy;
+                tmp = tmp.addIntSeconds(this.coo_rate/2);
+                tmp = tmp.getNominalTime(this.coo_rate);
+                tmp = tmp.addIntSeconds(-this.coo_rate/2);
+                
+                time_coo = round(tmp.getRefTime);
                 S = zeros(length(time_coo));
                 u_time = unique(time_coo);
                 for t = u_time'
@@ -833,11 +847,7 @@ classdef Network < handle
                         S(idx_time,idx_time) = S(idx_time,idx_time) + eye(sum(idx_time));
                     end
                 end
-                for i = 1 : size(this.coo,3)
-                    this.coo(:,1) = S * this.coo(:,1);
-                    this.coo(:,2) = S * this.coo(:,2);
-                    this.coo(:,3) = S * this.coo(:,3);
-                end
+                this.coo = S * this.coo;
                 Svcv = [S zeros(size(S)) zeros(size(S)); zeros(size(S))  S zeros(size(S)); zeros(size(S))  zeros(size(S)) S];
                 this.coo_vcv = Svcv*this.coo_vcv*Svcv';
                 
