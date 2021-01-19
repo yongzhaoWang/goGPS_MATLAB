@@ -122,6 +122,72 @@ classdef Coordinates < Exportable & handle
             copy.copyFrom(this);
         end
         
+        function this = sort(this)
+            % Sort the coordinates in ascending time
+            %
+            % SYNTEX
+            %   this = sort(this)
+            
+            [id_sort] = this.time.sort();
+            if not(issorted(id_sort))
+                this.xyz = this.xyz(id_sort, :);
+                
+                if ~isempty(this.Cxx)
+                    this.Cxx = this.Cxx(:, :, id_sort);
+                end
+                
+                % Number of epocs
+                if not(isempty(this.info.n_epo))
+                    this.info.n_epo = this.info.n_epo(id_sort);
+                end
+                
+                % Number of observations
+                if not(isempty(this.info.n_obs))
+                    this.info.n_obs = this.info.n_obs(id_sort);
+                end
+                
+                % Sigma0 of the solution
+                if not(isempty(this.info.s0))
+                    this.info.s0 = this.info.s0(id_sort);
+                end
+                
+                % Sigma0 of the initial (pre-processing) solution
+                if not(isempty(this.info.s0_ip))
+                    this.info.s0_ip(id_sort) = this.info.s0_ip(id_sort);
+                end
+                
+                % Validity flag
+                if not(isempty(this.info.flag))
+                    this.info.flag(id_sort) = this.info.flag(id_sort);
+                end
+                
+                % Fixing ratio
+                if not(isempty(this.info.fixing_ratio))
+                    this.info.fixing_ratio(id_sort) = this.info.fixing_ratio(id_sort);
+                end
+                
+                % Encyclopedia
+                if not(isempty(this.info.obs_used))
+                    this.info.obs_used(id_sort) = this.info.obs_used(id_sort);
+                end
+                
+                % Rate of the original observations
+                if not(isempty(this.info.rate))
+                    this.info.rate(id_sort) = this.info.rate(id_sort);
+                end
+                
+                % Coordinate type (Bernese style: F: fixed / G: rover)
+                if not(isempty(this.info.coo_type))
+                    this.info.coo_type(id_sort) = this.info.coo_type(id_sort);
+                end
+                
+                % Rate of the original observations
+                if not(isempty(this.info.master_name))
+                    this.info.master_name(id_sort) = this.info.master_name(id_sort);
+                 end
+            end
+        end
+        
         function this = append(this, pos)
             % Append a Coordinates object into the this
             %
@@ -129,6 +195,7 @@ classdef Coordinates < Exportable & handle
             %   this = append(this, pos)
             
             if not(isempty(pos))
+                this.time.append(pos.time);
                 this.xyz = [this.xyz; pos.xyz];
                 n_epo = size(this.xyz, 1);
                 
@@ -137,7 +204,6 @@ classdef Coordinates < Exportable & handle
                 else
                     this.Cxx(:,:,n_epo) = nan(3,3);
                 end
-                this.time.append(pos.time);
                 
                 % Number of epocs
                 if not(isempty(pos.info.n_epo))
@@ -161,14 +227,10 @@ classdef Coordinates < Exportable & handle
                 end
                 
                 % Sigma0 of the initial (pre-processing) solution
-                try
                 if not(isempty(pos.info.s0_ip))
                     this.info.s0_ip(n_epo) = pos.info.s0_ip;
                 else
                     this.info.s0_ip(n_epo) = nan;
-                end
-                catch
-                    keyboard
                 end
                 
                 % Validity flag
@@ -218,7 +280,10 @@ classdef Coordinates < Exportable & handle
                 else
                     this.info.master_name(n_epo) = categorical({this.name});
                 end
+                
+                this.sort();
             end
+            
         end
         
         function rem(this, idx)
@@ -2009,6 +2074,88 @@ classdef Coordinates < Exportable & handle
             coo_diff.enu_diff = coo1.getElement(id_ok1).getENU - coo2.getElement(id_ok2).getENU;
             coo_diff.xyz_diff = coo1.getElement(id_ok1).xyz - coo2.getElement(id_ok2).xyz;
             %coo_diff.enu_diff = Coordinates.cart2local(coo1.getElement(id_ok1).getMedianPos.xyz, coo_diff.xyz_diff);
+        end
+        
+        function S = getSTransform(id_ref, n_rec, time_coo, rec_list)
+            % Build S tranform from the coordinates
+            
+            % use tmp to move the time to the central time of the session
+            % Needed to syncronize coordinates from different receivers
+            S = zeros(length(time_coo));
+            u_time = unique(time_coo);
+            for t = u_time'
+                idx_time = time_coo == t;
+                idx_time_ref = idx_time;
+                for j = 1 : length(id_ref)
+                    idx_time_ref = idx_time & this.rec_coo == id_ref(j);
+                    S(idx_time,idx_time_ref) = - 1 / numel(id_ref);
+                    S(idx_time,idx_time) = S(idx_time,idx_time) + eye(sum(idx_time));
+                end
+            end
+            this.coo = S * this.coo;
+            Svcv = [S zeros(size(S)) zeros(size(S)); zeros(size(S))  S zeros(size(S)); zeros(size(S))  zeros(size(S)) S];
+            this.coo_vcv = Svcv*this.coo_vcv*Svcv';
+        end
+        
+        function setNewRef(coo_list, new_ref_name, new_fixed_coordinates)
+            if isnumeric(new_ref_name)
+                new_ref_id = new_ref_name;
+                ref_found = true;
+            else
+                % find the new reference station
+                c = 0;
+                ref_found = false;
+                while (c < numel(coo)) && ~ref_found
+                    c = c + 1;
+                    if strcmp(new_ref_name, coo_list(c).name)
+                        ref_found = true;
+                    end
+                end
+                if ~ref_found
+                    log = Core.getLogger;
+                    log.addError('New reference marker not found! Changing reference is not possible.')
+                else
+                    new_ref_id = c;
+                end
+            end
+            
+            if ref_found
+                %%
+                new_ref_name = categorical({coo_list(new_ref_id).name});
+                % id of the epoch to change
+                id_change = find(coo_list(new_ref_id).info.master_name ~= new_ref_name);
+                
+                time_coo = coo_list(1).time.getCopy;
+                xyz = coo_list(1).getXYZ;
+                rec_id = ones(coo_list(1).time.length, 1, 'uint16');
+                mst_id = uint8(coo_list(1).info.master_name);
+                for c = 2 : numel(coo_list)
+                    time_coo.append(coo_list(c).time.getCopy);
+                    xyz = [xyz; coo_list(c).getXYZ];
+                    rec_id = [rec_id; c * ones(coo_list(c).time.length, 1, 'uint16')];
+                    mst_id = [mst_id; uint8(coo_list(2).info.master_name)];
+                end
+                coo_rate = median(diff(time_coo.getRefTime), 'omitnan');
+                tmp = time_coo.getRoundedTime(coo_rate);
+                
+                time_coo = round(tmp.getRefTime);
+                u_time = unique(time_coo);
+                for t = u_time'
+                    lid_time = time_coo == t;
+                    id_time = find(lid_time);
+                    S = zeros(sum(lid_time));
+                    for j = 1 : length(new_ref_id)
+                        lid_time_ref = rec_id(lid_time) == new_ref_id(j); % find the ref
+                        S(:, lid_time_ref) = - 1 / numel(new_ref_id);
+                        S = S + eye(sum(lid_time));
+                    end
+                end
+                xyz2 = S * xyz;
+                %%
+                this.coo = S * this.coo;
+                Svcv = [S zeros(size(S)) zeros(size(S)); zeros(size(S))  S zeros(size(S)); zeros(size(S))  zeros(size(S)) S];
+                this.coo_vcv = Svcv*this.coo_vcv*Svcv';
+            end
         end
     end
         
