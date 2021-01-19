@@ -830,10 +830,7 @@ classdef Network < handle
                 
                 % use tmp to move the time to the central time of the session
                 % Needed to syncronize coordinates from different receivers
-                tmp = this.time_coo.getCopy;
-                tmp = tmp.addIntSeconds(this.coo_rate/2);
-                tmp = tmp.getNominalTime(this.coo_rate);
-                tmp = tmp.addIntSeconds(-this.coo_rate/2);
+                tmp = this.time_coo.getRoundedTime(this.coo_rate);
                 
                 time_coo = round(tmp.getRefTime);
                 S = zeros(length(time_coo));

@@ -2243,6 +2243,9 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
         function j_ini = insertTabAdvanced(this, container)
             tab = uix.VBox('Parent', container, 'Tag', 'ADV');
             
+            name_box = Core_UI.insertPanelLight(tab, 'Project Name');
+            [~, this.edit_texts{end+1}] = Core_UI.insertEditBox(name_box, 'Project Name', 'prj_name', '', @this.onEditChange, [185 -1 0 0]);
+
             com_box = Core_UI.insertPanelLight(tab, 'Parallelism');
             [~, this.edit_texts{end+1}, this.flag_list{end + 1}] = Core_UI.insertDirBox(com_box, 'Communication dir', 'com_dir', @this.onEditChange, [25 160 -1 25]);
 
@@ -2286,7 +2289,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 'Callback', @this.updateAndCheckRecList);
             
             setting_grid.Widths = [-1 128];
-            tab.Heights = [50 -1];
+            tab.Heights = [50 50 -1];
         end
     end
     %% METHODS getters
