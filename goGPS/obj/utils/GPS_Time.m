@@ -94,9 +94,7 @@ classdef GPS_Time < Exportable & handle
         REF_TIME = 2;       % time_type value for times stored in time_ref: (double) origin of the "time system" expressed in datenum format + (double array) difference in seconds w.r.t. time_ref
     end
     
-    properties (SetAccess = private, GetAccess = public)
-        log = Logger.getInstance(); % Handler to the log object
-        
+    properties (SetAccess = private, GetAccess = public)        
         time_type = 0;      % flag depending on its value different representation of time are possible
         
         % time_type == 0 MATLAB_TIME DEFAULT it supports up to ~0.1 ms precision
@@ -475,7 +473,7 @@ classdef GPS_Time < Exportable & handle
                         case 3 % GPS_Time_Week_Dow (to unix time)
                             this.GPS_Time_Week_Dow(arg1, arg2);
                         otherwise
-                            this.log.addError('Unrecognized time format!!!');
+                            Logger.getInstance.addError('Unrecognized time format!!!');
                     end
             end
             %this.computeLeapSeconds();
@@ -538,7 +536,7 @@ classdef GPS_Time < Exportable & handle
                         case 2 % GPS_Time.REF_TIME
                             this.appendRefTime(arg1, arg2, arg3);
                         otherwise
-                            this.log.addError('Unrecognized time format!!!');
+                            Logger.getInstance.addError('Unrecognized time format!!!');
                     end
             end
             %this.computeLeapSeconds();
