@@ -200,7 +200,6 @@ classdef Core_Sky < handle
                 if  instr(lower(eph_f_name{1}), '.sp3') || instr(lower(eph_f_name{1}), '.eph') || instr(lower(eph_f_name{1}), '.pre') % assuming all files have the same extensions
                     this.toCOM(); % be sure to be in COM before adding new coordinates
                     this.clearPolyCoeff();
-                    this.clearSunMoon();
                     Core.getLogger.addMarkedMessage('Importing ephemerides...');
                     for i = 1:length(eph_f_name)
                         gps_time = getFileStTime(eph_f_name{i});
@@ -235,7 +234,6 @@ classdef Core_Sky < handle
                     clock_in_eph = true;
                     this.toAPC(); % be sure to be in APC before adding new coordinates
                     this.clearPolyCoeff();
-                    this.clearSunMoon();
                     Core.getLogger.addMarkedMessage('Importing broadcast ephemerides...');
                     this.importBrdcs(eph_f_name,start_date, stop_date, clock_in_eph);
                     this.coord_type = 1; % antenna phase center
@@ -304,11 +302,9 @@ classdef Core_Sky < handle
             if nargin > 1
                 this.clearCoord(gps_date);
                 this.clearClock(gps_date);
-                this.clearSunMoon();
             else
                 this.clearCoord();
                 this.clearClock();
-                this.clearSunMoon();
             end
         end
         
@@ -323,7 +319,7 @@ classdef Core_Sky < handle
                     this.coord_pol_coeff_apc = []; %!!! the coefficient have to been recomputed
                     this.coord_pol_coeff_com = []; %!!! the coefficient have to been recomputed
                     
-                    % deleate also sun e moon data
+                    % delete also sun e moon data
                     if not(isempty(this.X_sun))
                         this.X_sun(1:n_ep,:)=[];
                     end
@@ -332,13 +328,17 @@ classdef Core_Sky < handle
                     end
                     this.sun_pol_coeff = []; %!!! the coefficient have to been recomputed
                     this.moon_pol_coeff = []; %!!! the coefficient have to been recomputed
-                    
                 end
             else
-                this.coord=[];
+                this.coord = [];
                 this.time_ref_coord = [];
                 this.coord_pol_coeff_apc = [];
                 this.coord_pol_coeff_com = [];
+                
+                this.X_sun = [];
+                this.X_moon = [];
+                this.sun_pol_coeff = [];
+                this.moon_pol_coeff = [];
             end
         end
         
@@ -359,24 +359,6 @@ classdef Core_Sky < handle
                 this.wsb = [];
                 this.wsb_date = [];
             end
-        end
-        
-        function clearSunMoon(this, gps_date)
-            % DESCRIPTION: clear sun and moon data , if date is provided clear
-            % only data before that date
-            if nargin > 1
-                if this.time_ref_coord > gps_date
-                    n_ep = floor((gps_date - this.time_ref_coord)/this.coord_rate);
-                    this.X_sun(1:n_ep,:)=[];
-                    this.X_moon(1:n_ep,:)=[];
-                    this.sun_pol_coeff = []; %!!! the coefficient have to been recomputed
-                    this.moon_pol_coeff = []; %!!! the coefficient have to been recomputed
-                end
-            end
-            this.X_sun = [];
-            this.X_moon = [];
-            this.sun_pol_coeff = [];
-            this.moon_pol_coeff = [];
         end
         
         function clearPolyCoeff(this)
