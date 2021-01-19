@@ -310,7 +310,11 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 coo.info.s0_ip = this.quality_info.s0_ip;
                 coo.info.flag = 0;
                 coo.info.fixing_ratio = 0;
-                coo.info.coo_type = iif(this.isFixed || this.isFixedPrepro, 'F', 'G');
+                if isnan(coo.info.s0_ip)
+                    coo.info.coo_type = 'G';
+                else
+                    coo.info.coo_type = iif(this.isFixed || this.isFixedPrepro, 'F', 'G');
+                end
                 coo.info.rate = this.time.getRate;
                 coo.info.master_name = categorical({this.parent.getMarkerName4Ch});
             elseif flag_add_coo == 0
