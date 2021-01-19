@@ -2959,7 +2959,7 @@ classdef Command_Interpreter < handle
                         Core_Utils.exportFig(fh, file_path, Go_Settings.getInstance.getGUIModeExport);
                         if Core.isGReD && ~isempty(telebot_chat_id)
                             tb = Telebot();
-                            tb.sendImage(telebot_chat_id, file_path, file_name, '');
+                            tb.sendImage(telebot_chat_id, file_path, sprintf('<b>%s</b>\n%s', Core.getState.getPrjName, file_name), 'html');
                         elseif ~isempty(telebot_chat_id)
                             log = Core.getLogger;
                             log.addError(sprintf('Telegram bot is available in the GReD version only\nI cannot send image "%s"', file_name));
