@@ -537,19 +537,73 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             end
         end
         
+        function [mfh, mfw, cotan_term] = getSlantMFGen(this, id_sync)
+            % Get Mapping function for the satellite slant
+            %
+            % OUTPUT
+            %   mfh: hydrostatic mapping function
+            %   mfw: wet mapping function
+            %
+            % SYNTAX
+            %   [mfh, mfw] = this.getSlantMF()            
+            
+            n_sat = this.parent.getMaxSat;
+            if nargin == 1
+                try
+                    id_sync = this.id_sync;
+                catch
+                    id_sync = [];
+                end
+            end
+            if n_sat == 0
+                mfh = [];
+                mfw = [];
+                cotan_term = [];
+            else
+                if this.length > 0
+                    atmo = Core.getAtmosphere();
+                    [lat, lon, h_ellipse, h_ortho] = this.getMedianPosGeodetic();
+                    lat = median(lat);
+                    lon = median(lon);
+                    h_ortho = median(h_ortho);
+                    if ~isempty(this)
+                        if this.state.mapping_function == Prj_Settings.MF_NIEL
+                            [mfh, mfw] = atmo.niell(this.time, lat./180*pi, zero2nan(this.sat.el)./180*pi,h_ellipse);
+                        elseif this.state.mapping_function == Prj_Settings.MF_VMF1
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,1);
+                        elseif this.state.mapping_function == Prj_Settings.MF_VMF3_1
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,3);
+                        elseif this.state.mapping_function == Prj_Settings.MF_VMF3_5
+                            [mfh, mfw] = atmo.vmf_grd(this.time, lat./180*pi, lon./180*pi, (this.sat.el)./180*pi, h_ellipse,3);
+                        elseif this.state.mapping_function == Prj_Settings.MF_GMF
+                            [mfh, mfw] = atmo.gmf(this.time, lat./180*pi, lon./180*pi, h_ortho, zero2nan(this.sat.el)./180*pi);
+                        end
+                       
+                        if ~isempty(id_sync)
+                            mfh = mfh(id_sync, :);
+                            mfw = mfw(id_sync, :);
+                        end
+                        
+                        if nargout > 2
+                            if this.state.mapping_function_gradient == 1
+                                cotan_term = Atmosphere.chenHerringGrad(zero2nan(this.sat.el)./180*pi);
+                            elseif this.state.mapping_function_gradient == 2
+                                [cotan_term] = Atmosphere.macmillanGrad(zero2nan(this.sat.el)./180*pi);
+                            end
+                            if ~isempty(id_sync)
+                                cotan_term = cotan_term(id_sync, :);
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        
         function [slant_td, slant_wd, go_id] = getSlantTD(this, go_id)
             % Get the slant total delay
             %
             % SYNTAX
             %   [slant_td, go_id] = this.getSlantTD();
-            
-            if nargin < 2 || isempty(go_id) || strcmp(go_id, 'all')
-                this.log.addMessage(this.log.indent('Updating tropospheric errors'))
-                
-                go_id = unique(this.go_id)';
-            else
-                go_id = serialize(go_id)';
-            end            
             
             id_sync  = this.getIdSync;
             
@@ -573,6 +627,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                     mfw = [];
                 end
             end
+            
             if state.mapping_function_gradient == 1
                 if ~isempty(zwd)
                     cotan_term = zero2nan(Atmosphere.chenHerringGrad(zero2nan(this.sat.el(id_sync, :))));
@@ -583,9 +638,22 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 if ~isempty(zwd)
                     cotan_term = zero2nan(Atmosphere.macmillanGrad(zero2nan(this.sat.el(id_sync, :))).*mfw);
                 else
-                    cotan_term = zeros(size(ge));;
+                    cotan_term = zeros(size(ge));
                 end
             end
+            
+            if nargin < 2 || isempty(go_id) || strcmp(go_id, 'all')
+                this.log.addMessage(this.log.indent('Updating tropospheric errors'))
+                try
+                    go_id = unique(this.go_id)';
+                catch
+                    % If it fails I'm in receiver output
+                    go_id = 1 : size(mfh, 2);
+                end
+            else
+                go_id = serialize(go_id)';
+            end            
+            
             % Computing delays
             if any(mfh(:)) && any(mfw(:))
                 if any(ge(:))
@@ -2357,7 +2425,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             else
                 f = figure; f.Name = sprintf('%03d: AniZtd', f.Number); f.NumberTitle = 'off';
                 fh_list = [fh_list; f];
-                fig_name = sprintf('ZTD_Slant_ANI_%s_%s', rec.parent.getMarkerName4Ch, rec.time.first.toString('yyyymmdd_HHMM'));
+                fig_name = sprintf('ZTD_Slant_ANI_%s_%s', this.parent.getMarkerName4Ch, this.time.first.toString('yyyymmdd_HHMM'));
                 f.UserData = struct('fig_name', fig_name);
                 
                 if nargin >= 3
@@ -2560,7 +2628,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
             fh_list = [];
             rec = this;
             if isempty(rec)
-                this(1).log.addWarning('ZTD and/or slants have not been computed');
+                Core.getLogger.addWarning('ZTD and/or slants have not been computed');
             else
                 cc = this.getCC;
                 f = figure('Visible', 'off'); f.Name = sprintf('%03d: %s Slant %s', f.Number, this.parent.getMarkerName4Ch, cc.sys_c); f.NumberTitle = 'off';
