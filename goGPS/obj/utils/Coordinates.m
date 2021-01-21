@@ -213,11 +213,7 @@ classdef Coordinates < Exportable & handle
                 if not(isempty(pos.info.n_epo))
                     this.info.n_epo(n_epo) = pos.info.n_epo;
                 else
-                    try
                     this.info.n_epo(n_epo) = nan;
-                    catch
-                       keyboard
-                    end
                 end
                 
                 % Number of observations
@@ -1891,7 +1887,7 @@ classdef Coordinates < Exportable & handle
                         catch
                             file_ok = false;
                             timestamp = [];
-                        end   
+                        end
                     end
                 else
                     file_ok = false;
@@ -1902,12 +1898,12 @@ classdef Coordinates < Exportable & handle
                 str_out = '';
                 str_out = sprintf('%swwww-d yyyy-ddd yyyy-mm-dd s   start    end    n epochs    n C1     n C2     n L1     n L2    RMSCode (m) Rate (s) \n',str_out);
                 str_out = sprintf('%s------+--------+----------+-+--------+--------+---------+--------+--------+--------+--------+------------+--------+\n',str_out);
-
+                
                 % Write header CRD
                 str_crd = '';
                 str_crd = sprintf('%swwww-d yyyy-ddd yyyy-mm-dd s   start    end    MAST  CRMS        X (m)          Y (m)            Z (m)         EAST (m)       NORTH (m)         UP (m)     F  sE(mm)   sN(mm)   sU(mm)  s3D (mm) \n',str_crd);
                 str_crd = sprintf('%s------+--------+----------+-+--------+--------+----+------+---------------+---------------+---------------+---------------+---------------+---------------+-+--------+--------+--------+--------+\n',str_crd);
-
+                
                 sol_rate = median(diff(this.time.getMatlabTime*86400), 'omitnan');
                 if isempty(sol_rate) || isnan(sol_rate)
                     if numel(timestamp) < 2
@@ -1948,7 +1944,7 @@ classdef Coordinates < Exportable & handle
                             cov = this.Cxx(:,:,i)*1e6;
                         end
                         try
-                        n_epo = this.info.n_epo(i);
+                            n_epo = this.info.n_epo(i);
                         catch
                             n_epo = nan;
                         end
@@ -2036,7 +2032,7 @@ classdef Coordinates < Exportable & handle
                     e = e +1;
                 end
                 
-                fid_out = fopen([out_file_name '.out'], 'Wb');                
+                fid_out = fopen([out_file_name '.out'], 'Wb');
                 fprintf(fid_out, str_out);
                 fclose(fid_out);
                 
@@ -2087,9 +2083,9 @@ classdef Coordinates < Exportable & handle
         function setNewRef(coo_list, new_ref_name, new_fixed_xyz, keep_orphans)
             % Fix a coordinate to a new value
             %
-            % INPUT 
+            % INPUT
             %   new_ref_name       name of the reference coordinate
-            %   new_fixed_xyz      new coordinate of the reference 
+            %   new_fixed_xyz      new coordinate of the reference
             %   keep_orphans       keep the epoch with master different from the new reference (default)
             %
             % SYNTAX
@@ -2108,8 +2104,7 @@ classdef Coordinates < Exportable & handle
                     end
                 end
                 if ~ref_found
-                    log = Core.getLogger;
-                    log.addError('New reference marker not found! Changing reference is not possible.')
+                    Logger.getInstance.addError('New reference marker not found! Changing reference is not possible.')
                 else
                     new_ref_id = c;
                 end
@@ -2139,49 +2134,52 @@ classdef Coordinates < Exportable & handle
                 time_ref = coo_list(new_ref_id).time.getRoundedTime(coo_rate);
                 time0 = time_ref.first.getMatlabTime;
                 tid_ref = time_ref.getRefTime(time0)/coo_rate;
-                xyz_corr = round(repmat(new_fixed_xyz, numel(tid_ref), 1) - coo_list(new_ref_id).xyz, 6);
-                
-                % for each non reference coordinate
-                for c = setdiff(1 : numel(coo_list), new_ref_id)
-                    tid_coo = coo_list(c).time.getRoundedTime(coo_rate).getRefTime(time0)/coo_rate;
-                    [~, idc, idr] = intersect(tid_coo, tid_ref);
-                    if any(idc)
-                        % apply translation
-                        coo_list(c).xyz(idc, :) = coo_list(c).xyz(idc, :) + xyz_corr(idr, :);
-                        % Covariance propagation with missing cross covariance term
-                        
-                        vcv_ref = coo_list(new_ref_id).Cxx(:, :, idr);
-                        if isempty(vcv_ref)
-                            vcv_ref = zeros(3);
-                        end
-                        vcv = coo_list(c).Cxx(:, :, idc);
-                        if isempty(vcv)
-                            vcv = nan(3);
-                        end
-                        if isempty(coo_list(c).Cxx)
-                            coo_list(c).Cxx = nan(3, 3, idc(end));
-                        end
-                        try
+                if any(tid_ref)
+                    xyz_corr = round(repmat(new_fixed_xyz, numel(tid_ref), 1) - coo_list(new_ref_id).xyz, 6);
+                    
+                    % for each non reference coordinate
+                    for c = setdiff(1 : numel(coo_list), new_ref_id)
+                        tid_coo = coo_list(c).time.getRoundedTime(coo_rate).getRefTime(time0)/coo_rate;
+                        [~, idc, idr] = intersect(tid_coo, tid_ref);
+                        if any(idc)
+                            % apply translation
+                            coo_list(c).xyz(idc, :) = coo_list(c).xyz(idc, :) + xyz_corr(idr, :);
+                            % Covariance propagation with missing cross covariance term
+                            
+                            vcv_ref = coo_list(new_ref_id).Cxx(:, :, idr);
+                            if isempty(vcv_ref)
+                                vcv_ref = zeros(3);
+                            end
+                            vcv = coo_list(c).Cxx(:, :, idc);
+                            if isempty(vcv)
+                                vcv = nan(3);
+                            end
+                            if isempty(coo_list(c).Cxx)
+                                coo_list(c).Cxx = nan(3, 3, idc(end));
+                            end
                             coo_list(c).Cxx(:, :, idc) = vcv + vcv_ref;
-                        catch
-                            keyboard
-                        end
-                        coo_list(c).info.master_name(idc) = new_ref_name;
-                        coo_list(c).info.coo_type(idc) = 'G';
-                        
-                        % remove epochs with no master
-                        if nargin > 3 && not(keep_orphans)
-                            id_ko = setdiff((1:coo_list(c).time.length)', idc);
-                            coo_list(c).rem(id_ko);
+                            coo_list(c).info.master_name(idc) = new_ref_name;
+                            coo_list(c).info.coo_type(idc) = 'G';
+                            
+                            % remove epochs with no master
+                            if nargin > 3 && not(keep_orphans)
+                                id_ko = setdiff((1:coo_list(c).time.length)', idc);
+                                coo_list(c).rem(id_ko);
+                            end
                         end
                     end
+                    
+                    % Now fix the new reference
+                    coo_list(new_ref_id).xyz = repmat(new_fixed_xyz, numel(tid_ref), 1);
+                    coo_list(new_ref_id).info.master_name(:) = new_ref_name;
+                    coo_list(new_ref_id).info.coo_type(:) = 'F';
+                    coo_list(c).Cxx(:) = 0;
+                else
+                    Logger.getInstance.addError('Reference is missing, loosing all the coordinates');
+                    for c = setdiff(1 : numel(coo_list), new_ref_id)
+                        coo_list(c).rem(1:size(coo_list(c).xyz,1));
+                    end
                 end
-                
-                % Now fix the new reference
-                coo_list(new_ref_id).xyz = repmat(new_fixed_xyz, numel(tid_ref), 1);
-                coo_list(new_ref_id).info.master_name(:) = new_ref_name;
-                coo_list(new_ref_id).info.coo_type(:) = 'F';
-                coo_list(c).Cxx(:) = 0;
             end
         end
     end

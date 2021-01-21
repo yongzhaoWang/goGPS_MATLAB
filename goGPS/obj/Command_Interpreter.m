@@ -1938,7 +1938,11 @@ classdef Command_Interpreter < handle
                 else
                     coo = Coordinates;
                     for r = id_trg
-                        coo(r) = rec(r).out.coo; % get link to coo
+                        try
+                            coo(r) = rec(r).out.coo; % get link to coo
+                        catch
+                            coo(r) = Coordinates;
+                        end
                     end
                     % Get new coordinates
                     try
@@ -1950,12 +1954,17 @@ classdef Command_Interpreter < handle
                         xyz = [];
                     end
                     if not(isempty(xyz))
-                        log.addMessage(log.indent(sprintf('New coordinates for %s : [ %s]', rec(id_ref).out.coo.name, sprintf('%s ', xyz))));
+                        try
+                            coo_name = rec(id_ref).out.coo.name;
+                        catch
+                            coo_name = rec(id_ref).getMarkerName4Ch;
+                        end
+                        log.addMessage(log.indent(sprintf('New coordinates for %s : [ %s]', coo_name, sprintf('%s ', xyz))));
                     end
                     keep_orphans = isempty(regexp(sprintf('%s ', tok{:}), this.PAR_R_REM_ORPHANS.par, 'match', 'once'));
                     [~, id_new_ref] = intersect(id_trg, id_ref);
                     coo.setNewRef(id_new_ref, xyz, keep_orphans);
-                    log.addMarkedMessage(sprintf('Reference set to "%s"', rec(id_ref).out.coo.name));
+                    log.addMarkedMessage(sprintf('Reference set to "%s"', coo_name));
                 end
             end
         end
