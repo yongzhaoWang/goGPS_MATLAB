@@ -2173,7 +2173,7 @@ classdef Coordinates < Exportable & handle
                     coo_list(new_ref_id).xyz = repmat(new_fixed_xyz, numel(tid_ref), 1);
                     coo_list(new_ref_id).info.master_name(:) = new_ref_name;
                     coo_list(new_ref_id).info.coo_type(:) = 'F';
-                    coo_list(c).Cxx(:) = 0;
+                    coo_list(new_ref_id).Cxx(:) = 0;
                 else
                     Logger.getInstance.addError('Reference is missing, loosing all the coordinates');
                     for c = setdiff(1 : numel(coo_list), new_ref_id)
