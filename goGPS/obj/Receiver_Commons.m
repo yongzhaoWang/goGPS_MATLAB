@@ -315,6 +315,11 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                 else
                     coo.info.coo_type = iif(this.isFixed || this.isFixedPrepro, 'F', 'G');
                 end
+                if coo.info.coo_type == 'F'
+                    coo.Cxx = zeros(3); % Fixed covariance = 0
+                else
+                    coo.Cxx = nan(3); % Unknown coordinate covariance NaN
+                end
                 coo.info.rate = this.time.getRate;
                 coo.info.master_name = categorical({this.parent.getMarkerName4Ch});
             elseif flag_add_coo == 0

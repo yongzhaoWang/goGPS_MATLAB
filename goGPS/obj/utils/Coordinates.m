@@ -194,22 +194,30 @@ classdef Coordinates < Exportable & handle
             % SYNTAX
             %   this = append(this, pos)
             
-            if not(isempty(pos))
+            if not(isempty(pos)) && not(pos.isEmpty)
                 this.time.append(pos.time);
                 this.xyz = [this.xyz; pos.xyz];
                 n_epo = size(this.xyz, 1);
                 
-                if ~isempty(this.Cxx) && ~isempty(pos.Cxx)
-                    this.Cxx = cat(3,this.Cxx, pos.Cxx);
+                if ~isempty(pos.Cxx)
+                    this.Cxx = cat(3, this.Cxx, pos.Cxx);
                 else
-                    this.Cxx(:,:,n_epo) = nan(3,3);
+                    if isempty(this.Cxx)
+                        this.Cxx = nan(3,3,1);
+                    else
+                        this.Cxx(:,:,n_epo) = nan(3,3);
+                    end
                 end
                 
                 % Number of epocs
                 if not(isempty(pos.info.n_epo))
                     this.info.n_epo(n_epo) = pos.info.n_epo;
                 else
+                    try
                     this.info.n_epo(n_epo) = nan;
+                    catch
+                       keyboard
+                    end
                 end
                 
                 % Number of observations
@@ -1785,7 +1793,7 @@ classdef Coordinates < Exportable & handle
                             s0 = nan;
                         end
                         try
-                            coo_type = xhar(this.info.coo_type(i));
+                            coo_type = char(this.info.coo_type(i));
                         catch
                             coo_type = 'U';
                         end
@@ -2137,17 +2145,35 @@ classdef Coordinates < Exportable & handle
                 for c = setdiff(1 : numel(coo_list), new_ref_id)
                     tid_coo = coo_list(c).time.getRoundedTime(coo_rate).getRefTime(time0)/coo_rate;
                     [~, idc, idr] = intersect(tid_coo, tid_ref);
-                    % apply translation
-                    coo_list(c).xyz(idc, :) = coo_list(c).xyz(idc, :) + xyz_corr(idr, :);
-                    % Covariance propagation with missing cross covariance term
-                    coo_list(c).Cxx(:, :, idc) = coo_list(c).Cxx(:, :, idc) + coo_list(new_ref_id).Cxx(:, :, idr);
-                    coo_list(c).info.master_name(idc) = new_ref_name;
-                    coo_list(c).info.coo_type(idc) = 'G';
-                    
-                    % remove epochs with no master
-                    if nargin > 3 && not(keep_orphans)
-                        id_ko = setdiff((1:coo_list(c).time.length)', idc);
-                        coo_list(c).rem(id_ko);
+                    if any(idc)
+                        % apply translation
+                        coo_list(c).xyz(idc, :) = coo_list(c).xyz(idc, :) + xyz_corr(idr, :);
+                        % Covariance propagation with missing cross covariance term
+                        
+                        vcv_ref = coo_list(new_ref_id).Cxx(:, :, idr);
+                        if isempty(vcv_ref)
+                            vcv_ref = zeros(3);
+                        end
+                        vcv = coo_list(c).Cxx(:, :, idc);
+                        if isempty(vcv)
+                            vcv = nan(3);
+                        end
+                        if isempty(coo_list(c).Cxx)
+                            coo_list(c).Cxx = nan(3, 3, idc(end));
+                        end
+                        try
+                            coo_list(c).Cxx(:, :, idc) = vcv + vcv_ref;
+                        catch
+                            keyboard
+                        end
+                        coo_list(c).info.master_name(idc) = new_ref_name;
+                        coo_list(c).info.coo_type(idc) = 'G';
+                        
+                        % remove epochs with no master
+                        if nargin > 3 && not(keep_orphans)
+                            id_ko = setdiff((1:coo_list(c).time.length)', idc);
+                            coo_list(c).rem(id_ko);
+                        end
                     end
                 end
                 
