@@ -77,7 +77,8 @@ classdef Command_Interpreter < handle
         CMD_AZEL        % Compute (or update) Azimuth and Elevation
         CMD_MASK        % Apply a mask to a set of observations
         CMD_BASICPP     % Basic Point positioning with no correction (useful to compute azimuth and elevation)
-        CMD_FIX_POS     % Fix (position) of a receiver
+        CMD_FIXPOS      % Fix (position) of a receiver
+        CMD_SETREF      % Set a receiver of a netwiork as the reference with fixed coordinates
         CMD_PREPRO      % Pre-processing command
         CMD_CODEPP      % Code point positioning
         CMD_PPP         % Precise point positioning
@@ -130,6 +131,8 @@ classdef Command_Interpreter < handle
 
         PAR_SLAVE       % number of parallel slaves to request
         
+        PAR_R_COO       % Parameter to indicate an array of 3 float
+        PAR_R_REM_ORPHANS % flag to remove coordinates without reference master receiver
         PAR_R_FROM_OUT  % Parameter to indicate to get data from Receiver Out
         PAR_R_FROM_WORK % Parameter to indicate to get data from Receiver Out
         
@@ -217,7 +220,7 @@ classdef Command_Interpreter < handle
         PAR_S_SAVE      % flage for saving                
                 
         KEY_LIST = {'FOR', 'PAR', 'END'};
-        CMD_LIST = {'SET', 'PINIT', 'PKILL', 'LOAD', 'RENAME', 'EMPTY', 'EMPTYWORK', 'EMPTYOUT', 'AZEL', 'MASK', 'BASICPP', 'PREPRO', 'OUTDET', 'FIX_POS', 'CODEPP', 'PPP', 'NET', 'SEID', 'SID', 'REMIONO', 'MPEST', 'KEEP', 'SYNC', 'SHOW', 'CHKTROPO', 'VALIDATE', 'EXPORT', 'PUSHOUT', 'REMSAT', 'REMOBS', 'REMTMP', 'SENDMSG'};
+        CMD_LIST = {'SET', 'PINIT', 'PKILL', 'LOAD', 'RENAME', 'EMPTY', 'EMPTYWORK', 'EMPTYOUT', 'AZEL', 'MASK', 'BASICPP', 'PREPRO', 'OUTDET', 'FIXPOS', 'SETREF', 'CODEPP', 'PPP', 'NET', 'SEID', 'SID', 'REMIONO', 'MPEST', 'KEEP', 'SYNC', 'SHOW', 'CHKTROPO', 'VALIDATE', 'EXPORT', 'PUSHOUT', 'REMSAT', 'REMOBS', 'REMTMP', 'SENDMSG'};
         PUSH_LIST = {'PPP','NET','CODEPP','AZEL'};
         VALID_CMD = {};
         CMD_ID = [];
@@ -402,7 +405,7 @@ classdef Command_Interpreter < handle
             this.PAR_M_UNCOMBINED.accepted_values = [];
 
             this.PAR_M_FREE_NET.name = 'Free network';
-            this.PAR_M_FREE_NET.descr = '--free             Let the network free';
+            this.PAR_M_FREE_NET.descr = '--free             (flag) let the network free';
             this.PAR_M_FREE_NET.par = '(-f)(--free)|(--FREE)';
             this.PAR_M_FREE_NET.class = '';
             this.PAR_M_FREE_NET.limits = [];
@@ -423,6 +426,20 @@ classdef Command_Interpreter < handle
             this.PAR_M_SEID_PLANE.accepted_values = [];
             
             % Receiver parameter
+            
+            this.PAR_R_COO.name = 'Coordinate';
+            this.PAR_R_COO.descr = '[X Y Z]            Let the network free';
+            this.PAR_R_COO.par = '(?<=(\[))[0-9\. ]*(?=\])';
+            this.PAR_R_COO.class = '';
+            this.PAR_R_COO.limits = [];
+            this.PAR_R_COO.accepted_values = [];
+            
+            this.PAR_R_REM_ORPHANS.name = 'Rem orphans';
+            this.PAR_R_REM_ORPHANS.descr = '--ro               (flag) orphans (coordinates without the reference ricever)';
+            this.PAR_R_REM_ORPHANS.par = '(--ro)';
+            this.PAR_R_REM_ORPHANS.class = '';
+            this.PAR_R_REM_ORPHANS.limits = [];
+            this.PAR_R_REM_ORPHANS.accepted_values = [];
             
             this.PAR_R_FROM_OUT.name = 'From OUT';
             this.PAR_R_FROM_OUT.descr = 'FROM_OUT           (flag) use data from Receiver Output object';
@@ -971,10 +988,15 @@ classdef Command_Interpreter < handle
             this.CMD_CODEPP.rec = 'T';
             this.CMD_CODEPP.par = [this.PAR_SS];
 
-            this.CMD_FIX_POS.name = {'FIXPOS', 'fixpos'};
-            this.CMD_FIX_POS.descr = 'Fix position';
-            this.CMD_FIX_POS.rec = 'T';
-            this.CMD_FIX_POS.par = [this.PAR_R_FROM_WORK this.PAR_R_FROM_OUT this.PAR_R_FIX_APR];
+            this.CMD_FIXPOS.name = {'FIXPOS', 'fixpos'};
+            this.CMD_FIXPOS.descr = 'Fix position';
+            this.CMD_FIXPOS.rec = 'T';
+            this.CMD_FIXPOS.par = [this.PAR_R_FROM_WORK this.PAR_R_FROM_OUT this.PAR_R_FIX_APR];
+
+            this.CMD_SETREF.name = {'SETREF', 'setref'};
+            this.CMD_SETREF.descr = 'Change reference receiver with fixed position in a network (acts on out obj only)';
+            this.CMD_SETREF.rec = 'TR';
+            this.CMD_SETREF.par = [this.PAR_R_COO this.PAR_R_REM_ORPHANS];
 
             this.CMD_PPP.name = {'PPP', 'precise_point_positioning'};
             this.CMD_PPP.descr = 'Precise Point Positioning using carrier phase observations';
@@ -1500,8 +1522,10 @@ classdef Command_Interpreter < handle
                                         this.runPushOut(core.rec, tok);
                                     case this.CMD_LOAD.name                 % LOAD
                                         this.runLoad(core.rec, tok(2:end));
-                                    case this.CMD_FIX_POS.name              % FIX POS
+                                    case this.CMD_FIXPOS.name              % FIX POS
                                         this.runFixPos(core.rec, tok(2:end));
+                                   case this.CMD_SETREF.name               % SET REF
+                                        this.runSetRef(core.rec, tok(2:end));
                                     case this.CMD_MPEST.name                % CMD_MPEST
                                         this.runMPEst(core.rec, tok(2:end));
                                 end
@@ -1890,6 +1914,49 @@ classdef Command_Interpreter < handle
                     end
                 end
                 
+            end
+        end
+        
+        function runSetRef(this, rec, tok)
+            % Execute Set res
+            %
+            % INPUT
+            %   rec     list of rec objects
+            %   tok     list of tokens(parameters) from command line (cell array)
+            %
+            % SYNTAX
+            %   this.runSetRef(rec, tok)
+            
+            [id_trg, found] = this.getMatchingRec(rec, tok, 'T');
+            log = Core.getLogger;
+            if ~found
+                log.addWarning('No target found -> nothing to do');
+            else
+                [id_ref, found_ref] = this.getMatchingRec(rec, tok, 'R');
+                if ~found_ref
+                    log.addWarning('No reference found -> nothing to do');
+                else
+                    coo = Coordinates;
+                    for r = id_trg
+                        coo(r) = rec(r).out.coo; % get link to coo
+                    end
+                    % Get new coordinates
+                    try
+                        xyz = str2num(regexp(sprintf('%s ', tok{:}), this.PAR_R_COO.par, 'match', 'once'));
+                        if numel(xyz) ~=3
+                            xyz = [];
+                        end
+                    catch
+                        xyz = [];
+                    end
+                    if not(isempty(xyz))
+                        log.addMessage(log.indent(sprintf('New coordinates for %s : [ %s]', rec(id_ref).out.coo.name, sprintf('%s ', xyz))));
+                    end
+                    keep_orphans = isempty(regexp(sprintf('%s ', tok{:}), this.PAR_R_REM_ORPHANS.par, 'match', 'once'));
+                    [~, id_new_ref] = intersect(id_trg, id_ref);
+                    coo.setNewRef(id_new_ref, xyz, keep_orphans);
+                    log.addMarkedMessage(sprintf('Reference set to "%s"', rec(id_ref).out.coo.name));
+                end
             end
         end
         
@@ -3538,7 +3605,7 @@ classdef Command_Interpreter < handle
                         end
                         if numel(tok) < (1 + numel(cmd.rec))
                             err = this.ERR_NEI; % not enough input parameters
-                        elseif ~flag_multiple_par && (numel(tok) > (1 + numel(cmd.rec) + numel(cmd.par) + numel(cmd.key)) && ~strcmp(cmd.name{1}, 'RENAME'))
+                        elseif ~flag_multiple_par && (numel(tok) > (1 + numel(cmd.rec) + numel(cmd.par) + numel(cmd.key)) && ~strcmp(cmd.name{1}, 'RENAME') && ~strcmp(cmd.name{1}, 'SETREF'))
                             err = this.WRN_TMI; % too many input parameters
                         end
                     end

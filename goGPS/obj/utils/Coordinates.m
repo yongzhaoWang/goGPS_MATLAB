@@ -75,7 +75,7 @@ classdef Coordinates < Exportable & handle
         v_xyz = []                  % Coordinates velocities XYZ ECEF  [m / year]
         precision = 0.0001          % 3D limit [m] to check the equivalence among coordinates
         Cxx = [] 
-        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', [], 'master_name', categorical()) % Additional info related to the coordinate in use
+        info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', '', 'master_name', categorical()) % Additional info related to the coordinate in use
         
         std_scaling_factor = 30;
     end
@@ -108,7 +108,7 @@ classdef Coordinates < Exportable & handle
             try % legacy support
                 this.info = pos.info;
             catch
-                this.info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', [], 'master_name', categorical()); % Additional info related to the coordinate in use
+                this.info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', '', 'master_name', categorical()); % Additional info related to the coordinate in use
             end
             
         end
@@ -178,7 +178,7 @@ classdef Coordinates < Exportable & handle
                 
                 % Coordinate type (Bernese style: F: fixed / G: rover)
                 if not(isempty(this.info.coo_type))
-                    this.info.coo_type(id_sort) = this.info.coo_type(id_sort);
+                    this.info.coo_type(id_sort) = char(this.info.coo_type(id_sort));
                 end
                 
                 % Rate of the original observations
@@ -263,7 +263,7 @@ classdef Coordinates < Exportable & handle
                 
                 % Coordinate type (Bernese style: F: fixed / G: rover)
                 if not(isempty(pos.info.coo_type))
-                    this.info.coo_type(n_epo) = pos.info.coo_type;
+                    this.info.coo_type(n_epo) = char(pos.info.coo_type);
                 else
                     this.info.coo_type(n_epo) = 'U';
                 end
@@ -320,7 +320,7 @@ classdef Coordinates < Exportable & handle
                 this.info.rate(idx) = [];
             end
             if ~isempty(this.info.coo_type)
-                this.info.coo_type(idx) = [];
+                this.info.coo_type(idx) = '';
             end
             if ~isempty(this.info.master_name)
                 this.info.master_name(idx) = [];
@@ -1061,9 +1061,9 @@ classdef Coordinates < Exportable & handle
                             end
                             if any(id_ctype)
                                 if id_ctype > numel(data_line)
-                                    this.info.coo_type(l + 1) = nan;
+                                    this.info.coo_type(l + 1) = 'U';
                                 else
-                                    this.info.coo_type(l + 1) = data_line{id_ctype};
+                                    this.info.coo_type(l + 1) = char(data_line{id_ctype});
                                 end
                             end
                             if any(id_master)
@@ -1785,7 +1785,7 @@ classdef Coordinates < Exportable & handle
                             s0 = nan;
                         end
                         try
-                            coo_type = this.info.coo_type(i);
+                            coo_type = xhar(this.info.coo_type(i));
                         catch
                             coo_type = 'U';
                         end
@@ -1837,11 +1837,11 @@ classdef Coordinates < Exportable & handle
             % Compatibility layer with GeoGuard
             %
             % INPUT
-            %   out_file_name   full path of the filename (as default exported into outDir with the name of the coo) 
-            %                   without extension
+            %   out_file_name      full path of the filename (as default exported into outDir with the name of the coo) 
             %
             % SYNTAX
             %   coo.exportAsBerny(<out_file_name>)
+            %   coo.exportAsBerny(<out_file_name>, new_ref_name, new_fixed_xyz, keep_orphans)
             
             now_time = GPS_Time.now();
             if nargin < 2 || isempty(out_file_name)
@@ -2076,28 +2076,16 @@ classdef Coordinates < Exportable & handle
             %coo_diff.enu_diff = Coordinates.cart2local(coo1.getElement(id_ok1).getMedianPos.xyz, coo_diff.xyz_diff);
         end
         
-        function S = getSTransform(id_ref, n_rec, time_coo, rec_list)
-            % Build S tranform from the coordinates
-            
-            % use tmp to move the time to the central time of the session
-            % Needed to syncronize coordinates from different receivers
-            S = zeros(length(time_coo));
-            u_time = unique(time_coo);
-            for t = u_time'
-                idx_time = time_coo == t;
-                idx_time_ref = idx_time;
-                for j = 1 : length(id_ref)
-                    idx_time_ref = idx_time & this.rec_coo == id_ref(j);
-                    S(idx_time,idx_time_ref) = - 1 / numel(id_ref);
-                    S(idx_time,idx_time) = S(idx_time,idx_time) + eye(sum(idx_time));
-                end
-            end
-            this.coo = S * this.coo;
-            Svcv = [S zeros(size(S)) zeros(size(S)); zeros(size(S))  S zeros(size(S)); zeros(size(S))  zeros(size(S)) S];
-            this.coo_vcv = Svcv*this.coo_vcv*Svcv';
-        end
-        
-        function setNewRef(coo_list, new_ref_name, new_fixed_coordinates)
+        function setNewRef(coo_list, new_ref_name, new_fixed_xyz, keep_orphans)
+            % Fix a coordinate to a new value
+            %
+            % INPUT 
+            %   new_ref_name       name of the reference coordinate
+            %   new_fixed_xyz      new coordinate of the reference 
+            %   keep_orphans       keep the epoch with master different from the new reference (default)
+            %
+            % SYNTAX
+            %   coo_list.setNewRef(new_ref_name, new_fixed_xyz, keep_orphans);
             if isnumeric(new_ref_name)
                 new_ref_id = new_ref_name;
                 ref_found = true;
@@ -2105,7 +2093,7 @@ classdef Coordinates < Exportable & handle
                 % find the new reference station
                 c = 0;
                 ref_found = false;
-                while (c < numel(coo)) && ~ref_found
+                while (c < numel(coo_list)) && ~ref_found
                     c = c + 1;
                     if strcmp(new_ref_name, coo_list(c).name)
                         ref_found = true;
@@ -2120,41 +2108,54 @@ classdef Coordinates < Exportable & handle
             end
             
             if ref_found
-                %%
-                new_ref_name = categorical({coo_list(new_ref_id).name});
-                % id of the epoch to change
-                id_change = find(coo_list(new_ref_id).info.master_name ~= new_ref_name);
-                
-                time_coo = coo_list(1).time.getCopy;
-                xyz = coo_list(1).getXYZ;
-                rec_id = ones(coo_list(1).time.length, 1, 'uint16');
-                mst_id = uint8(coo_list(1).info.master_name);
-                for c = 2 : numel(coo_list)
-                    time_coo.append(coo_list(c).time.getCopy);
-                    xyz = [xyz; coo_list(c).getXYZ];
-                    rec_id = [rec_id; c * ones(coo_list(c).time.length, 1, 'uint16')];
-                    mst_id = [mst_id; uint8(coo_list(2).info.master_name)];
-                end
-                coo_rate = median(diff(time_coo.getRefTime), 'omitnan');
-                tmp = time_coo.getRoundedTime(coo_rate);
-                
-                time_coo = round(tmp.getRefTime);
-                u_time = unique(time_coo);
-                for t = u_time'
-                    lid_time = time_coo == t;
-                    id_time = find(lid_time);
-                    S = zeros(sum(lid_time));
-                    for j = 1 : length(new_ref_id)
-                        lid_time_ref = rec_id(lid_time) == new_ref_id(j); % find the ref
-                        S(:, lid_time_ref) = - 1 / numel(new_ref_id);
-                        S = S + eye(sum(lid_time));
+                if nargin < 3 || isempty(new_fixed_xyz)
+                    try
+                        rf = Core.getReferenceFrame;
+                        new_fixed_xyz = rf.getCoo('GUS3', coo_list(new_ref_id).time.last); % fix to the last coordinate in RF
+                    catch
+                        % any problem with the RF is managed by using median coordinates
+                        new_fixed_xyz = [];
+                    end
+                    if isempty(new_fixed_xyz)
+                        % if empty fix to the median value
+                        new_fixed_xyz = coo_list(new_ref_id).getMedianPos.getXYZ;
                     end
                 end
-                xyz2 = S * xyz;
-                %%
-                this.coo = S * this.coo;
-                Svcv = [S zeros(size(S)) zeros(size(S)); zeros(size(S))  S zeros(size(S)); zeros(size(S))  zeros(size(S)) S];
-                this.coo_vcv = Svcv*this.coo_vcv*Svcv';
+                
+                new_ref_name = categorical({coo_list(new_ref_id).name});
+                
+                coo_rate = round(median(diff(coo_list(new_ref_id).time.getRefTime), 'omitnan'), 3);
+                if isnan(coo_rate)
+                    coo_rate = 1;
+                end
+                time_ref = coo_list(new_ref_id).time.getRoundedTime(coo_rate);
+                time0 = time_ref.first.getMatlabTime;
+                tid_ref = time_ref.getRefTime(time0)/coo_rate;
+                xyz_corr = round(repmat(new_fixed_xyz, numel(tid_ref), 1) - coo_list(new_ref_id).xyz, 6);
+                
+                % for each non reference coordinate
+                for c = setdiff(1 : numel(coo_list), new_ref_id)
+                    tid_coo = coo_list(c).time.getRoundedTime(coo_rate).getRefTime(time0)/coo_rate;
+                    [~, idc, idr] = intersect(tid_coo, tid_ref);
+                    % apply translation
+                    coo_list(c).xyz(idc, :) = coo_list(c).xyz(idc, :) + xyz_corr(idr, :);
+                    % Covariance propagation with missing cross covariance term
+                    coo_list(c).Cxx(:, :, idc) = coo_list(c).Cxx(:, :, idc) + coo_list(new_ref_id).Cxx(:, :, idr);
+                    coo_list(c).info.master_name(idc) = new_ref_name;
+                    coo_list(c).info.coo_type(idc) = 'G';
+                    
+                    % remove epochs with no master
+                    if nargin > 3 && not(keep_orphans)
+                        id_ko = setdiff((1:coo_list(c).time.length)', idc);
+                        coo_list(c).rem(id_ko);
+                    end
+                end
+                
+                % Now fix the new reference
+                coo_list(new_ref_id).xyz = repmat(new_fixed_xyz, numel(tid_ref), 1);
+                coo_list(new_ref_id).info.master_name(:) = new_ref_name;
+                coo_list(new_ref_id).info.coo_type(:) = 'F';
+                coo_list(c).Cxx(:) = 0;
             end
         end
     end
