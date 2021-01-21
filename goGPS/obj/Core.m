@@ -1163,6 +1163,9 @@ classdef Core < handle
             % 
             % EXAMPLE
             %   core.exec({'LOAD T*', 'PREPRO T*', 'PPP T*'})
+            if isempty(this.cmd)
+                this.cmd = Command_Interpreter(this);
+            end
             this.cmd.exec(this, cmd_list);
         end                    
     end
