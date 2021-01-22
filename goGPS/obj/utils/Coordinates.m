@@ -59,11 +59,12 @@ classdef Coordinates < Exportable & handle
         DEG2RAD = pi/180;           % Convert degree to radius
         RAD2DEG = 180/pi;           % Convert radius to degree
         
-        VERSION = '1.4';            % New file version
+        VERSION = '1.5';            % New file version
                                     % 1.1 => adding s0_ip
                                     % 1.2 => adding observation rate
                                     % 1.3 => adding coo_type (fixed / non fixed)
                                     % 1.4 => adding master_name (name of the master station used as reference, one per epoch)
+                                    % 1.5 => adding rate in header
     end
    
     properties (SetAccess = public, GetAccess = public) % set permission have been changed from private to public (Giulio)
@@ -77,6 +78,7 @@ classdef Coordinates < Exportable & handle
         Cxx = [] 
         info = struct('n_epo', [], 'n_obs', [], 's0', [], 's0_ip', [], 'flag', [], 'fixing_ratio', [],'obs_used',[], 'rate', [], 'coo_type', '', 'master_name', categorical()) % Additional info related to the coordinate in use
         
+        rate = [];                  % coordinates rate: - default daily
         std_scaling_factor = 30;
     end
         
@@ -286,6 +288,7 @@ classdef Coordinates < Exportable & handle
                 end
                 
                 this.sort();
+                this.setRate(this.getRate()); % Update the rate if needed
             end
             
         end
@@ -814,7 +817,31 @@ classdef Coordinates < Exportable & handle
                 this.time.getEpoch(1 : size(this.xyz, 1));
                 fprintf('The set coordinates time is smaller than the number of positions stored\Cutting positions\nDebug from Coordinates.setTime()');                
             end
-
+            this.setRate(this.getRate);
+        end
+        
+        function rate = getRate(this)
+            % Get the rate of the coordinates
+            %
+            % SYNTAX:
+            %   rate = this.getRate
+            rate = this.rate;
+            
+            if (isempty(this.rate) ||  isnan(zero2nan(this.rate))) && (not(isempty(this.time)) && (this.time.length > 2))
+                rate = round(this.time.getRate, 3);
+                this.setRate(rate);
+            end
+        end
+        
+        function setRate(this, rate)
+            % Manually set the coordinate rate (do it carefully)
+            %
+            % SYNTAX
+            %   this.setRate(rate);
+            %
+            % EXAMPLE
+            %   this.setRate(Core.getState.sss_duration);
+            this.rate = rate;
         end
         
         function setPosXYZ(this, xyz, y, z)
@@ -975,8 +1002,18 @@ classdef Coordinates < Exportable & handle
                             this.description = regexp(txt(lim(id_line, 1):lim(id_line, 2)), '(?<=LongName[ ]*: ).*', 'match', 'once');
                         end
                         
+                        % DataRate
+                        id_line_rate = find(txt(lim(1:data_start-1,1) + 1) == 'D' & txt(lim(1:data_start-1,1) + 5) == 'R'); % +DateRate
+                        if not(isempty(id_line_rate))
+                            rate = str2double(regexp(txt(lim(id_line_rate,1) : lim(id_line_rate, 2)), '(?<=\:)[ 0-9\.]*', 'match', 'once'));
+                            if isnan(rate)
+                                id_line_rate = []; % force recomputation
+                            else
+                                this.setRate(rate);
+                            end
+                        end
                         % DataType
-                        id_line_start = find(txt(lim(1:data_start-1,1) + 1) == 'D' & txt(lim(1:data_start-1,1) + 5) == 'T'); % +MonitoringPoint
+                        id_line_start = find(txt(lim(1:data_start-1,1) + 1) == 'D' & txt(lim(1:data_start-1,1) + 5) == 'T'); % +DataType
                         id_line = id_line_start -1 + find(txt(lim(id_line_start:data_start-1,1) + 1) == '-');
                         col = str2num(txt(lim(id_line, 1) + repmat(2:3, numel(id_line),1))) + 1;
                         data_type = categorical();
@@ -1079,6 +1116,9 @@ classdef Coordinates < Exportable & handle
                             end
                         end
                         this.time = GPS_Time(timestamp);
+                        if isempty(id_line_rate)
+                            this.setRate(this.getRate);
+                        end
                     end
                     
                     % Check description field
@@ -1206,7 +1246,7 @@ classdef Coordinates < Exportable & handle
                         
                         pos_diff = [];
                         if isa(pos.time, 'GPS_Time') && ~pos.time.isEmpty
-                            rate = round(coo_ref.time.getRate);
+                            rate = coo_ref.getRate;
                             t_ref = (round((pos.time.first.getMatlabTime * 86400 - rate/2) / rate) * rate + rate/2) / 86400;
                             t1 = round(coo_ref.time.getRefTime(t_ref) / rate) * rate;
                             t2 = round(pos.time.getRefTime(t_ref) / rate) * rate;
@@ -1718,6 +1758,7 @@ classdef Coordinates < Exportable & handle
                 str_tmp = sprintf('%s+SensorName     : GNSS\n', str_tmp);
                 str_tmp = sprintf('%s+DataScale      : m\n', str_tmp);
                 str_tmp = sprintf('%s+DataScale Cov  : mm^2\n', str_tmp);
+                str_tmp = sprintf('%s+DataRate       : %f s\n', str_tmp, this.getRate);
                 str_tmp = sprintf('%s+DataType       :\n', str_tmp);
                 str_tmp = sprintf('%s -00            : timeStamp\n', str_tmp);
                 str_tmp = sprintf('%s -01            : exportTime\n', str_tmp);
@@ -1904,12 +1945,15 @@ classdef Coordinates < Exportable & handle
                 str_crd = sprintf('%swwww-d yyyy-ddd yyyy-mm-dd s   start    end    MAST  CRMS        X (m)          Y (m)            Z (m)         EAST (m)       NORTH (m)         UP (m)     F  sE(mm)   sN(mm)   sU(mm)  s3D (mm) \n',str_crd);
                 str_crd = sprintf('%s------+--------+----------+-+--------+--------+----+------+---------------+---------------+---------------+---------------+---------------+---------------+-+--------+--------+--------+--------+\n',str_crd);
                 
-                sol_rate = median(diff(this.time.getMatlabTime*86400), 'omitnan');
-                if isempty(sol_rate) || isnan(sol_rate)
-                    if numel(timestamp) < 2
-                        sol_rate = Core.getState.sss_duration;
-                    else
-                        sol_rate = median(diff(timestamp * 86400), 'omitnan');
+                sol_rate = this.getRate();
+                if isempty(sol_rate) || isnan(zero2nan(sol_rate))
+                    sol_rate = median(diff(this.time.getMatlabTime*86400), 'omitnan');
+                    if isempty(sol_rate) || isnan(sol_rate)
+                        if numel(timestamp) < 2
+                            sol_rate = Core.getState.sss_duration;
+                        else
+                            sol_rate = median(diff(timestamp * 86400), 'omitnan');
+                        end
                     end
                 end
                 enu = this.getENU;
@@ -1919,6 +1963,8 @@ classdef Coordinates < Exportable & handle
                 % Append New
                 e = 1; % old epoch
                 [~, id_time] = sort(this.time.getMatlabTime);
+                
+                coo_rate = this.getRate;
                 for i = id_time(:)'
                     cur_time = round(this.time.getEpoch(i).getMatlabTime*86400)/86400;
                     while e <= numel(timestamp) && ((cur_time - 1e-5) > (timestamp(e) + (sol_rate / 86400)/2))
@@ -1930,6 +1976,15 @@ classdef Coordinates < Exportable & handle
                     end
                     try
                         tmp_time = this.time.getEpoch(i);
+                        
+                        if coo_rate == 86400
+                            sss_char = '0';
+                        else
+                            time_from_start = tmp_time.getMatlabTime;
+                            time_from_start = ((time_from_start - floor(time_from_start)) * 86400); % time from the beginning of the day [s]
+                            sss_char = char('a' + floor(time_from_start/coo_rate));
+                        end
+                        
                         [year, doy] = tmp_time.getDOY;
                         [week, sow, dow] = tmp_time.getGpsWeek;
                         date_str = tmp_time.toString('yyyy-mm-dd');
@@ -1992,10 +2047,13 @@ classdef Coordinates < Exportable & handle
                         end
                         master_name = master_name(1:4);
                         
-                        str_crd = sprintf('%s%04d-%1d %04d-%03d %s 0 %s %s %4s %6.2f %15.5f %15.5f %15.5f %15.5f %15.5f %15.5f %1c %8.2f %8.2f %8.2f %8.2f\n', str_crd, ...
+                        
+                        
+                        str_crd = sprintf('%s%04d-%1d %04d-%03d %s %c %s %s %4s %6.2f %15.5f %15.5f %15.5f %15.5f %15.5f %15.5f %1c %8.2f %8.2f %8.2f %8.2f\n', str_crd, ...
                             week,dow, ...
                             year,doy, ...
                             date_str, ...
+                            sss_char, ...
                             time_start, time_stop, ...
                             master_name, ...
                             s0_ip, ...
@@ -2004,10 +2062,11 @@ classdef Coordinates < Exportable & handle
                             char(coo_type), ...
                             std_enu(i,1).*1e3, std_enu(i,2).*1e3, std_enu(i,3).*1e3, ...
                             sqrt(sum(std_xyz(i,:).^2)).*1e3);
-                        str_out = sprintf('%s%04d-%1d %04d-%03d %s 0 %s %s %8d  %7d  %7d  %7d  %7d %12.2f %8d\n', str_out, ...
+                        str_out = sprintf('%s%04d-%1d %04d-%03d %s %c %s %s %8d  %7d  %7d  %7d  %7d %12.2f %8d\n', str_out, ...
                             week,dow, ...
                             year,doy, ...
                             date_str, ...
+                            sss_char, ...
                             time_start, time_stop, ...
                             n_epo, 0, 0, n_obs, 0, ...
                             s0_ip, ...

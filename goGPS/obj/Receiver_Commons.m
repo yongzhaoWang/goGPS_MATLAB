@@ -304,6 +304,7 @@ classdef Receiver_Commons <  matlab.mixin.Copyable
                         coo.setTime(tmp);
                     end
                 end
+                coo.setRate(Core.getState.sss_duration);
                 coo.info.n_epo = this.quality_info.n_epochs;
                 coo.info.n_obs = this.quality_info.n_obs;
                 coo.info.s0 = this.quality_info.s0;

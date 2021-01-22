@@ -2637,7 +2637,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 try
                     legacy_marker = Daemon_Guard.LEGACY_MARKER;
                 catch
-                    legacy_marker = {'CAC1', 'CAC2', 'CAC3', 'ARV0'};
+                    legacy_marker = {'ARV0'};
                 end
                 try
                     ignore_missing_marker = Daemon_Guard.IGNORE_MARKER;
@@ -2705,6 +2705,7 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                     log.addMarkedMessage('Good, it seems there are no missing or partially downloaded files.');
                 end
                 fclose(fid);
+                pause(0.2);
                 if flag_any
                     log.addMarkedMessage(sprintf('Run script: %s\n', script_name));
                     % fprintf('\n------------------------------------------------------------------------- \n')
