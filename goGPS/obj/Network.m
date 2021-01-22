@@ -929,6 +929,7 @@ classdef Network < handle
                     coo.time.addIntSeconds(round(rate/2));
                     coo.time = coo.time.getNominalTime(rate);
                     coo.time.addIntSeconds(-round(rate/2));
+                    coo.setRate(rate);
                     coo.info.obs_used = ones(n_coo,1) .* this.obs_id_coo(idx_rec);
                     coo.info.n_epo = ones(n_coo,1) .* length(unique(ls.time_par(ls.rec_par == i & ~ls.out_par)));
                     coo.info.n_obs = ones(n_coo,1) .* sum(idx_obs);
