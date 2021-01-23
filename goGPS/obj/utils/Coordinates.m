@@ -2192,8 +2192,8 @@ classdef Coordinates < Exportable & handle
                 end
                 time_ref = coo_list(new_ref_id).time.getRoundedTime(coo_rate);
                 time0 = time_ref.first.getMatlabTime;
-                tid_ref = time_ref.getRefTime(time0)/coo_rate;
-                if any(tid_ref)
+                tid_ref = time_ref.getRefTime(time0) / coo_rate;
+                if any(time0)
                     xyz_corr = round(repmat(new_fixed_xyz, numel(tid_ref), 1) - coo_list(new_ref_id).xyz, 6);
                     
                     % for each non reference coordinate

@@ -1335,7 +1335,9 @@ classdef Command_Interpreter < handle
                     
                     log.newLine();
                     log.addMarkedMessage(sprintf('%s Executing: %s', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), cmd_list{cur_line_id}));
-                    fprintf(sprintf(' ** %s Executing: %s\n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), cmd_list{cur_line_id})); % write the command in console too
+                    if log.isGUIOut
+                        fprintf(sprintf(' ** %s Executing: %s\n', GPS_Time.now.toString('yyyy-mm-dd HH:MM:SS'), cmd_list{cur_line_id})); % write the command in console too
+                    end
                     t1 = tic;
                     log.simpleSeparator([], [0.4 0.4 0.4]);
                     
