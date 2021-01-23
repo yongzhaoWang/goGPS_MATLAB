@@ -2635,11 +2635,6 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                 
                 rin_list = core.rin_list;
                 try
-                    legacy_marker = Daemon_Guard.LEGACY_MARKER;
-                catch
-                    legacy_marker = {'ARV0'};
-                end
-                try
                     ignore_missing_marker = Daemon_Guard.IGNORE_MARKER;
                 catch
                         ignore_missing_marker = {...
@@ -2671,7 +2666,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                         marker = rin_list(r).marker_name{bad_id};
                         marker = marker(1:4);
                         cur_time_start = round(24 * rin_list(r).first_epoch.getEpoch(bad_id).getMatlabTime) / 24;
-                        
+                        if cur_time_start > datenum('2021-01-03 00:00')
+                            legacy_marker = {'ARV0'};
+                        else
+                            legacy_marker = {'CAC1', 'CAC2', 'CAC3', 'ARV0'};
+                        end
                         log.addMessage(log.indent(sprintf(' - %5.1f%%, %s @ %s "%s"\n', fullrate, marker, datestr(cur_time_start, 'yyyy-mm-dd HH:MM'), file_name)));
                         str = sprintf('%spython3 ./getGMU.py -n 1 -u -m %s %s -d %s\n', str, marker, iif(ismember(marker, legacy_marker), '--legacy', ''), datestr(cur_time_start, 'yyyy-mm-dd -t HH:MM'));
                         flag_any = true;
@@ -2691,6 +2690,11 @@ classdef GUI_Edit_Settings < GUI_Unique_Win
                             t = sss_start : sss_stop;
                             t_bad = setdiff(t, file_start) /  24;
                             for missing_epoch = t_bad
+                                if missing_epoch > datenum('2021-01-03 00:00')
+                                    legacy_marker = {'ARV0'};
+                                else
+                                    legacy_marker = {'CAC1', 'CAC2', 'CAC3', 'ARV0'};
+                                end
                                 log.addMessage(log.indent(sprintf(' - %5.1f%%, %s @ %s\n', 0, marker, datestr(missing_epoch, 'yyyy-mm-dd HH:MM'))));
                                 str = sprintf('%spython3 ./getGMU.py -n 1 -u -m %s %s -d %s\n', str, marker, iif(ismember(marker, legacy_marker), '--legacy', ''), datestr(missing_epoch, 'yyyy-mm-dd -t HH:MM'));
                                 flag_any = true;
