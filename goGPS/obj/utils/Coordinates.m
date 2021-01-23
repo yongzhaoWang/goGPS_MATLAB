@@ -2186,7 +2186,11 @@ classdef Coordinates < Exportable & handle
                 
                 new_ref_name = categorical({coo_list(new_ref_id).name});
                 
-                coo_rate = round(median(diff(coo_list(new_ref_id).time.getRefTime), 'omitnan'), 3);
+                coo_rate = round(coo_list(new_ref_id).getRate, 3);
+                if isempty(coo_rate) || isnan(zero2nan(coo_rate))
+                    % try to retrieve rate from the date
+                    coo_rate = round(median(diff(coo_list(new_ref_id).time.getRefTime), 'omitnan'), 3);
+                end
                 if isnan(coo_rate)
                     coo_rate = 1;
                 end
